@@ -192,30 +192,30 @@ Principios:
 
 ## 4. Próximos pasos recomendados
 
-### Fase 1 – Limpieza (antes del Excel)
+### Fase 1 – Limpieza (antes del Excel) — HECHO
 
-1. Eliminar los archivos y carpetas listados en “Eliminar por completo”.
-2. Actualizar `app/page.tsx` a una página simple de bienvenida o redirección a “dashboard” (aunque el dashboard aún no exista).
-3. Dejar de usar `app/lib/definitions.ts` y `app/lib/data.ts` en lo que se elimina (o vaciarlos y dejar solo lo que no rompa el build). Opción: comentar imports y llamadas que dependan de lo borrado para que el proyecto siga compilando.
-4. Ajustar `app/ui/dashboard/sidenav.tsx` para que no use AcmeLogo ni rutas a invoices/customers (texto “Money Management” y enlaces placeholder).
-5. Eliminar o simplificar `app/seed/route.ts` para que no dependa de `placeholder-data` de customers/invoices (o dejar solo seed de users si lo usas).
+- [x] 1. Eliminar los archivos y carpetas listados en “Eliminar por completo”.
+- [x] 2. Actualizar `app/page.tsx` a una página simple de bienvenida o redirección a “dashboard” (aunque el dashboard aún no exista).
+- [x] 3. Dejar de usar `app/lib/definitions.ts` y `app/lib/data.ts` en lo que se elimina (o vaciarlos y dejar solo lo que no rompa el build).
+- [x] 4. Ajustar `app/ui/dashboard/sidenav.tsx` para que no use AcmeLogo ni rutas a invoices/customers (texto “Money Management” y enlaces placeholder).
+- [x] 5. Eliminar o simplificar `app/seed/route.ts` para que no dependa de `placeholder-data` de customers/invoices (o dejar solo seed de users si lo usas).
 
 Resultado: proyecto que compila, sin branding de curso y sin código de facturas/clientes.
 
-### Fase 2 – Modelo y datos (con tu Excel)
+### Fase 2 – Modelo y datos (con tu Excel) — HECHO
 
-6. Cuando compartas el Excel: definir **modelos** (tablas y tipos) para movimientos (ingresos/egresos), categorías, y lo que uses (cuentas, etc.).
-7. Diseñar **esquema SQL** (tablas, índices) y documentarlo.
-8. Implementar **tipos** en `lib/definitions.ts` (o por dominio).
-9. Implementar **lib/db.ts** y funciones en `lib/data/*` para movimientos (y categorías si aplica).
-10. Nuevo **seed** (route o script) que cree tablas y datos de ejemplo alineados con el Excel.
+- [x] 6. Definir **modelos** (tablas y tipos) para movimientos (ingresos/egresos), cuentas bancarias (saldos), y alineados con el Excel.
+- [x] 7. Diseñar **esquema SQL** (tablas `accounts`, `movements`, índices) y documentarlo (plan Fase 2).
+- [x] 8. Implementar **tipos** en `lib/definitions.ts` (Account, Movement, RecordType, MovementSource, etc.).
+- [x] 9. Implementar **lib/db.ts** y funciones en **lib/data/accounts.ts** y **lib/data/movements.ts** (fetch, createMovement con transacción que actualiza saldos).
+- [x] 10. Nuevo **seed** que cree tablas `users`, `accounts`, `movements` y datos de ejemplo; **API** `POST/GET /api/movements` con Zod y token para integración (p. ej. Telegram).
 
-### Fase 3 – Funcionalidad y UI
+### Fase 3 – Funcionalidad y UI — PENDIENTE
 
-11. Rutas del dashboard: layout, página principal (resumen con cards), listado de movimientos.
-12. Formularios: alta/edición de movimientos (y categorías si aplica).
-13. Gráficos o resúmenes si los necesitas (reutilizando idea de `generateYAxis` y componentes de gráfico).
-14. Integrar **next-auth** con el login y proteger rutas si quieres usuarios multi-cuenta.
+- [ ] 11. Rutas del dashboard: layout con SideNav, página principal (resumen con cards: saldos por cuenta, totales del mes).
+- [ ] 12. Formularios: alta/edición de movimientos (y listado por periodo); opcionalmente categorías.
+- [ ] 13. Gráficos o resúmenes si los necesitas (reutilizando `generateYAxis` y componentes de gráfico).
+- [ ] 14. Integrar **next-auth** con el login y proteger rutas si quieres usuarios multi-cuenta.
 
 ---
 

@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: money-management-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: money_management
+    # Puerto 5433 en host para no chocar con otros Postgres en 5432
+    ports:
+      - "5433:5432"
+    volumes:
+      - money_management_pgdata:/var/lib/postgresql/data
+      - ./docker/init-pgvector.sql:/docker-entrypoint-initdb.d/init-pgvector.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d money_management"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  money_management_pgdata:
