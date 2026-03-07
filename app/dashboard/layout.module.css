@@ -1,0 +1,24 @@
+.container {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: row;
+}
+
+.sidebar {
+  width: 16rem;
+  flex-shrink: 0;
+  background-color: var(--color-bg-dark);
+}
+
+.main {
+  flex: 1;
+  overflow-y: auto;
+  background-color: var(--color-surface);
+  padding: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .main {
+    padding: 2rem;
+  }
+}

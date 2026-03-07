@@ -1,0 +1,12 @@
+.title {
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-bg-dark);
+}
+
+.placeholder {
+  margin-top: 1rem;
+  font-size: 1rem;
+  color: var(--color-surface-dark);
+}

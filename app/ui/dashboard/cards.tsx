@@ -1,58 +1,96 @@
 import {
   BanknotesIcon,
-  ClockIcon,
-  UserGroupIcon,
-  InboxIcon,
+  WalletIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
 } from '@heroicons/react/24/outline';
-import { lusitana } from '@/app/ui/fonts';
+import styles from './cards.module.css';
 
-const iconMap = {
-  collected: BanknotesIcon,
-  customers: UserGroupIcon,
-  pending: ClockIcon,
-  invoices: InboxIcon,
-};
+export type CardType = 'account' | 'income' | 'expense';
 
-export default async function CardWrapper() {
+export type CardData =
+  | {
+      type: 'account';
+      title: string;
+      valuePesos: number;
+      valueDollars: number;
+    }
+  | {
+      type: 'income';
+      title: string;
+      value: string;
+    }
+  | {
+      type: 'expense';
+      title: string;
+      value: string;
+    };
+
+function formatPesos(amount: number): string {
+  return amount.toLocaleString('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+}
+
+function formatDollars(amount: number): string {
+  return amount.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function Card({ data }: { data: CardData }) {
+  if (data.type === 'account') {
+    return (
+      <div className={styles.card}>
+        <div className={styles.cardHeader}>
+          <WalletIcon className={styles.cardIcon} />
+          <h3 className={styles.cardTitle}>{data.title}</h3>
+        </div>
+        <div className={styles.cardValue}>
+          <span className="font-heading">{formatPesos(data.valuePesos)}</span>
+          <div className={styles.cardValueSecondary}>
+            {formatDollars(data.valueDollars)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (data.type === 'income') {
+    return (
+      <div className={styles.card}>
+        <div className={styles.cardHeader}>
+          <ArrowTrendingUpIcon className={styles.cardIcon} />
+          <h3 className={styles.cardTitle}>{data.title}</h3>
+        </div>
+        <p className={styles.cardValue}>{data.value}</p>
+      </div>
+    );
+  }
+
   return (
-    <>
-      {/* NOTE: Uncomment this code in Chapter 9 */}
-
-      {/* <Card title="Collected" value={totalPaidInvoices} type="collected" />
-      <Card title="Pending" value={totalPendingInvoices} type="pending" />
-      <Card title="Total Invoices" value={numberOfInvoices} type="invoices" />
-      <Card
-        title="Total Customers"
-        value={numberOfCustomers}
-        type="customers"
-      /> */}
-    </>
+    <div className={styles.card}>
+      <div className={styles.cardHeader}>
+        <ArrowTrendingDownIcon className={styles.cardIcon} />
+        <h3 className={styles.cardTitle}>{data.title}</h3>
+      </div>
+      <p className={styles.cardValue}>{data.value}</p>
+    </div>
   );
 }
 
-export function Card({
-  title,
-  value,
-  type,
-}: {
-  title: string;
-  value: number | string;
-  type: 'invoices' | 'customers' | 'pending' | 'collected';
-}) {
-  const Icon = iconMap[type];
-
+export function CardGrid({ cards }: { cards: CardData[] }) {
   return (
-    <div className="rounded-xl bg-gray-50 p-2 shadow-sm">
-      <div className="flex p-4">
-        {Icon ? <Icon className="h-5 w-5 text-gray-700" /> : null}
-        <h3 className="ml-2 text-sm font-medium">{title}</h3>
-      </div>
-      <p
-        className={`${lusitana.className}
-          truncate rounded-xl bg-white px-4 py-8 text-center text-2xl`}
-      >
-        {value}
-      </p>
+    <div className={styles.grid}>
+      {cards.map((data, i) => (
+        <Card key={data.type === 'account' ? data.title : `${data.type}-${i}`} data={data} />
+      ))}
     </div>
   );
 }
