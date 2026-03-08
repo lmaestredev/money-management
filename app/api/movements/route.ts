@@ -15,6 +15,7 @@ const createMovementSchema = z.object({
   period: z.string().regex(/^\d{4}-\d{2}$/, 'period must be YYYY-MM'),
   record_type: recordTypeSchema,
   account_id: z.string().uuid(),
+  category_id: z.string().uuid().optional().nullable(),
   description: z.string().optional().nullable(),
   status: z.boolean().optional().nullable(),
   amount_pesos: z.number(),

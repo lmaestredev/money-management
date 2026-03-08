@@ -1,14 +1,15 @@
 import Link from 'next/link';
 import { createMovementAction } from '@/app/lib/actions/movements';
-import type { Account } from '@/app/lib/definitions';
+import type { Account, Category } from '@/app/lib/definitions';
 import styles from './MovementForm.module.css';
 
 type Props = {
   period: string;
   accounts: Account[];
+  categories: Category[];
 };
 
-export default function MovementForm({ period, accounts }: Props) {
+export default function MovementForm({ period, accounts, categories }: Props) {
   return (
     <form action={createMovementAction} className={styles.form}>
       <input type="hidden" name="period" value={period} />
@@ -44,6 +45,19 @@ export default function MovementForm({ period, accounts }: Props) {
           <option value="variable_payment">Pago varios</option>
           <option value="fixed_payment">Gasto fijo</option>
           <option value="conversion">Conversión</option>
+        </select>
+      </div>
+      <div className={styles.field}>
+        <label htmlFor="category_id" className={styles.label}>
+          Categoría
+        </label>
+        <select id="category_id" name="category_id" className={styles.select}>
+          <option value="">Sin categoría</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
         </select>
       </div>
       <div className={styles.field}>

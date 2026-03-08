@@ -31,6 +31,18 @@ export type AccountInsert = {
   user_id?: string | null;
 };
 
+// Categorías
+export type Category = {
+  id: string;
+  name: string;
+  sort_order: number;
+};
+
+export type CategoryInsert = {
+  name: string;
+  sort_order?: number;
+};
+
 // Movimientos
 export type RecordType =
   | 'income'
@@ -45,6 +57,8 @@ export type Movement = {
   period: string;
   record_type: RecordType;
   account_id: string;
+  category_id: string | null;
+  category_name?: string | null;
   description: string | null;
   status: boolean | null;
   amount_pesos: number;
@@ -62,6 +76,7 @@ export type MovementInsert = {
   period: string;
   record_type: RecordType;
   account_id: string;
+  category_id?: string | null;
   description?: string | null;
   status?: boolean | null;
   amount_pesos: number;

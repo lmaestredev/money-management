@@ -1,5 +1,4 @@
 import { sql } from '../db';
-import { updateAccountBalances } from './accounts';
 import type {
   Movement,
   MovementInsert,
@@ -13,6 +12,8 @@ function rowToMovement(row: Record<string, unknown>): Movement {
     period: row.period as string,
     record_type: row.record_type as RecordType,
     account_id: row.account_id as string,
+    category_id: (row.category_id as string) ?? null,
+    category_name: (row.category_name as string) ?? null,
     description: (row.description as string) ?? null,
     status: row.status as boolean | null,
     amount_pesos: Number(row.amount_pesos),
@@ -29,12 +30,15 @@ function rowToMovement(row: Record<string, unknown>): Movement {
 
 export async function fetchMovementsByPeriod(period: string): Promise<Movement[]> {
   const rows = await sql`
-    SELECT id, period, record_type, account_id, description, status,
-           amount_pesos, amount_dollars, payment_date, dollar_rate, exchange_rate,
-           comment, created_at, user_id, source
-    FROM movements
-    WHERE period = ${period}
-    ORDER BY record_type, created_at ASC
+    SELECT m.id, m.period, m.record_type, m.account_id, m.category_id,
+           c.name AS category_name,
+           m.description, m.status, m.amount_pesos, m.amount_dollars,
+           m.payment_date, m.dollar_rate, m.exchange_rate, m.comment,
+           m.created_at, m.user_id, m.source
+    FROM movements m
+    LEFT JOIN categories c ON m.category_id = c.id
+    WHERE m.period = ${period}
+    ORDER BY m.record_type, m.created_at ASC
   `;
   return rows.map((r) => rowToMovement(r as Record<string, unknown>));
 }
@@ -44,12 +48,15 @@ export async function fetchMovementsByPeriodAndType(
   recordType: RecordType
 ): Promise<Movement[]> {
   const rows = await sql`
-    SELECT id, period, record_type, account_id, description, status,
-           amount_pesos, amount_dollars, payment_date, dollar_rate, exchange_rate,
-           comment, created_at, user_id, source
-    FROM movements
-    WHERE period = ${period} AND record_type = ${recordType}
-    ORDER BY created_at ASC
+    SELECT m.id, m.period, m.record_type, m.account_id, m.category_id,
+           c.name AS category_name,
+           m.description, m.status, m.amount_pesos, m.amount_dollars,
+           m.payment_date, m.dollar_rate, m.exchange_rate, m.comment,
+           m.created_at, m.user_id, m.source
+    FROM movements m
+    LEFT JOIN categories c ON m.category_id = c.id
+    WHERE m.period = ${period} AND m.record_type = ${recordType}
+    ORDER BY m.created_at ASC
   `;
   return rows.map((r) => rowToMovement(r as Record<string, unknown>));
 }
@@ -85,7 +92,7 @@ export async function createMovement(
   const [row] = await sql.begin(async (tx) => {
     const [inserted] = await tx`
       INSERT INTO movements (
-        period, record_type, account_id, description, status,
+        period, record_type, account_id, category_id, description, status,
         amount_pesos, amount_dollars, payment_date, dollar_rate, exchange_rate,
         comment, user_id, source
       )
@@ -93,6 +100,7 @@ export async function createMovement(
         ${data.period},
         ${data.record_type},
         ${data.account_id},
+        ${data.category_id ?? null},
         ${data.description ?? null},
         ${data.status ?? null},
         ${data.amount_pesos},
@@ -104,7 +112,7 @@ export async function createMovement(
         ${data.user_id ?? null},
         ${sourceValue}
       )
-      RETURNING id, period, record_type, account_id, description, status,
+      RETURNING id, period, record_type, account_id, category_id, description, status,
                 amount_pesos, amount_dollars, payment_date, dollar_rate, exchange_rate,
                 comment, created_at, user_id, source
     `;

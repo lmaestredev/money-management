@@ -1,4 +1,5 @@
 import { fetchAccounts } from '@/app/lib/data/accounts';
+import { fetchCategories } from '@/app/lib/data/categories';
 import MovementForm from '@/app/ui/movements/MovementForm';
 import styles from './page.module.css';
 
@@ -20,14 +21,17 @@ export default async function NuevoMovimientoPage({ searchParams }: Props) {
       ? periodParam
       : getCurrentPeriod();
 
-  const accounts = await fetchAccounts();
+  const [accounts, categories] = await Promise.all([
+    fetchAccounts(),
+    fetchCategories(),
+  ]);
 
   return (
     <div>
       <h1 className={styles.title}>
         Nuevo movimiento
       </h1>
-      <MovementForm period={period} accounts={accounts} />
+      <MovementForm period={period} accounts={accounts} categories={categories} />
     </div>
   );
 }

@@ -55,6 +55,7 @@ export default function MovementList({ movements, accountNames }: Props) {
           <tr>
             <th className={styles.th}>Tipo</th>
             <th className={styles.th}>Descripción</th>
+            <th className={styles.th}>Categoría</th>
             <th className={styles.th}>Cuenta</th>
             <th className={styles.th}>Pesos</th>
             <th className={styles.th}>Dólares</th>
@@ -71,6 +72,7 @@ export default function MovementList({ movements, accountNames }: Props) {
                 </span>
               </td>
               <td className={styles.td}>{m.description ?? '—'}</td>
+              <td className={styles.td}>{m.category_name ?? '—'}</td>
               <td className={styles.td}>{accountNames.get(m.account_id) ?? m.account_id}</td>
               <td className={styles.td}>{formatPesos(m.amount_pesos)}</td>
               <td className={styles.td}>{formatDollars(m.amount_dollars)}</td>

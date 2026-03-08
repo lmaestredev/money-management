@@ -15,6 +15,10 @@ const createMovementFormSchema = z.object({
   period: z.string().regex(/^\d{4}-\d{2}$/, 'period must be YYYY-MM'),
   record_type: recordTypeSchema,
   account_id: z.string().uuid(),
+  category_id: z
+    .union([z.string().uuid(), z.literal('')])
+    .optional()
+    .transform((s) => (s && String(s).trim() ? s : null)),
   description: z.string().optional(),
   status: z
     .string()
@@ -32,6 +36,7 @@ export async function createMovementAction(formData: FormData) {
     period: formData.get('period'),
     record_type: formData.get('record_type'),
     account_id: formData.get('account_id'),
+    category_id: formData.get('category_id') ?? undefined,
     description: formData.get('description') ?? undefined,
     status: formData.get('status') ?? undefined,
     amount_pesos: formData.get('amount_pesos'),
@@ -56,6 +61,7 @@ export async function createMovementAction(formData: FormData) {
       period: data.period,
       record_type: data.record_type,
       account_id: data.account_id,
+      category_id: data.category_id ?? null,
       description: data.description || null,
       status: data.status ?? null,
       amount_pesos: data.amount_pesos,
