@@ -1,0 +1,147 @@
+.summaryGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.summaryCard {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: 1.25rem 1.375rem;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.summaryCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.summaryCard::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+
+.summaryCardBalance::after {
+  background: linear-gradient(90deg, var(--color-primary), #1a7fc4);
+}
+
+.summaryCardIncome::after {
+  background: linear-gradient(90deg, var(--color-income), #16a34a);
+}
+
+.summaryCardExpense::after {
+  background: linear-gradient(90deg, var(--color-expense), #dc2626);
+}
+
+.summaryCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.summaryCardLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9ca3af;
+}
+
+.summaryCardIcon {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.625rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.summaryCardIconBalance {
+  background: rgba(62, 166, 236, 0.15);
+}
+
+.summaryCardIconIncome {
+  background: var(--color-income-dim);
+}
+
+.summaryCardIconExpense {
+  background: var(--color-expense-dim);
+}
+
+.summaryCardAmount {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--color-bg-dark);
+}
+
+.summaryCardAmountIncome {
+  color: var(--color-income);
+}
+
+.summaryCardAmountExpense {
+  color: var(--color-expense);
+}
+
+.summaryCardProgress {
+  margin-top: 0.25rem;
+}
+
+.summaryCardProgressTrack {
+  height: 4px;
+  background: #f3f4f6;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.summaryCardProgressFill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+.summaryCardProgressFillBalance {
+  background: linear-gradient(90deg, var(--color-primary), #1a7fc4);
+}
+
+.summaryCardProgressFillIncome {
+  background: var(--color-income);
+}
+
+.summaryCardProgressFillExpense {
+  background: var(--color-expense);
+}
+
+.summaryCardMeta {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.summaryCardTag {
+  background: #f3f4f6;
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-weight: 500;
+}
+
+@media (min-width: 768px) {
+  .summaryGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+}

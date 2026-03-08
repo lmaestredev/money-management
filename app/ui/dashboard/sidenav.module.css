@@ -7,12 +7,26 @@
   background-color: var(--color-bg-dark);
 }
 
+.sidebarCollapsed .sidebarHeader {
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.sidebarCollapsed .logoLink {
+  flex: 0;
+  justify-content: center;
+  padding: 0;
+  width: 2.5rem;
+  min-width: 2.5rem;
+}
+
 .sidebarHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
+  flex-shrink: 0;
 }
 
 .logoLink {
@@ -33,6 +47,16 @@
   font-size: 1rem;
   font-weight: 700;
   color: var(--color-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.logoIcon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--color-primary);
+  flex-shrink: 0;
 }
 
 .closeButton {
@@ -61,9 +85,46 @@
   height: 1.25rem;
 }
 
+.collapseToggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 2.25rem;
+  margin-top: 0.5rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.25rem;
+  background-color: var(--color-surface-dark);
+  color: var(--color-surface);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.collapseToggle:hover {
+  background-color: var(--color-surface);
+  color: var(--color-primary);
+}
+
+.sidebarCollapsed .collapseToggle {
+  width: 2.5rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.collapseIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
 @media (min-width: 768px) {
   .closeButton {
     display: none;
+  }
+
+  .collapseToggle {
+    display: flex;
   }
 }
 
@@ -101,6 +162,15 @@
   color: var(--color-primary);
 }
 
+.linkCollapsed {
+  justify-content: center;
+  padding: 0;
+}
+
+.linkCollapsed .linkLabel {
+  display: none;
+}
+
 .linkIcon {
   width: 1.25rem;
   height: 1.25rem;
@@ -109,6 +179,9 @@
 
 .linkLabel {
   display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .signOut {
@@ -136,6 +209,18 @@
   color: var(--color-primary);
 }
 
+.signOutCollapsed {
+  justify-content: center;
+  padding: 0;
+}
+
+.signOutCollapsed .signOutLabel {
+  display: none;
+}
+
 .signOutLabel {
   display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

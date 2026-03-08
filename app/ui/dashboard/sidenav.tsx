@@ -8,6 +8,9 @@ import {
   Squares2X2Icon,
   BanknotesIcon,
   XMarkIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CurrencyDollarIcon,
 } from '@heroicons/react/24/outline';
 import { PowerIcon } from '@heroicons/react/24/outline';
 import styles from './sidenav.module.css';
@@ -25,22 +28,29 @@ const links = [
 
 type Props = {
   onNavigate?: () => void;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 };
 
-export default function SideNav({ onNavigate }: Props) {
+export default function SideNav({ onNavigate, collapsed = false, onToggleCollapsed }: Props) {
   const pathname = usePathname();
 
   return (
-    <div className={styles.sidebar}>
+    <div className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}>
       <div className={styles.sidebarHeader}>
         <Link
           className={styles.logoLink}
           href="/"
           onClick={onNavigate}
+          title={collapsed ? 'Money Management' : undefined}
         >
-          <span className={`${styles.logoText} font-heading`}>
-            Money Management
-          </span>
+          {collapsed ? (
+            <CurrencyDollarIcon className={styles.logoIcon} aria-hidden />
+          ) : (
+            <span className={`${styles.logoText} font-heading`}>
+              Money Management
+            </span>
+          )}
         </Link>
         <button
           type="button"
@@ -54,24 +64,47 @@ export default function SideNav({ onNavigate }: Props) {
       <div className={styles.nav}>
         {links.map((link) => {
           const LinkIcon = link.icon;
-          const isActive = pathname === link.href;
+          const isActive =
+            pathname === link.href ||
+            (link.href !== '/dashboard' && pathname.startsWith(link.href + '/'));
           return (
             <Link
               key={link.name}
               href={link.href}
-              className={`${styles.link} ${isActive ? styles.linkActive : ''}`}
+              className={`${styles.link} ${isActive ? styles.linkActive : ''} ${collapsed ? styles.linkCollapsed : ''}`}
               onClick={onNavigate}
+              title={collapsed ? link.name : undefined}
             >
               <LinkIcon className={styles.linkIcon} />
               <span className={styles.linkLabel}>{link.name}</span>
             </Link>
           );
         })}
-        <button type="button" className={styles.signOut} onClick={onNavigate}>
+        <button
+          type="button"
+          className={`${styles.signOut} ${collapsed ? styles.signOutCollapsed : ''}`}
+          onClick={onNavigate}
+          title={collapsed ? 'Cerrar sesión' : undefined}
+        >
           <PowerIcon className={styles.linkIcon} />
           <span className={styles.signOutLabel}>Cerrar sesión</span>
         </button>
       </div>
+      {onToggleCollapsed && (
+        <button
+          type="button"
+          className={styles.collapseToggle}
+          onClick={onToggleCollapsed}
+          aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}
+          title={collapsed ? 'Expandir menú' : 'Contraer menú'}
+        >
+          {collapsed ? (
+            <ChevronRightIcon className={styles.collapseIcon} />
+          ) : (
+            <ChevronLeftIcon className={styles.collapseIcon} />
+          )}
+        </button>
+      )}
     </div>
   );
 }

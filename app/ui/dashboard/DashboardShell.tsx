@@ -11,6 +11,7 @@ export default function DashboardShell({
   children: React.ReactNode;
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
     <div className={styles.container}>
@@ -36,12 +37,16 @@ export default function DashboardShell({
         style={{ visibility: mobileMenuOpen ? 'visible' : 'hidden', opacity: mobileMenuOpen ? 1 : 0 }}
       />
 
-      {/* Sidebar: en móvil es drawer (fuera de pantalla si está cerrado), en desktop siempre visible */}
+      {/* Sidebar: móvil = drawer; desktop = colapsable (iconos o completo) */}
       <aside
-        className={`${styles.sidebar} ${mobileMenuOpen ? styles.sidebarOpen : ''}`}
+        className={`${styles.sidebar} ${mobileMenuOpen ? styles.sidebarOpen : ''} ${sidebarCollapsed ? styles.sidebarCollapsed : ''}`}
         aria-hidden={!mobileMenuOpen}
       >
-        <SideNav onNavigate={() => setMobileMenuOpen(false)} />
+        <SideNav
+          onNavigate={() => setMobileMenuOpen(false)}
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed((c) => !c)}
+        />
       </aside>
 
       <main className={styles.main}>{children}</main>
