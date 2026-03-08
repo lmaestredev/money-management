@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Money Management — Movimientos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── Reset & Base ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-deep:    #161d26;
+      --bg-sidebar: #232d3d;
+      --bg-main:    #ebebf0;
+      --accent:     #3ea6ec;
+      --accent-dim: rgba(62,166,236,.15);
+      --accent-glow:rgba(62,166,236,.35);
+      --income:     #22c55e;
+      --income-dim: rgba(34,197,94,.12);
+      --expense:    #ef4444;
+      --expense-dim:rgba(239,68,68,.12);
+      --text-primary: #ebebf0;
+      --text-muted:   rgba(235,235,240,.45);
+      --text-dark:    #1a2332;
+      --border:       rgba(235,235,240,.08);
+      --card-bg:      #ffffff;
+      --card-shadow:  0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.06);
+      --radius:       14px;
+      --sidebar-w:    260px;
+    }
+
+    html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--bg-main); }
+
+    /* ─── Layout ────────────────────────────────────────────────────── */
+    .layout { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ─── Sidebar ───────────────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--bg-sidebar);
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* subtle gradient overlay */
+    .sidebar::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(160deg, rgba(62,166,236,.06) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .sidebar-logo {
+      padding: 28px 24px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent), #1a7fc4);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 4px 12px var(--accent-glow);
+    }
+
+    .logo-text {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -.3px;
+      line-height: 1.2;
+    }
+    .logo-text span { display: block; font-weight: 400; font-size: 11px; color: var(--text-muted); letter-spacing: .5px; text-transform: uppercase; }
+
+    .nav { padding: 16px 12px; flex: 1; }
+
+    .nav-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 0 12px;
+      margin: 16px 0 6px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .2s;
+      position: relative;
+      text-decoration: none;
+    }
+
+    .nav-item:hover { background: rgba(235,235,240,.06); color: var(--text-primary); }
+
+    .nav-item.active {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 50%;
+      transform: translateY(-50%);
+      width: 3px; height: 60%;
+      background: var(--accent);
+      border-radius: 0 3px 3px 0;
+    }
+
+    .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+    .nav-badge {
+      margin-left: auto;
+      background: var(--accent);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+    }
+
+    .sidebar-footer {
+      padding: 16px 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .user-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .user-card:hover { background: rgba(235,235,240,.06); }
+
+    .avatar {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, #3ea6ec, #1a7fc4);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+    }
+
+    .user-info { flex: 1; min-width: 0; }
+    .user-name { font-size: 13px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { font-size: 11px; color: var(--text-muted); }
+
+    /* ─── Main content ──────────────────────────────────────────────── */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* ─── Page header ───────────────────────────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .page-title-group { display: flex; flex-direction: column; gap: 2px; }
+    .page-title { font-size: 26px; font-weight: 700; color: var(--text-dark); letter-spacing: -.5px; }
+    .page-subtitle { font-size: 13px; color: #6b7280; }
+
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+
+    /* Month selector */
+    .month-selector {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--card-bg);
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-dark);
+      cursor: pointer;
+      transition: all .2s;
+      box-shadow: var(--card-shadow);
+    }
+    .month-selector:hover { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+
+    .btn-primary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, var(--accent), #1a7fc4);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      box-shadow: 0 4px 12px var(--accent-glow);
+      white-space: nowrap;
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px var(--accent-glow); }
+    .btn-primary:active { transform: translateY(0); }
+
+    /* ─── Summary cards ─────────────────────────────────────────────── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .summary-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .summary-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.1); }
+
+    .summary-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+    .summary-card.balance::after  { background: linear-gradient(90deg, var(--accent), #1a7fc4); }
+    .summary-card.income::after   { background: linear-gradient(90deg, var(--income), #16a34a); }
+    .summary-card.expense::after  { background: linear-gradient(90deg, var(--expense), #dc2626); }
+
+    .summary-header { display: flex; align-items: center; justify-content: space-between; }
+
+    .summary-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: #9ca3af; }
+
+    .summary-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .summary-card.balance .summary-icon  { background: var(--accent-dim); }
+    .summary-card.income  .summary-icon  { background: var(--income-dim); }
+    .summary-card.expense .summary-icon  { background: var(--expense-dim); }
+
+    .summary-amount {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      color: var(--text-dark);
+    }
+    .summary-card.income  .summary-amount { color: var(--income); }
+    .summary-card.expense .summary-amount { color: var(--expense); }
+
+    .summary-meta { font-size: 12px; color: #9ca3af; display: flex; align-items: center; gap: 4px; }
+    .summary-meta .tag { background: #f3f4f6; border-radius: 6px; padding: 2px 7px; font-weight: 500; }
+
+    /* ─── Filters bar ───────────────────────────────────────────────── */
+    .filters-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card-bg);
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 9px 14px;
+      flex: 1;
+      min-width: 200px;
+      box-shadow: var(--card-shadow);
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .search-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+    .search-box input { border: none; outline: none; font-size: 14px; color: var(--text-dark); background: transparent; width: 100%; }
+    .search-box input::placeholder { color: #9ca3af; }
+
+    .filter-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--card-bg);
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 9px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6b7280;
+      cursor: pointer;
+      transition: all .2s;
+      white-space: nowrap;
+      box-shadow: var(--card-shadow);
+    }
+    .filter-chip:hover { border-color: var(--accent); color: var(--accent); }
+    .filter-chip.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+    /* ─── Type tabs ─────────────────────────────────────────────────── */
+    .type-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--card-bg);
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 4px;
+      box-shadow: var(--card-shadow);
+    }
+
+    .type-tab {
+      padding: 7px 16px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .2s;
+      color: #6b7280;
+    }
+    .type-tab.active { background: var(--bg-sidebar); color: var(--text-primary); }
+    .type-tab.income.active  { background: var(--income-dim); color: var(--income); }
+    .type-tab.expense.active { background: var(--expense-dim); color: var(--expense); }
+
+    /* ─── Movements list ────────────────────────────────────────────── */
+    .movements-section {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--card-shadow);
+      overflow: hidden;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 22px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .count-badge {
+      background: #f3f4f6;
+      color: #6b7280;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+
+    .section-actions { display: flex; gap: 8px; }
+
+    .btn-ghost {
+      background: none;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #6b7280;
+      cursor: pointer;
+      transition: all .2s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ─── Day group ─────────────────────────────────────────────────── */
+    .day-group { }
+
+    .day-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 22px;
+      background: #fafafa;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .day-label-text { font-size: 12px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: .5px; }
+
+    .day-total {
+      margin-left: auto;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .day-total.positive { color: var(--income); }
+    .day-total.negative { color: var(--expense); }
+
+    /* ─── Movement row ──────────────────────────────────────────────── */
+    .movement-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 22px;
+      border-bottom: 1px solid #f9fafb;
+      transition: background .15s;
+      cursor: pointer;
+    }
+    .movement-row:last-child { border-bottom: none; }
+    .movement-row:hover { background: #f9fafb; }
+
+    /* Category icon */
+    .mov-icon {
+      width: 42px; height: 42px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .mov-icon.income  { background: var(--income-dim); }
+    .mov-icon.expense { background: var(--expense-dim); }
+    .mov-icon.fixed   { background: rgba(139,92,246,.12); }
+    .mov-icon.saving  { background: rgba(245,158,11,.12); }
+
+    /* Info */
+    .mov-info { flex: 1; min-width: 0; }
+    .mov-description { font-size: 14px; font-weight: 600; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mov-meta { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
+    .mov-type-badge {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      padding: 2px 7px;
+      border-radius: 5px;
+    }
+    .mov-type-badge.income  { background: var(--income-dim); color: var(--income); }
+    .mov-type-badge.expense { background: var(--expense-dim); color: var(--expense); }
+    .mov-type-badge.fixed   { background: rgba(139,92,246,.12); color: #7c3aed; }
+    .mov-type-badge.saving  { background: rgba(245,158,11,.12); color: #d97706; }
+
+    .mov-account { font-size: 12px; color: #9ca3af; display: flex; align-items: center; gap: 4px; }
+
+    /* Category tag */
+    .mov-category {
+      font-size: 12px;
+      color: #6b7280;
+      background: #f3f4f6;
+      padding: 3px 10px;
+      border-radius: 6px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* Amounts */
+    .mov-amounts { text-align: right; flex-shrink: 0; min-width: 120px; }
+    .mov-amount-primary { font-size: 15px; font-weight: 700; letter-spacing: -.3px; }
+    .mov-amount-primary.income  { color: var(--income); }
+    .mov-amount-primary.expense { color: var(--expense); }
+    .mov-amount-secondary { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+
+    /* Status */
+    .mov-status {
+      flex-shrink: 0;
+    }
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+    .status-pill.paid    { background: var(--income-dim); color: var(--income); }
+    .status-pill.pending { background: rgba(245,158,11,.12); color: #d97706; }
+    .status-pill.overdue { background: var(--expense-dim); color: var(--expense); }
+
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+    /* Actions */
+    .mov-actions {
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity .2s;
+      flex-shrink: 0;
+    }
+    .movement-row:hover .mov-actions { opacity: 1; }
+
+    .action-btn {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      background: var(--card-bg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all .2s;
+      color: #6b7280;
+    }
+    .action-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+    /* ─── Empty state ───────────────────────────────────────────────── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      gap: 12px;
+    }
+    .empty-icon { font-size: 48px; opacity: .3; }
+    .empty-text { font-size: 15px; font-weight: 600; color: #9ca3af; }
+    .empty-sub  { font-size: 13px; color: #d1d5db; }
+
+    /* ─── Scrollbar ─────────────────────────────────────────────────── */
+    .main::-webkit-scrollbar { width: 6px; }
+    .main::-webkit-scrollbar-track { background: transparent; }
+    .main::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    .main::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+    /* ─── Responsive ────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .summary-grid { grid-template-columns: 1fr; }
+      .sidebar { width: 72px; }
+      .logo-text, .nav-item span, .user-info, .nav-label { display: none; }
+      .nav-item { justify-content: center; padding: 12px; }
+      .nav-item.active::before { display: none; }
+      .main { padding: 20px 16px; }
+    }
+
+    /* ─── Progress bar ──────────────────────────────────────────────── */
+    .progress-bar-wrap { margin-top: 8px; }
+    .progress-bar-track { height: 4px; background: #f3f4f6; border-radius: 2px; overflow: hidden; }
+    .progress-bar-fill  { height: 100%; border-radius: 2px; transition: width .6s ease; }
+    .progress-bar-fill.income  { background: var(--income); }
+    .progress-bar-fill.expense { background: var(--expense); }
+    .progress-bar-fill.balance { background: linear-gradient(90deg, var(--accent), #1a7fc4); }
+
+    /* Tooltip on hover */
+    .tooltip-wrap { position: relative; }
+    .tooltip-wrap:hover .tooltip { opacity: 1; transform: translateY(-4px); }
+    .tooltip {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%) translateY(0);
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: all .2s;
+      z-index: 10;
+    }
+    .tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%; left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: var(--bg-deep);
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">💰</div>
+      <div class="logo-text">
+        Money Management
+        <span>Personal Finance</span>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-label">Principal</div>
+
+      <a class="nav-item" href="#">
+        <span class="nav-icon">🏠</span>
+        <span>Dashboard</span>
+      </a>
+
+      <a class="nav-item active" href="#">
+        <span class="nav-icon">↕️</span>
+        <span>Movimientos</span>
+        <span class="nav-badge">12</span>
+      </a>
+
+      <div class="nav-label">Gestión</div>
+
+      <a class="nav-item" href="#">
+        <span class="nav-icon">🏦</span>
+        <span>Cuentas</span>
+      </a>
+
+      <a class="nav-item" href="#">
+        <span class="nav-icon">🏷️</span>
+        <span>Categorías</span>
+      </a>
+
+      <a class="nav-item" href="#">
+        <span class="nav-icon">📊</span>
+        <span>Reportes</span>
+      </a>
+
+      <a class="nav-item" href="#">
+        <span class="nav-icon">🎯</span>
+        <span>Presupuestos</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="avatar">N</div>
+        <div class="user-info">
+          <div class="user-name">Nicolás</div>
+          <div class="user-role">Cuenta personal</div>
+        </div>
+        <span style="color:var(--text-muted);font-size:12px;">⚙️</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- Page header -->
+    <div class="page-header">
+      <div class="page-title-group">
+        <h1 class="page-title">Movimientos</h1>
+        <p class="page-subtitle">Seguimiento de ingresos y egresos</p>
+      </div>
+      <div class="header-actions">
+        <button class="month-selector">
+          ◀ &nbsp; Marzo 2026 &nbsp; ▶
+        </button>
+        <button class="btn-primary">
+          <span style="font-size:16px;line-height:1;">＋</span>
+          Nuevo movimiento
+        </button>
+      </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="summary-grid">
+
+      <div class="summary-card balance">
+        <div class="summary-header">
+          <span class="summary-label">Balance del mes</span>
+          <div class="summary-icon">💼</div>
+        </div>
+        <div class="summary-amount">$5,350.00</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill balance" style="width:72%"></div>
+          </div>
+        </div>
+        <div class="summary-meta">
+          <span class="tag">72% del ingreso</span>
+          disponible
+        </div>
+      </div>
+
+      <div class="summary-card income">
+        <div class="summary-header">
+          <span class="summary-label">Ingresos</span>
+          <div class="summary-icon">📈</div>
+        </div>
+        <div class="summary-amount">$6,200.00</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill income" style="width:100%"></div>
+          </div>
+        </div>
+        <div class="summary-meta">
+          <span class="tag">2 movimientos</span>
+          este mes
+        </div>
+      </div>
+
+      <div class="summary-card expense">
+        <div class="summary-header">
+          <span class="summary-label">Egresos</span>
+          <div class="summary-icon">📉</div>
+        </div>
+        <div class="summary-amount">$850.00</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill expense" style="width:14%"></div>
+          </div>
+        </div>
+        <div class="summary-meta">
+          <span class="tag">3 movimientos</span>
+          este mes
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-bar">
+      <div class="search-box">
+        <span style="color:#9ca3af;font-size:15px;">🔍</span>
+        <input type="text" placeholder="Buscar movimiento, categoría, cuenta…" />
+      </div>
+
+      <div class="type-tabs">
+        <div class="type-tab active" onclick="setTab(this,'all')">Todos</div>
+        <div class="type-tab income" onclick="setTab(this,'income')">Ingresos</div>
+        <div class="type-tab expense" onclick="setTab(this,'expense')">Egresos</div>
+      </div>
+
+      <div class="filter-chip">
+        🏦 Todas las cuentas ▾
+      </div>
+
+      <div class="filter-chip">
+        🏷️ Categoría ▾
+      </div>
+
+      <div class="filter-chip">
+        ⚡ Estado ▾
+      </div>
+    </div>
+
+    <!-- Movements list -->
+    <div class="movements-section">
+      <div class="section-header">
+        <div class="section-title">
+          Listado
+          <span class="count-badge">5 movimientos</span>
+        </div>
+        <div class="section-actions">
+          <button class="btn-ghost">⬇ Exportar</button>
+          <button class="btn-ghost">⚙ Columnas</button>
+        </div>
+      </div>
+
+      <!-- Day group: 15 Marzo -->
+      <div class="day-group">
+        <div class="day-label">
+          <span class="day-label-text">Hoy · 15 de Marzo</span>
+          <span class="day-total negative">−$850.00</span>
+        </div>
+
+        <!-- Row: Alquiler -->
+        <div class="movement-row">
+          <div class="mov-icon fixed">🏠</div>
+          <div class="mov-info">
+            <div class="mov-description">Alquiler</div>
+            <div class="mov-meta">
+              <span class="mov-type-badge fixed">Gasto fijo</span>
+              <span class="mov-account">🏦 Cuenta principal</span>
+            </div>
+          </div>
+          <div class="mov-category">Sin categoría</div>
+          <div class="mov-amounts">
+            <div class="mov-amount-primary expense">−$850.00</div>
+            <div class="mov-amount-secondary">$ 100 ARS</div>
+          </div>
+          <div class="mov-status">
+            <div class="status-pill paid"><div class="status-dot"></div>Pagado</div>
+          </div>
+          <div class="mov-actions">
+            <div class="action-btn tooltip-wrap">✏️<span class="tooltip">Editar</span></div>
+            <div class="action-btn tooltip-wrap">🗑️<span class="tooltip">Eliminar</span></div>
+          </div>
+        </div>
+
+        <!-- Row: Servicios -->
+        <div class="movement-row">
+          <div class="mov-icon expense">⚡</div>
+          <div class="mov-info">
+            <div class="mov-description">Servicios (Luz + Internet)</div>
+            <div class="mov-meta">
+              <span class="mov-type-badge expense">Egreso</span>
+              <span class="mov-account">🏦 Cuenta principal</span>
+            </div>
+          </div>
+          <div class="mov-category">Hogar</div>
+          <div class="mov-amounts">
+            <div class="mov-amount-primary expense">−$120.00</div>
+            <div class="mov-amount-secondary">$ 14 ARS</div>
+          </div>
+          <div class="mov-status">
+            <div class="status-pill pending"><div class="status-dot"></div>Pendiente</div>
+          </div>
+          <div class="mov-actions">
+            <div class="action-btn tooltip-wrap">✏️<span class="tooltip">Editar</span></div>
+            <div class="action-btn tooltip-wrap">🗑️<span class="tooltip">Eliminar</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Day group: 10 Marzo -->
+      <div class="day-group">
+        <div class="day-label">
+          <span class="day-label-text">10 de Marzo</span>
+          <span class="day-total positive">+$6,200.00</span>
+        </div>
+
+        <!-- Row: Sueldo -->
+        <div class="movement-row">
+          <div class="mov-icon income">💼</div>
+          <div class="mov-info">
+            <div class="mov-description">Sueldo ejemplo</div>
+            <div class="mov-meta">
+              <span class="mov-type-badge income">Ingreso</span>
+              <span class="mov-account">🏦 Cuenta principal</span>
+            </div>
+          </div>
+          <div class="mov-category">Sin categoría</div>
+          <div class="mov-amounts">
+            <div class="mov-amount-primary income">+$6,200.00</div>
+            <div class="mov-amount-secondary">$ 100 ARS</div>
+          </div>
+          <div class="mov-status">
+            <div class="status-pill paid"><div class="status-dot"></div>Pagado</div>
+          </div>
+          <div class="mov-actions">
+            <div class="action-btn tooltip-wrap">✏️<span class="tooltip">Editar</span></div>
+            <div class="action-btn tooltip-wrap">🗑️<span class="tooltip">Eliminar</span></div>
+          </div>
+        </div>
+
+        <!-- Row: Freelance -->
+        <div class="movement-row">
+          <div class="mov-icon income">💻</div>
+          <div class="mov-info">
+            <div class="mov-description">Proyecto freelance — Cliente A</div>
+            <div class="mov-meta">
+              <span class="mov-type-badge income">Ingreso</span>
+              <span class="mov-account">🏦 Cuenta secundaria</span>
+            </div>
+          </div>
+          <div class="mov-category">Trabajo</div>
+          <div class="mov-amounts">
+            <div class="mov-amount-primary income">+$1,500.00</div>
+            <div class="mov-amount-secondary">$ 18 ARS</div>
+          </div>
+          <div class="mov-status">
+            <div class="status-pill paid"><div class="status-dot"></div>Pagado</div>
+          </div>
+          <div class="mov-actions">
+            <div class="action-btn tooltip-wrap">✏️<span class="tooltip">Editar</span></div>
+            <div class="action-btn tooltip-wrap">🗑️<span class="tooltip">Eliminar</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Day group: 5 Marzo -->
+      <div class="day-group">
+        <div class="day-label">
+          <span class="day-label-text">5 de Marzo</span>
+          <span class="day-total negative">−$200.00</span>
+        </div>
+
+        <!-- Row: Supermercado -->
+        <div class="movement-row">
+          <div class="mov-icon expense">🛒</div>
+          <div class="mov-info">
+            <div class="mov-description">Supermercado</div>
+            <div class="mov-meta">
+              <span class="mov-type-badge expense">Egreso</span>
+              <span class="mov-account">💳 Tarjeta de crédito</span>
+            </div>
+          </div>
+          <div class="mov-category">Alimentación</div>
+          <div class="mov-amounts">
+            <div class="mov-amount-primary expense">−$200.00</div>
+            <div class="mov-amount-secondary">$ 24 ARS</div>
+          </div>
+          <div class="mov-status">
+            <div class="status-pill overdue"><div class="status-dot"></div>Vencido</div>
+          </div>
+          <div class="mov-actions">
+            <div class="action-btn tooltip-wrap">✏️<span class="tooltip">Editar</span></div>
+            <div class="action-btn tooltip-wrap">🗑️<span class="tooltip">Eliminar</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- end movements-section -->
+
+  </main>
+</div>
+
+<script>
+  function setTab(el, type) {
+    document.querySelectorAll('.type-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+  }
+</script>
+</body>
+</html>

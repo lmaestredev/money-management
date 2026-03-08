@@ -1,0 +1,119 @@
+/* Mobile first: contenido en columna, header fijo, sidebar oculto (drawer) */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.mobileHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  height: 3.5rem;
+  padding: 0 1rem;
+  background-color: var(--color-bg-dark);
+  border-bottom: 1px solid var(--color-surface-dark);
+}
+
+.menuButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.375rem;
+  background-color: transparent;
+  color: var(--color-surface);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.menuButton:hover {
+  background-color: var(--color-surface-dark);
+  color: var(--color-primary);
+}
+
+.menuIcon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.mobileTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-surface);
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background-color: rgba(0, 0, 0, 0.5);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 50;
+  width: 16rem;
+  background-color: var(--color-bg-dark);
+  transform: translateX(-100%);
+  transition: transform 0.2s ease-out;
+  overflow-y: auto;
+}
+
+.sidebarOpen {
+  transform: translateX(0);
+}
+
+.main {
+  flex: 1;
+  overflow-y: auto;
+  background-color: var(--color-surface);
+  padding: 1.5rem;
+  padding-top: 4.5rem; /* espacio para la barra móvil */
+}
+
+/* Desktop: sidebar siempre visible, sin barra móvil */
+@media (min-width: 768px) {
+  .container {
+    flex-direction: row;
+  }
+
+  .mobileHeader {
+    display: none;
+  }
+
+  .backdrop {
+    display: none;
+  }
+
+  .sidebar {
+    position: relative;
+    flex-shrink: 0;
+    transform: none;
+    overflow-y: auto;
+  }
+
+  .sidebarOpen {
+    transform: none;
+  }
+
+  .main {
+    padding: 2rem;
+    padding-top: 2rem;
+  }
+}

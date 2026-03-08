@@ -7,6 +7,7 @@ import {
   ArrowTrendingUpIcon,
   Squares2X2Icon,
   BanknotesIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { PowerIcon } from '@heroicons/react/24/outline';
 import styles from './sidenav.module.css';
@@ -22,16 +23,34 @@ const links = [
   { name: 'Categorías', href: '/dashboard/categorias', icon: Squares2X2Icon },
 ];
 
-export default function SideNav() {
+type Props = {
+  onNavigate?: () => void;
+};
+
+export default function SideNav({ onNavigate }: Props) {
   const pathname = usePathname();
 
   return (
     <div className={styles.sidebar}>
-      <Link className={styles.logoLink} href="/">
-        <span className={`${styles.logoText} font-heading`}>
-          Money Management
-        </span>
-      </Link>
+      <div className={styles.sidebarHeader}>
+        <Link
+          className={styles.logoLink}
+          href="/"
+          onClick={onNavigate}
+        >
+          <span className={`${styles.logoText} font-heading`}>
+            Money Management
+          </span>
+        </Link>
+        <button
+          type="button"
+          className={styles.closeButton}
+          onClick={onNavigate}
+          aria-label="Cerrar menú"
+        >
+          <XMarkIcon className={styles.closeIcon} />
+        </button>
+      </div>
       <div className={styles.nav}>
         {links.map((link) => {
           const LinkIcon = link.icon;
@@ -41,13 +60,14 @@ export default function SideNav() {
               key={link.name}
               href={link.href}
               className={`${styles.link} ${isActive ? styles.linkActive : ''}`}
+              onClick={onNavigate}
             >
               <LinkIcon className={styles.linkIcon} />
               <span className={styles.linkLabel}>{link.name}</span>
             </Link>
           );
         })}
-        <button type="button" className={styles.signOut}>
+        <button type="button" className={styles.signOut} onClick={onNavigate}>
           <PowerIcon className={styles.linkIcon} />
           <span className={styles.signOutLabel}>Cerrar sesión</span>
         </button>
