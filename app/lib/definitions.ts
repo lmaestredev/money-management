@@ -14,9 +14,13 @@ export type Revenue = {
 };
 
 // Cuentas bancarias
+export type AccountCurrency = 'peso' | 'dollar' | 'crypto';
+
 export type Account = {
   id: string;
   name: string;
+  bank: string | null;
+  currency: AccountCurrency;
   balance_pesos: number;
   balance_dollars: number;
   user_id: string | null;
@@ -26,6 +30,8 @@ export type Account = {
 
 export type AccountInsert = {
   name: string;
+  bank?: string | null;
+  currency?: AccountCurrency;
   balance_pesos?: number;
   balance_dollars?: number;
   user_id?: string | null;

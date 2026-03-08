@@ -1,0 +1,93 @@
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-bg-dark);
+}
+
+.subtitle {
+  margin-bottom: 1rem;
+  font-size: 0.9375rem;
+  color: var(--color-surface-dark);
+}
+
+.newLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  text-decoration: none;
+  border-radius: 0.375rem;
+  background-color: var(--color-primary);
+  transition: opacity 0.15s;
+}
+
+.newLink:hover {
+  opacity: 0.9;
+}
+
+.sectionTitle {
+  margin-bottom: 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-bg-dark);
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 11rem;
+  padding: 1rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-surface-dark);
+  border-radius: 0.5rem;
+  font-size: 0.9375rem;
+  color: var(--color-bg-dark);
+  text-align: center;
+}
+
+.cardBank {
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.cardCurrency {
+  font-size: 0.8125rem;
+  color: var(--color-surface-dark);
+  text-transform: capitalize;
+}
+
+.cardBalance {
+  font-weight: 600;
+  font-family: var(--font-heading);
+  margin-top: 0.25rem;
+}
+
+.empty {
+  margin-top: 1rem;
+  font-size: 1rem;
+  color: var(--color-surface-dark);
+}

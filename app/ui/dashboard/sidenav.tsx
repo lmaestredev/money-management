@@ -6,6 +6,7 @@ import {
   HomeIcon,
   ArrowTrendingUpIcon,
   Squares2X2Icon,
+  BanknotesIcon,
 } from '@heroicons/react/24/outline';
 import { PowerIcon } from '@heroicons/react/24/outline';
 import styles from './sidenav.module.css';
@@ -17,6 +18,7 @@ const links = [
     href: '/dashboard/movimientos',
     icon: ArrowTrendingUpIcon,
   },
+  { name: 'Cuentas', href: '/dashboard/cuentas', icon: BanknotesIcon },
   { name: 'Categorías', href: '/dashboard/categorias', icon: Squares2X2Icon },
 ];
 
