@@ -35,16 +35,17 @@ function getTodayPeriod(): string {
 
 type Props = {
   currentPeriod: string;
+  basePath?: string;
 };
 
-export default function MovementPeriodSelector({ currentPeriod }: Props) {
+export default function MovementPeriodSelector({ currentPeriod, basePath = '/dashboard/movimientos' }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   function goTo(period: string) {
     const params = new URLSearchParams(searchParams.toString());
     params.set('period', period);
-    router.replace(`/dashboard/movimientos?${params.toString()}`);
+    router.replace(`${basePath}?${params.toString()}`);
   }
 
   const prev = getPrevPeriod(currentPeriod);

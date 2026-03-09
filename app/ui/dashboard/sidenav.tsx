@@ -37,7 +37,7 @@ export default function SideNav({ onNavigate, collapsed = false, onToggleCollaps
 
   return (
     <div className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}>
-      <div className={styles.sidebarHeader}>
+      <header className={styles.sidebarHeader}>
         <Link
           className={styles.logoLink}
           href="/"
@@ -60,8 +60,8 @@ export default function SideNav({ onNavigate, collapsed = false, onToggleCollaps
         >
           <XMarkIcon className={styles.closeIcon} />
         </button>
-      </div>
-      <div className={styles.nav}>
+      </header>
+      <nav className={styles.nav} aria-label="Principal">
         {links.map((link) => {
           const LinkIcon = link.icon;
           const isActive =
@@ -80,6 +80,8 @@ export default function SideNav({ onNavigate, collapsed = false, onToggleCollaps
             </Link>
           );
         })}
+      </nav>
+      <footer className={styles.sidebarFooter}>
         <button
           type="button"
           className={`${styles.signOut} ${collapsed ? styles.signOutCollapsed : ''}`}
@@ -89,22 +91,22 @@ export default function SideNav({ onNavigate, collapsed = false, onToggleCollaps
           <PowerIcon className={styles.linkIcon} />
           <span className={styles.signOutLabel}>Cerrar sesión</span>
         </button>
-      </div>
-      {onToggleCollapsed && (
-        <button
-          type="button"
-          className={styles.collapseToggle}
-          onClick={onToggleCollapsed}
-          aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}
-          title={collapsed ? 'Expandir menú' : 'Contraer menú'}
-        >
-          {collapsed ? (
-            <ChevronRightIcon className={styles.collapseIcon} />
-          ) : (
-            <ChevronLeftIcon className={styles.collapseIcon} />
-          )}
-        </button>
-      )}
+        {onToggleCollapsed && (
+          <button
+            type="button"
+            className={styles.collapseToggle}
+            onClick={onToggleCollapsed}
+            aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}
+            title={collapsed ? 'Expandir menú' : 'Contraer menú'}
+          >
+            {collapsed ? (
+              <ChevronRightIcon className={styles.collapseIcon} />
+            ) : (
+              <ChevronLeftIcon className={styles.collapseIcon} />
+            )}
+          </button>
+        )}
+      </footer>
     </div>
   );
 }

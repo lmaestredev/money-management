@@ -15,10 +15,17 @@
   --color-expense-dim: rgba(239, 68, 68, 0.12);
   --color-fixed: #7c3aed;
   --color-fixed-dim: rgba(124, 58, 237, 0.12);
+  --color-warning: #f59e0b;
+  --color-warning-dim: rgba(245, 158, 11, 0.12);
   --radius-card: 14px;
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.06);
   --font-sans: 'DM Sans', system-ui, sans-serif;
   --font-heading: 'Fraunces', Georgia, serif;
+}
+
+html,
+body {
+  height: 100%;
 }
 
 body {

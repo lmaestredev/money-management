@@ -1,0 +1,138 @@
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-bg-dark);
+}
+
+.cardSubtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.creditCard {
+  background: linear-gradient(135deg, var(--color-surface) 0%, #f9fafb 100%);
+  border: 1px solid #e5e7eb;
+  border-radius: var(--radius-card);
+  padding: 1.125rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.creditCard:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(62, 166, 236, 0.15);
+}
+
+.ccHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ccName {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-bg-dark);
+}
+
+.ccIcon {
+  font-size: 1.125rem;
+}
+
+.ccAmount {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-expense);
+}
+
+.ccLimit {
+  font-size: 0.6875rem;
+  color: #9ca3af;
+}
+
+.ccProgress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.progressBar {
+  flex: 1;
+  height: 6px;
+  background: #f3f4f6;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--color-expense);
+  transition: width 0.6s ease;
+}
+
+.ccPct {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-bg-dark);
+  min-width: 2rem;
+  text-align: right;
+}
+
+.totalBlock {
+  background: var(--color-income-dim);
+  border-radius: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+.totalLabel {
+  font-size: 0.6875rem;
+  color: #9ca3af;
+}
+
+.totalAmount {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-expense);
+  margin-top: 0.125rem;
+}
+
+.placeholder {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #9ca3af;
+}

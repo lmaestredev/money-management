@@ -17,6 +17,8 @@ export type SummaryCardsProps = {
   expenseCount: number;
   balancePercent?: number;
   expensePercent?: number;
+  balanceLabel?: string;
+  balanceMeta?: React.ReactNode;
 };
 
 export default function SummaryCards({
@@ -27,6 +29,8 @@ export default function SummaryCards({
   expenseCount,
   balancePercent = 0,
   expensePercent = 0,
+  balanceLabel = 'Balance del mes',
+  balanceMeta,
 }: SummaryCardsProps) {
   const incomePct = totalIncome > 0 ? Math.min(100, (balance / totalIncome) * 100) : 0;
   const displayBalancePct = balancePercent ?? incomePct;
@@ -35,7 +39,7 @@ export default function SummaryCards({
     <div className={styles.summaryGrid}>
       <div className={`${styles.summaryCard} ${styles.summaryCardBalance}`}>
         <div className={styles.summaryCardHeader}>
-          <span className={styles.summaryCardLabel}>Balance del mes</span>
+          <span className={styles.summaryCardLabel}>{balanceLabel}</span>
           <div className={`${styles.summaryCardIcon} ${styles.summaryCardIconBalance}`}>💼</div>
         </div>
         <div className={styles.summaryCardAmount}>{formatDollars(balance)}</div>
@@ -48,16 +52,20 @@ export default function SummaryCards({
           </div>
         </div>
         <div className={styles.summaryCardMeta}>
-          {totalIncome > 0 ? (
-            <>
-              <span className={styles.summaryCardTag}>
-                {Math.round(displayBalancePct)}% del ingreso
-              </span>
-              {' '}disponible
-            </>
-          ) : (
-            <span className={styles.summaryCardTag}>Sin ingresos</span>
-          )}
+          {balanceMeta !== undefined
+            ? balanceMeta
+            : totalIncome > 0
+              ? (
+                  <>
+                    <span className={styles.summaryCardTag}>
+                      {Math.round(displayBalancePct)}% del ingreso
+                    </span>
+                    {' '}disponible
+                  </>
+                )
+              : (
+                  <span className={styles.summaryCardTag}>Sin ingresos</span>
+                )}
         </div>
       </div>
 

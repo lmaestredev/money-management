@@ -1,15 +1,42 @@
+'use client';
+
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { createMovementAction } from '@/app/lib/actions/movements';
 import type { Account, Category } from '@/app/lib/definitions';
 import styles from './MovementForm.module.css';
 
+function getTodayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 type Props = {
   period: string;
   accounts: Account[];
   categories: Category[];
+  defaultPaymentDate?: string;
 };
 
-export default function MovementForm({ period, accounts, categories }: Props) {
+export default function MovementForm({
+  period,
+  accounts,
+  categories,
+  defaultPaymentDate = getTodayISO(),
+}: Props) {
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+
+  const selectedAccount = useMemo(
+    () => accounts.find((a) => a.id === selectedAccountId) ?? null,
+    [accounts, selectedAccountId]
+  );
+
+  const amountLabel =
+    selectedAccount?.currency === 'peso'
+      ? 'Monto (pesos)'
+      : selectedAccount?.currency === 'dollar'
+        ? 'Monto (dólares)'
+        : 'Monto';
+
   return (
     <form action={createMovementAction} className={styles.form}>
       <input type="hidden" name="period" value={period} />
@@ -22,11 +49,14 @@ export default function MovementForm({ period, accounts, categories }: Props) {
           name="account_id"
           className={styles.select}
           required
+          value={selectedAccountId}
+          onChange={(e) => setSelectedAccountId(e.target.value)}
         >
           <option value="">Seleccionar cuenta</option>
           {accounts.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
+              {a.currency === 'peso' ? ' (pesos)' : a.currency === 'dollar' ? ' (dólares)' : ''}
             </option>
           ))}
         </select>
@@ -42,9 +72,9 @@ export default function MovementForm({ period, accounts, categories }: Props) {
           required
         >
           <option value="income">Ingreso</option>
-          <option value="variable_payment">Pago varios</option>
-          <option value="fixed_payment">Gasto fijo</option>
-          <option value="conversion">Conversión</option>
+          <option value="variable_payment">Egreso (pago varios)</option>
+          <option value="fixed_payment">Egreso (gasto fijo)</option>
+          <option value="conversion">Conversión (dólar ↔ peso)</option>
         </select>
       </div>
       <div className={styles.field}>
@@ -73,31 +103,19 @@ export default function MovementForm({ period, accounts, categories }: Props) {
         />
       </div>
       <div className={styles.field}>
-        <label htmlFor="amount_pesos" className={styles.label}>
-          Monto (pesos)
+        <label htmlFor="amount" className={styles.label}>
+          {amountLabel}
         </label>
         <input
-          id="amount_pesos"
-          name="amount_pesos"
+          id="amount"
+          name="amount"
           type="number"
           step="0.01"
           min="0"
           className={styles.input}
           required
-        />
-      </div>
-      <div className={styles.field}>
-        <label htmlFor="amount_dollars" className={styles.label}>
-          Monto (dólares)
-        </label>
-        <input
-          id="amount_dollars"
-          name="amount_dollars"
-          type="number"
-          step="0.01"
-          min="0"
-          className={styles.input}
-          required
+          disabled={!selectedAccountId}
+          placeholder={selectedAccountId ? '0' : 'Selecciona una cuenta'}
         />
       </div>
       <div className={styles.field}>
@@ -109,6 +127,7 @@ export default function MovementForm({ period, accounts, categories }: Props) {
           name="payment_date"
           type="date"
           className={styles.input}
+          defaultValue={defaultPaymentDate}
         />
       </div>
       <div className={styles.field}>

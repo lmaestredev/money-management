@@ -1,0 +1,111 @@
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-bg-dark);
+}
+
+.cardSubtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.expenseRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.expenseRow:last-of-type {
+  border-bottom: none;
+}
+
+.expenseInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.expenseIcon {
+  font-size: 1rem;
+}
+
+.expenseDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.expenseName {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-bg-dark);
+}
+
+.expenseStatus {
+  font-size: 0.6875rem;
+  color: #9ca3af;
+}
+
+.expenseAmount {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-expense);
+  flex-shrink: 0;
+}
+
+.progressWrap {
+  margin-top: 0.25rem;
+}
+
+.progressTrack {
+  height: 6px;
+  background: #f3f4f6;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--color-expense);
+  transition: width 0.6s ease;
+}
+
+.meta {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.tag {
+  background: #f3f4f6;
+  border-radius: 6px;
+  padding: 0.125rem 0.4375rem;
+  font-weight: 500;
+}

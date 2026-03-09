@@ -10,6 +10,10 @@ function getCurrentPeriod(): string {
   return `${year}-${month}`;
 }
 
+function getTodayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 type Props = {
   searchParams: Promise<{ period?: string }>;
 };
@@ -31,7 +35,12 @@ export default async function NuevoMovimientoPage({ searchParams }: Props) {
       <h1 className={styles.title}>
         Nuevo movimiento
       </h1>
-      <MovementForm period={period} accounts={accounts} categories={categories} />
+      <MovementForm
+        period={period}
+        accounts={accounts}
+        categories={categories}
+        defaultPaymentDate={getTodayISO()}
+      />
     </div>
   );
 }

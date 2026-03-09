@@ -1,0 +1,20 @@
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 0.875rem;
+  border-radius: 0.625rem;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  background: var(--color-warning-dim);
+  font-size: 0.8125rem;
+  color: #92400e;
+}
+
+.alertIcon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.alertText {
+  flex: 1;
+}

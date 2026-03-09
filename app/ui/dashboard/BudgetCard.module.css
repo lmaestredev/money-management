@@ -1,0 +1,119 @@
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-bg-dark);
+}
+
+.cardSubtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.budgetBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.budgetRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.budgetLabel {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-bg-dark);
+}
+
+.budgetAmount {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-bg-dark);
+}
+
+.progressWrap {
+  margin-top: 0;
+}
+
+.progressTrack {
+  height: 8px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--color-primary);
+  transition: width 0.6s ease;
+}
+
+.progressFillWarning {
+  background: var(--color-warning);
+}
+
+.budgetStatus {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-warning);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.divider {
+  border-top: 1px solid #f3f4f6;
+  padding-top: 0.75rem;
+  margin-top: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+}
+
+.detailLabel {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.detailValue {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-bg-dark);
+}
+
+.detailValueExpense {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-expense);
+}

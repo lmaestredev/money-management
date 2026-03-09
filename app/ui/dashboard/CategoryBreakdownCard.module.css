@@ -1,0 +1,89 @@
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-bg-dark);
+}
+
+.cardSubtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.categoryItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 0;
+}
+
+.categoryInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.categoryIcon {
+  font-size: 1rem;
+}
+
+.categoryName {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-bg-dark);
+}
+
+.categoryAmount {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-bg-dark);
+  flex-shrink: 0;
+}
+
+.footer {
+  border-top: 1px solid #f3f4f6;
+  padding-top: 0.625rem;
+  margin-top: 0.25rem;
+}
+
+.totalLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-bg-dark);
+}
+
+.totalAmount {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-expense);
+}
