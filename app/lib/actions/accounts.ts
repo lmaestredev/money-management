@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { createAccount } from '@/app/lib/data/accounts';
+import { createAccount, deleteAccount } from '@/app/lib/data/accounts';
 import type { AccountCurrency } from '@/app/lib/definitions';
 
 const currencySchema = z.enum(['peso', 'dollar', 'crypto']);
@@ -35,5 +35,24 @@ export async function createAccountAction(formData: FormData) {
     balance_dollars: currency !== 'peso' ? balance : 0,
   });
 
+  redirect('/dashboard/cuentas');
+}
+
+const deleteAccountFormSchema = z.object({
+  id: z.string().uuid(),
+});
+
+export async function deleteAccountAction(formData: FormData) {
+  const raw = { id: formData.get('id') };
+  const parsed = deleteAccountFormSchema.safeParse(raw);
+  if (!parsed.success) {
+    redirect('/dashboard/cuentas?error=validation');
+  }
+  try {
+    const deleted = await deleteAccount(parsed.data.id);
+    if (!deleted) redirect('/dashboard/cuentas?error=notfound');
+  } catch {
+    redirect('/dashboard/cuentas?error=delete');
+  }
   redirect('/dashboard/cuentas');
 }

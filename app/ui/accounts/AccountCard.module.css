@@ -1,0 +1,207 @@
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  border: 2px solid transparent;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+
+.card_peso::before {
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+}
+
+.card_dollar::before {
+  background: linear-gradient(90deg, var(--color-income), #16a34a);
+}
+
+.card_crypto::before {
+  background: linear-gradient(90deg, #8b5cf6, #6d28d9);
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  border-color: var(--color-primary);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.accountInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.accountIcon {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.card_peso .accountIcon {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.card_dollar .accountIcon {
+  background: var(--color-income-dim);
+}
+
+.card_crypto .accountIcon {
+  background: rgba(139, 92, 246, 0.12);
+}
+
+.accountDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.accountName {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-bg-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accountBank {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accountMenu {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+
+.card:hover .accountMenu {
+  opacity: 1;
+}
+
+@media (max-width: 767px) {
+  .accountMenu {
+    opacity: 1;
+  }
+}
+
+.deleteForm {
+  display: inline;
+}
+
+.menuBtn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: var(--color-surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #6b7280;
+  text-decoration: none;
+}
+
+.menuBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.menuBtn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.menuIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.accountAmount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-bg-dark);
+}
+
+.accountCurrency {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f3f4f6;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.25rem 0.625rem;
+  border-radius: 6px;
+}
+
+.card_peso .badge {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+}
+
+.card_dollar .badge {
+  background: var(--color-income-dim);
+  color: var(--color-income);
+}
+
+.card_crypto .badge {
+  background: rgba(139, 92, 246, 0.12);
+  color: #6d28d9;
+}

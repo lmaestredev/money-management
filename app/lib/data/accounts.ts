@@ -77,3 +77,11 @@ export async function updateAccountBalances(
     WHERE id = ${accountId}
   `;
 }
+
+export async function deleteAccount(id: string): Promise<boolean> {
+  const [row] = await sql`
+    DELETE FROM accounts WHERE id = ${id}
+    RETURNING id
+  `;
+  return Boolean(row);
+}
