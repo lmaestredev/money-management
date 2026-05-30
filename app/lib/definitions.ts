@@ -76,6 +76,9 @@ export type Movement = {
   created_at: string;
   user_id: string | null;
   source: MovementSource | null;
+  installment_id?: string | null;
+  recurring_expense_id?: string | null;
+  recurring_income_id?: string | null;
 };
 
 export type MovementInsert = {
@@ -93,4 +96,108 @@ export type MovementInsert = {
   comment?: string | null;
   user_id?: string | null;
   source?: MovementSource | null;
+  installment_id?: string | null;
+  recurring_expense_id?: string | null;
+  recurring_income_id?: string | null;
+};
+
+// Compras en cuotas
+export type InstallmentStatus = 'active' | 'finished';
+
+export type InstallmentPurchase = {
+  id: string;
+  name: string;
+  account_id: string | null;
+  account_name?: string | null;
+  category_id: string | null;
+  category_name?: string | null;
+  total_installments: number;
+  paid_installments: number;
+  monthly_amount_pesos: number;
+  monthly_amount_dollars: number;
+  total_amount_pesos: number;
+  total_amount_dollars: number;
+  pay_before_day: number | null;
+  start_period: string | null;
+  status: InstallmentStatus;
+  user_id: string | null;
+  created_at: string;
+  updated_at: string;
+  // Derivados (calculados en el mapper)
+  remaining_installments: number;
+  remaining_amount_pesos: number;
+  remaining_amount_dollars: number;
+};
+
+export type InstallmentInsert = {
+  name: string;
+  account_id?: string | null;
+  category_id?: string | null;
+  total_installments: number;
+  paid_installments?: number;
+  monthly_amount_pesos?: number;
+  monthly_amount_dollars?: number;
+  total_amount_pesos?: number;
+  total_amount_dollars?: number;
+  pay_before_day?: number | null;
+  start_period?: string | null;
+  user_id?: string | null;
+};
+
+// Gastos fijos recurrentes (plantillas mensuales)
+export type RecurringExpense = {
+  id: string;
+  name: string;
+  category_id: string | null;
+  category_name?: string | null;
+  account_id: string | null;
+  account_name?: string | null;
+  amount_pesos: number;
+  amount_dollars: number;
+  pay_before_day: number | null;
+  is_cash: boolean;
+  active: boolean;
+  user_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RecurringExpenseInsert = {
+  name: string;
+  category_id?: string | null;
+  account_id?: string | null;
+  amount_pesos?: number;
+  amount_dollars?: number;
+  pay_before_day?: number | null;
+  is_cash?: boolean;
+  active?: boolean;
+  user_id?: string | null;
+};
+
+// Ingresos recurrentes (sueldos / honorarios)
+export type RecurringIncome = {
+  id: string;
+  name: string;
+  category_id: string | null;
+  category_name?: string | null;
+  account_id: string | null;
+  account_name?: string | null;
+  amount_pesos: number;
+  amount_dollars: number;
+  receive_day: number | null;
+  active: boolean;
+  user_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RecurringIncomeInsert = {
+  name: string;
+  category_id?: string | null;
+  account_id?: string | null;
+  amount_pesos?: number;
+  amount_dollars?: number;
+  receive_day?: number | null;
+  active?: boolean;
+  user_id?: string | null;
 };

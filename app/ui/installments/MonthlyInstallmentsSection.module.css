@@ -1,0 +1,162 @@
+.section {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: 1.25rem 1.5rem;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-bg-dark);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.countBadge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-income-dim);
+  border-radius: 999px;
+  padding: 0.125rem 0.5rem;
+}
+
+.pendingTotal {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-expense);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.75rem;
+  border: 1px solid #eef0f3;
+  border-radius: 0.75rem;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.row:hover {
+  border-color: #e5e7eb;
+  background: #fafbfc;
+}
+
+.icon {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.625rem;
+  background: var(--color-income-dim);
+  font-size: 1.125rem;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-bg-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.125rem;
+  font-size: 0.6875rem;
+  color: #9ca3af;
+}
+
+.cuotaNum {
+  font-weight: 600;
+}
+
+.amounts {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.amountPrimary {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-expense);
+}
+
+.amountSecondary {
+  font-size: 0.6875rem;
+  color: #9ca3af;
+}
+
+.action {
+  flex-shrink: 0;
+}
+
+.payBtn {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-primary);
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.payBtn:hover {
+  opacity: 0.9;
+}
+
+.statusPaid {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-income, #16a34a);
+}
+
+.statusDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-income, #16a34a);
+}
+
+@media (max-width: 600px) {
+  .meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.125rem;
+  }
+}
