@@ -8,14 +8,23 @@ import { readdir, readFile } from 'fs/promises';
 import { join } from 'path';
 import postgres from 'postgres';
 
-const POSTGRES_URL = process.env.POSTGRES_URL;
+// Las migraciones (DDL) deben correr por una conexión que soporte prepared
+// statements: Session pooler (5432, host *.pooler.supabase.com) o Direct
+// connection (5432). NO usar el Transaction pooler (6543) aquí.
+const POSTGRES_URL = process.env.POSTGRES_URL_NON_POOLING ?? process.env.POSTGRES_URL;
 if (!POSTGRES_URL) {
-  console.error('[db:migrate] POSTGRES_URL no está definido. Configura .env o la variable de entorno.');
+  console.error('[db:migrate] Define POSTGRES_URL_NON_POOLING (Session pooler / Direct, puerto 5432) o POSTGRES_URL en .env.');
   process.exit(1);
 }
 
-const isLocal = /localhost|127\.0\.0\.1/.test(new URL(POSTGRES_URL).hostname);
-const sql = postgres(POSTGRES_URL, { ssl: isLocal ? false : 'require', max: 1 });
+const { hostname, port } = new URL(POSTGRES_URL);
+const isLocal = /localhost|127\.0\.0\.1/.test(hostname);
+const isTransactionPooler = port === '6543';
+const sql = postgres(POSTGRES_URL, {
+  ssl: isLocal ? false : 'require',
+  prepare: isTransactionPooler ? false : true,
+  max: 1,
+});
 
 const MIGRATIONS_DIR = join(process.cwd(), 'db', 'migrations');
 

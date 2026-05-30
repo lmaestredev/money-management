@@ -1,9 +1,9 @@
 {
   "private": true,
   "scripts": {
-    "build": "pnpm db:migrate && next build",
-    "dev": "pnpm db:migrate && next dev --turbopack",
-    "start": "pnpm db:migrate && next start",
+    "build": "npm run db:migrate && next build",
+    "dev": "npm run db:migrate && next dev --turbopack",
+    "start": "npm run db:migrate && next start",
     "db:migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {
