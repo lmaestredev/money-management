@@ -1,12 +1,20 @@
 import { login } from '@/app/lib/actions/auth';
 import styles from './page.module.css';
 
+const ERROR_MESSAGES: Record<string, string> = {
+  credentials: 'Email o contraseña incorrectos (o el usuario no está confirmado en Supabase).',
+  config:
+    'Error de configuración del servidor. Revisá las variables NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY en Vercel.',
+  format: 'Email o contraseña inválidos.',
+};
+
 type Props = {
   searchParams: Promise<{ error?: string }>;
 };
 
 export default async function LoginPage({ searchParams }: Props) {
   const { error } = await searchParams;
+  const errorMessage = error ? ERROR_MESSAGES[error] ?? ERROR_MESSAGES.credentials : null;
 
   return (
     <main className={styles.main}>
@@ -14,9 +22,9 @@ export default async function LoginPage({ searchParams }: Props) {
         <h1 className={styles.title}>Money Management</h1>
         <p className={styles.subtitle}>Inicia sesión para continuar</p>
 
-        {error && (
+        {errorMessage && (
           <div className={styles.error} role="alert">
-            Email o contraseña incorrectos.
+            {errorMessage}
           </div>
         )}
 

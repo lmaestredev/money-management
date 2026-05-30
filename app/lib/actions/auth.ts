@@ -16,13 +16,26 @@ export async function login(formData: FormData) {
     password: formData.get('password'),
   });
   if (!parsed.success) {
-    redirect('/login?error=invalid');
+    redirect('/login?error=format');
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error) {
-    redirect('/login?error=invalid');
+  // Se distingue entre credenciales inválidas y errores de configuración
+  // (env vars / conexión a Supabase) para poder diagnosticar el deploy.
+  let outcome: 'ok' | 'credentials' | 'config' = 'ok';
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.signInWithPassword(parsed.data);
+    if (error) {
+      console.error('[auth] login fallido:', error.code ?? error.name, '-', error.message);
+      outcome = 'credentials';
+    }
+  } catch (err) {
+    console.error('[auth] error de configuración en login:', err);
+    outcome = 'config';
+  }
+
+  if (outcome !== 'ok') {
+    redirect(`/login?error=${outcome}`);
   }
 
   revalidatePath('/', 'layout');
