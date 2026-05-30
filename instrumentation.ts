@@ -9,14 +9,15 @@ export async function register() {
   ) {
     return;
   }
-  const { sql } = await import('./app/lib/db');
   try {
+    const { sql } = await import('./app/lib/db');
     await sql`SELECT 1 FROM _migrations LIMIT 1`;
     console.log('[DB] ✓ Schema OK (migraciones aplicadas)');
   } catch (err) {
+    // No tumbar la app por el chequeo: solo avisar. Si la BD no es accesible,
+    // las páginas que la usan mostrarán el error correspondiente.
     const msg = err instanceof Error ? err.message : String(err);
-    console.error('[DB] ✗ La base de datos no está migrada o no es accesible:', msg);
-    console.error('[DB] Ejecuta: npm run db:migrate');
-    throw new Error(`Base de datos no migrada: ${msg}. Ejecuta: npm run db:migrate`);
+    console.error('[DB] ✗ La base de datos no es accesible o no está migrada:', msg);
+    console.error('[DB] Verifica POSTGRES_URL / POSTGRES_URL_NON_POOLING y ejecuta: npm run db:migrate');
   }
 }
