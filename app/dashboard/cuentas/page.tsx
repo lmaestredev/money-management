@@ -7,7 +7,21 @@ import CuentasSummaryCards from '@/app/ui/accounts/CuentasSummaryCards';
 import AccountCard from '@/app/ui/accounts/AccountCard';
 import styles from './page.module.css';
 
-export default async function CuentasPage() {
+const ERROR_MESSAGES: Record<string, string> = {
+  has_movements:
+    'No se puede eliminar la cuenta porque tiene movimientos asociados. Elimina o reasigna esos movimientos primero.',
+  notfound: 'La cuenta no existe o ya fue eliminada.',
+  delete: 'No se pudo eliminar la cuenta. Intenta de nuevo.',
+  validation: 'Solicitud inválida.',
+};
+
+type Props = {
+  searchParams: Promise<{ error?: string }>;
+};
+
+export default async function CuentasPage({ searchParams }: Props) {
+  const { error } = await searchParams;
+  const errorMessage = error ? ERROR_MESSAGES[error] ?? null : null;
   const accounts = await fetchAccounts();
 
   const totalPesos = accounts
@@ -31,6 +45,13 @@ export default async function CuentasPage() {
           Registrar cuenta
         </Link>
       </header>
+
+      {errorMessage && (
+        <div className={styles.errorBanner} role="alert">
+          <span aria-hidden>⛔</span>
+          <span>{errorMessage}</span>
+        </div>
+      )}
 
       <CuentasPageInfoBox />
 

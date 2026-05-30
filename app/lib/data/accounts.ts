@@ -78,10 +78,55 @@ export async function updateAccountBalances(
   `;
 }
 
-export async function deleteAccount(id: string): Promise<boolean> {
+export type AccountUpdate = {
+  name: string;
+  bank?: string | null;
+  currency: AccountCurrency;
+  balance_pesos: number;
+  balance_dollars: number;
+};
+
+export async function updateAccount(
+  id: string,
+  data: AccountUpdate
+): Promise<Account | null> {
   const [row] = await sql`
-    DELETE FROM accounts WHERE id = ${id}
-    RETURNING id
+    UPDATE accounts SET
+      name = ${data.name},
+      bank = ${data.bank ?? null},
+      currency = ${data.currency},
+      balance_pesos = ${data.balance_pesos},
+      balance_dollars = ${data.balance_dollars},
+      updated_at = NOW()
+    WHERE id = ${id}
+    RETURNING id, name, bank, currency, balance_pesos, balance_dollars, user_id, created_at, updated_at
   `;
-  return Boolean(row);
+  if (!row) return null;
+  return rowToAccount(row as Record<string, unknown>);
+}
+
+export type DeleteAccountResult =
+  | { ok: true }
+  | { ok: false; reason: 'not_found' | 'has_movements' };
+
+/**
+ * Elimina una cuenta. Se bloquea si tiene movimientos asociados (no se puede
+ * orfanar el historial: movements.account_id es NOT NULL). Las referencias
+ * opcionales (compras en cuotas y gastos fijos) se desvinculan.
+ */
+export async function deleteAccount(id: string): Promise<DeleteAccountResult> {
+  return sql.begin(async (tx) => {
+    const [acc] = await tx`SELECT id FROM accounts WHERE id = ${id} FOR UPDATE`;
+    if (!acc) return { ok: false, reason: 'not_found' as const };
+
+    const [{ count }] = await tx`
+      SELECT COUNT(*)::int AS count FROM movements WHERE account_id = ${id}
+    `;
+    if (Number(count) > 0) return { ok: false, reason: 'has_movements' as const };
+
+    await tx`UPDATE installment_purchases SET account_id = NULL WHERE account_id = ${id}`;
+    await tx`UPDATE recurring_expenses SET account_id = NULL WHERE account_id = ${id}`;
+    await tx`DELETE FROM accounts WHERE id = ${id}`;
+    return { ok: true as const };
+  });
 }

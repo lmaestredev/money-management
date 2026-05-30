@@ -1,9 +1,10 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { fetchAccountById } from '@/app/lib/data/accounts';
-import { createMovement } from '@/app/lib/data/movements';
+import { createMovement, deleteMovement, updateMovement } from '@/app/lib/data/movements';
 
 const recordTypeSchema = z.enum([
   'income',
@@ -115,4 +116,118 @@ export async function createMovementAction(formData: FormData) {
   );
 
   redirect(`/dashboard/movimientos?period=${data.period}`);
+}
+
+const updateMovementFormSchema = createMovementFormSchema.extend({
+  id: z.string().uuid(),
+});
+
+export async function updateMovementAction(formData: FormData) {
+  const raw = {
+    id: formData.get('id'),
+    period: formData.get('period'),
+    record_type: formData.get('record_type') ?? undefined,
+    account_id: formData.get('account_id'),
+    category_id: formData.get('category_id') ?? undefined,
+    description: formData.get('description') ?? undefined,
+    status: formData.get('status') ?? undefined,
+    amount: formData.get('amount') ?? undefined,
+    amount_pesos: formData.get('amount_pesos') ?? undefined,
+    amount_dollars: formData.get('amount_dollars') ?? undefined,
+    payment_date: formData.get('payment_date') ?? undefined,
+    dollar_rate: formData.get('dollar_rate') ?? undefined,
+    comment: formData.get('comment') ?? undefined,
+  };
+
+  const parsed = updateMovementFormSchema.safeParse(raw);
+  if (!parsed.success) {
+    const id = typeof raw.id === 'string' ? raw.id : '';
+    const period =
+      typeof raw.period === 'string' && /^\d{4}-\d{2}$/.test(raw.period)
+        ? raw.period
+        : new Date().toISOString().slice(0, 7);
+    redirect(
+      id
+        ? `/dashboard/movimientos/editar/${id}?period=${period}&error=validation`
+        : '/dashboard/movimientos'
+    );
+  }
+
+  const data = parsed.data;
+  const errorTarget = `/dashboard/movimientos/editar/${data.id}?period=${data.period}&error=validation`;
+  let amountPesos: number;
+  let amountDollars: number;
+
+  if (data.amount != null && data.amount !== '') {
+    const amount = parseFloat(data.amount);
+    if (Number.isNaN(amount) || amount < 0) {
+      redirect(errorTarget);
+    }
+    const account = await fetchAccountById(data.account_id);
+    if (!account) {
+      redirect(errorTarget);
+    }
+    if (account.currency === 'peso') {
+      amountPesos = amount;
+      amountDollars = 0;
+    } else {
+      amountPesos = 0;
+      amountDollars = amount;
+    }
+  } else if (
+    data.amount_pesos != null &&
+    data.amount_pesos !== '' &&
+    data.amount_dollars != null &&
+    data.amount_dollars !== ''
+  ) {
+    amountPesos = parseFloat(data.amount_pesos);
+    amountDollars = parseFloat(data.amount_dollars);
+    if (Number.isNaN(amountPesos) || Number.isNaN(amountDollars)) {
+      redirect(errorTarget);
+    }
+  } else {
+    redirect(errorTarget);
+  }
+
+  await updateMovement(data.id, {
+    period: data.period,
+    record_type: data.record_type,
+    account_id: data.account_id,
+    category_id: data.category_id ?? null,
+    description: data.description || null,
+    status: data.status ?? null,
+    amount_pesos: amountPesos,
+    amount_dollars: amountDollars,
+    payment_date: data.payment_date && data.payment_date !== '' ? data.payment_date : null,
+    dollar_rate: data.dollar_rate && data.dollar_rate !== '' ? parseFloat(data.dollar_rate) : null,
+    comment: data.comment || null,
+  });
+
+  revalidatePath('/dashboard/movimientos');
+  revalidatePath('/dashboard');
+  redirect(`/dashboard/movimientos?period=${data.period}`);
+}
+
+const deleteMovementFormSchema = z.object({
+  id: z.string().uuid(),
+  period: z.string().regex(/^\d{4}-\d{2}$/),
+});
+
+export async function deleteMovementAction(formData: FormData) {
+  const parsed = deleteMovementFormSchema.safeParse({
+    id: formData.get('id'),
+    period: formData.get('period'),
+  });
+  if (!parsed.success) {
+    redirect('/dashboard/movimientos');
+  }
+
+  const { id, period } = parsed.data;
+  await deleteMovement(id);
+
+  revalidatePath('/dashboard/movimientos');
+  revalidatePath('/dashboard');
+  revalidatePath('/dashboard/cuotas');
+  revalidatePath('/dashboard/gastos-fijos');
+  redirect(`/dashboard/movimientos?period=${period}`);
 }

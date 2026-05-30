@@ -270,6 +270,10 @@
   flex-shrink: 0;
 }
 
+.deleteForm {
+  display: inline-flex;
+}
+
 .actionBtn {
   width: 1.875rem;
   height: 1.875rem;

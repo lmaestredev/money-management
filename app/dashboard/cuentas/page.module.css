@@ -64,6 +64,19 @@
   height: 1.25rem;
 }
 
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 0.625rem;
+  color: #b91c1c;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
 .section {
   display: flex;
   flex-direction: column;

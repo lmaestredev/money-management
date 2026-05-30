@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Movement } from '@/app/lib/definitions';
+import DeleteMovementButton from './DeleteMovementButton';
 import styles from './MovementList.module.css';
 
 function formatPesos(amount: number): string {
@@ -240,14 +241,7 @@ export default function MovementList({ movements, accountNames }: Props) {
                     >
                       ✏️
                     </Link>
-                    <button
-                      type="button"
-                      className={styles.actionBtn}
-                      title="Eliminar"
-                      aria-label="Eliminar movimiento"
-                    >
-                      🗑️
-                    </button>
+                    <DeleteMovementButton id={m.id} period={m.period} description={m.description} />
                   </div>
                 </div>
               );

@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PencilIcon } from '@heroicons/react/24/outline';
 import { getAccountBalance } from '@/app/lib/data/accounts';
-import { deleteAccountAction } from '@/app/lib/actions/accounts';
+import DeleteAccountButton from './DeleteAccountButton';
 import type { Account, AccountCurrency } from '@/app/lib/definitions';
 import styles from './AccountCard.module.css';
 
@@ -91,12 +91,7 @@ export default function AccountCard({ account }: Props) {
           >
             <PencilIcon className={styles.menuIcon} />
           </Link>
-          <form action={deleteAccountAction} className={styles.deleteForm}>
-            <input type="hidden" name="id" value={account.id} />
-            <button type="submit" className={styles.menuBtn} title="Eliminar" aria-label={`Eliminar cuenta ${account.name}`}>
-              <TrashIcon className={styles.menuIcon} />
-            </button>
-          </form>
+          <DeleteAccountButton id={account.id} name={account.name} />
         </div>
       </div>
 
