@@ -19,6 +19,9 @@
 .DS_Store
 *.pem
 
+# claude code (local config, plans, skills)
+.claude/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
