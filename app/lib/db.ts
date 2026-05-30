@@ -1,30 +1,25 @@
 import postgres from 'postgres';
 
 /**
- * Selección de conexión según entorno (la forma correcta con Supabase):
+ * Conexión a Supabase vía Session Pooler (5432) en todos los entornos.
  *
- * - Procesos PERSISTENTES (`next dev`, `next start`, self-hosted): Session
- *   Pooler (5432). Conexiones estables y prepared statements ON (más rápido).
- *   Usar aquí el Transaction Pooler provoca cuelgues: mantiene conexiones que
- *   el pooler recicla del lado servidor y postgres.js cree vivas (socket muerto
- *   → la query espera al timeout de TCP).
+ * El Session Pooler da una conexión dedicada, soporta prepared statements y
+ * maneja bien varias consultas en paralelo (el dashboard hace Promise.all de
+ * varias queries). El Transaction Pooler (6543, modo transacción de pgBouncer)
+ * no pipelinea bien múltiples queries sobre una conexión y termina cancelando
+ * por "statement timeout" (Postgres 57014). Para esta app de uso personal el
+ * Session Pooler es la opción correcta también en serverless.
  *
- * - SERVERLESS/EDGE (Vercel): Transaction Pooler (6543) con prepared statements
- *   OFF, pensado para conexiones efímeras y muchas invocaciones concurrentes.
+ * Se prefiere POSTGRES_URL_NON_POOLING (5432); POSTGRES_URL queda como fallback.
  */
-const isServerless =
-  !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+const sessionUrl = process.env.POSTGRES_URL_NON_POOLING; // 5432 (preferida)
+const transactionUrl = process.env.POSTGRES_URL; // 6543 (fallback)
 
-const transactionUrl = process.env.POSTGRES_URL; // 6543 (serverless)
-const sessionUrl = process.env.POSTGRES_URL_NON_POOLING; // 5432 (persistente)
-
-const connectionString = isServerless
-  ? transactionUrl ?? sessionUrl
-  : sessionUrl ?? transactionUrl;
+const connectionString = sessionUrl ?? transactionUrl;
 
 if (!connectionString) {
   throw new Error(
-    'Falta la conexión a la base de datos. Define POSTGRES_URL (Transaction Pooler 6543) y POSTGRES_URL_NON_POOLING (Session Pooler 5432) en .env.'
+    'Falta la conexión a la base de datos. Define POSTGRES_URL_NON_POOLING (Session Pooler 5432) y/o POSTGRES_URL en las variables de entorno.'
   );
 }
 
@@ -33,9 +28,9 @@ const isLocal = /localhost|127\.0\.0\.1/.test(hostname);
 // pgBouncer en modo transacción (6543) no soporta prepared statements.
 const isTransactionPooler = port === '6543';
 
-// En dev, Next.js re-evalúa este módulo en cada recompilación de ruta. Sin
-// caché se crearían pools nuevos hasta agotar el límite del pooler. Cacheamos
-// el cliente en globalThis para reutilizar un único pool.
+// Next.js re-evalúa este módulo en cada recompilación de ruta (dev) y una vez
+// por instancia (serverless). Cacheamos el cliente en globalThis para reutilizar
+// un único pool y no agotar el pooler.
 const globalForDb = globalThis as unknown as {
   _sql?: ReturnType<typeof postgres>;
 };
@@ -45,16 +40,11 @@ export const sql =
   postgres(connectionString, {
     ssl: isLocal ? false : 'require',
     prepare: !isTransactionPooler,
-    // Serverless: 1 conexión por invocación. Persistente: pool pequeño que
-    // cubre las queries en paralelo de cada página con holgura.
-    max: isServerless ? 1 : 10,
-    // Reciclar conexiones ociosas para evitar sockets obsoletos a través del
-    // pooler, y fallar rápido si una conexión no se establece (en vez de colgar).
+    // Pool chico: cubre con holgura las queries en paralelo de cada página.
+    max: isLocal ? 10 : 5,
     idle_timeout: 30,
     max_lifetime: 60 * 30,
     connect_timeout: 15,
   });
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForDb._sql = sql;
-}
+globalForDb._sql = sql;
