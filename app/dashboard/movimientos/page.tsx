@@ -2,9 +2,18 @@ import Link from 'next/link';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { fetchAccounts } from '@/app/lib/data/accounts';
 import { fetchMovementsByPeriod } from '@/app/lib/data/movements';
+import { fetchActiveInstallments, fetchInstallmentPaidIds } from '@/app/lib/data/installments';
+import { fetchActiveRecurringExpenses, fetchRecurringPaidIds } from '@/app/lib/data/recurring';
+import {
+  fetchActiveRecurringIncomes,
+  fetchRecurringIncomeReceivedIds,
+} from '@/app/lib/data/recurring-incomes';
 import type { Movement } from '@/app/lib/definitions';
 import MovementPeriodSelector from '@/app/ui/movements/MovementPeriodSelector';
 import MovementsPageClient, { type MovementSummary } from '@/app/ui/movements/MovementsPageClient';
+import MonthlyInstallmentsSection from '@/app/ui/installments/MonthlyInstallmentsSection';
+import MonthlyFixedExpensesSection from '@/app/ui/recurring/MonthlyFixedExpensesSection';
+import MonthlyIncomesSection from '@/app/ui/recurring-incomes/MonthlyIncomesSection';
 import styles from './page.module.css';
 
 function getCurrentPeriod(): string {
@@ -57,9 +66,24 @@ export default async function MovimientosPage({ searchParams }: Props) {
       ? periodParam
       : getCurrentPeriod();
 
-  const [accounts, movements] = await Promise.all([
+  const [
+    accounts,
+    movements,
+    activeInstallments,
+    paidInstallmentIds,
+    activeRecurring,
+    paidRecurringIds,
+    activeIncomes,
+    receivedIncomeIds,
+  ] = await Promise.all([
     fetchAccounts(),
     fetchMovementsByPeriod(period),
+    fetchActiveInstallments(),
+    fetchInstallmentPaidIds(period),
+    fetchActiveRecurringExpenses(),
+    fetchRecurringPaidIds(period),
+    fetchActiveRecurringIncomes(),
+    fetchRecurringIncomeReceivedIds(period),
   ]);
 
   const accountNames = new Map(accounts.map((a) => [a.id, a.name]));
@@ -85,6 +109,26 @@ export default async function MovimientosPage({ searchParams }: Props) {
           </Link>
         </div>
       </header>
+
+      <MonthlyIncomesSection
+        incomes={activeIncomes}
+        receivedIds={receivedIncomeIds}
+        period={period}
+        accounts={accounts}
+      />
+
+      <MonthlyFixedExpensesSection
+        expenses={activeRecurring}
+        paidIds={paidRecurringIds}
+        period={period}
+        accounts={accounts}
+      />
+
+      <MonthlyInstallmentsSection
+        installments={activeInstallments}
+        paidIds={paidInstallmentIds}
+        period={period}
+      />
 
       <MovementsPageClient
         movements={movements}

@@ -7,6 +7,9 @@ import {
   ArrowTrendingUpIcon,
   Squares2X2Icon,
   BanknotesIcon,
+  CreditCardIcon,
+  CalendarDaysIcon,
+  ArrowDownCircleIcon,
   XMarkIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -22,7 +25,10 @@ const links = [
     href: '/dashboard/movimientos',
     icon: ArrowTrendingUpIcon,
   },
+  { name: 'Ingresos', href: '/dashboard/ingresos', icon: ArrowDownCircleIcon },
   { name: 'Cuentas', href: '/dashboard/cuentas', icon: BanknotesIcon },
+  { name: 'Cuotas', href: '/dashboard/cuotas', icon: CreditCardIcon },
+  { name: 'Gastos fijos', href: '/dashboard/gastos-fijos', icon: CalendarDaysIcon },
   { name: 'Categorías', href: '/dashboard/categorias', icon: Squares2X2Icon },
 ];
 

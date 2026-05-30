@@ -1,14 +1,18 @@
 import type { Movement } from '@/app/lib/definitions';
 import { fetchAccounts } from '@/app/lib/data/accounts';
 import { fetchMovementsByPeriod } from '@/app/lib/data/movements';
+import { fetchInstallments } from '@/app/lib/data/installments';
+import { fetchRecurringExpenses } from '@/app/lib/data/recurring';
+import { fetchRecurringIncomes } from '@/app/lib/data/recurring-incomes';
 import SummaryCards from '@/app/ui/movements/SummaryCards';
 import MovementPeriodSelector from '@/app/ui/movements/MovementPeriodSelector';
 import DashboardAlert from '@/app/ui/dashboard/DashboardAlert';
 import ExpenseBreakdownCard from '@/app/ui/dashboard/ExpenseBreakdownCard';
 import BudgetCard from '@/app/ui/dashboard/BudgetCard';
 import DashboardAccountList from '@/app/ui/dashboard/DashboardAccountList';
-import CreditCardsCard from '@/app/ui/dashboard/CreditCardsCard';
-import ChartPlaceholder from '@/app/ui/dashboard/ChartPlaceholder';
+import InstallmentsCard from '@/app/ui/installments/InstallmentsCard';
+import RecurringExpensesCard from '@/app/ui/recurring/RecurringExpensesCard';
+import RecurringIncomesCard from '@/app/ui/recurring-incomes/RecurringIncomesCard';
 import CategoryBreakdownCard from '@/app/ui/dashboard/CategoryBreakdownCard';
 import type { CategoryTotal } from '@/app/ui/dashboard/CategoryBreakdownCard';
 import styles from './page.module.css';
@@ -82,10 +86,14 @@ export default async function DashboardPage({ searchParams }: Props) {
       ? periodParam
       : getCurrentPeriod();
 
-  const [accounts, movements] = await Promise.all([
-    fetchAccounts(),
-    fetchMovementsByPeriod(period),
-  ]);
+  const [accounts, movements, installments, recurringExpenses, recurringIncomes] =
+    await Promise.all([
+      fetchAccounts(),
+      fetchMovementsByPeriod(period),
+      fetchInstallments(),
+      fetchRecurringExpenses(),
+      fetchRecurringIncomes(),
+    ]);
 
   const summary = computeSummary(movements);
   const periodLabel = formatPeriodLabel(period);
@@ -147,13 +155,15 @@ export default async function DashboardPage({ searchParams }: Props) {
 
       <div className={styles.grid2}>
         <DashboardAccountList accounts={accounts} />
-        <CreditCardsCard />
+        <InstallmentsCard installments={installments} />
       </div>
 
       <div className={styles.grid2}>
-        <ChartPlaceholder />
-        <CategoryBreakdownCard items={summary.categoryTotals} />
+        <RecurringIncomesCard incomes={recurringIncomes} />
+        <RecurringExpensesCard expenses={recurringExpenses} />
       </div>
+
+      <CategoryBreakdownCard items={summary.categoryTotals} />
     </div>
   );
 }
