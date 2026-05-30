@@ -1,0 +1,103 @@
+import Link from 'next/link';
+import { PlusIcon } from '@heroicons/react/24/outline';
+import { fetchRecurringExpenses } from '@/app/lib/data/recurring';
+import DeleteRecurringButton from '@/app/ui/recurring/DeleteRecurringButton';
+import styles from './page.module.css';
+
+function formatDollars(amount: number): string {
+  return amount.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatPesos(amount: number): string {
+  return amount.toLocaleString('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+}
+
+export default async function GastosFijosPage() {
+  const expenses = await fetchRecurringExpenses();
+  const active = expenses.filter((e) => e.active);
+  const monthlyTotal = active.reduce((sum, e) => sum + e.amount_dollars, 0);
+
+  return (
+    <div className={styles.page}>
+      <header className={styles.pageHeader}>
+        <div className={styles.pageTitleGroup}>
+          <h1 className={styles.pageTitle}>Gastos fijos</h1>
+          <p className={styles.pageSubtitle}>Compromisos mensuales recurrentes</p>
+        </div>
+        <Link href="/dashboard/gastos-fijos/nuevo" className={styles.newLink}>
+          <PlusIcon className={styles.newLinkIcon} aria-hidden />
+          Registrar gasto fijo
+        </Link>
+      </header>
+
+      {active.length > 0 && (
+        <div className={styles.summaryRow}>
+          <div className={styles.summaryCard}>
+            <span className={styles.summaryLabel}>Gastos fijos activos</span>
+            <span className={styles.summaryValue}>{active.length}</span>
+          </div>
+          <div className={styles.summaryCard}>
+            <span className={styles.summaryLabel}>Total fijo mensual</span>
+            <span className={styles.summaryValueExpense}>{formatDollars(monthlyTotal)}</span>
+          </div>
+        </div>
+      )}
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Listado</h2>
+        {expenses.length === 0 ? (
+          <div className={styles.emptyState}>
+            <span className={styles.emptyIcon} aria-hidden>
+              🔒
+            </span>
+            <p className={styles.emptyText}>No hay gastos fijos registrados</p>
+            <p className={styles.emptySub}>
+              Registra alquiler, servicios o suscripciones para seguirlos cada mes.
+            </p>
+            <Link href="/dashboard/gastos-fijos/nuevo" className={styles.emptyLink}>
+              Registrar gasto fijo
+            </Link>
+          </div>
+        ) : (
+          <ul className={styles.grid}>
+            {expenses.map((e) => (
+              <li key={e.id} className={styles.itemCard}>
+                <div className={styles.itemTop}>
+                  <span className={styles.itemName}>
+                    {e.name}
+                    {e.is_cash && <span className={styles.cashBadge}>💵 Efectivo</span>}
+                  </span>
+                  <span className={e.active ? styles.badgeActive : styles.badgeInactive}>
+                    {e.active ? 'Activo' : 'Inactivo'}
+                  </span>
+                </div>
+                <div className={styles.itemMeta}>
+                  {e.category_name ?? 'Sin categoría'} · 🏦{' '}
+                  {e.account_name ?? (e.is_cash ? 'Se elige al pagar' : 'Sin cuenta')}
+                  {e.pay_before_day ? ` · vence día ${e.pay_before_day}` : ''}
+                </div>
+                <div className={styles.itemFooter}>
+                  <div className={styles.itemAmounts}>
+                    <span className={styles.itemAmount}>{formatDollars(e.amount_dollars)}</span>
+                    <span className={styles.itemAmountSecondary}>{formatPesos(e.amount_pesos)}</span>
+                  </div>
+                  <DeleteRecurringButton id={e.id} name={e.name} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}

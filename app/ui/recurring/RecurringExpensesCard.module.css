@@ -1,0 +1,129 @@
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-bg-dark);
+}
+
+.cardSubtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.manageLink {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.manageLink:hover {
+  text-decoration: underline;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+.itemInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.itemName {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-bg-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.itemMeta {
+  font-size: 0.6875rem;
+  color: #9ca3af;
+}
+
+.itemAmount {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-expense);
+  white-space: nowrap;
+}
+
+.totalBlock {
+  background: var(--color-income-dim);
+  border-radius: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  text-align: center;
+  margin-top: 0.25rem;
+}
+
+.totalLabel {
+  font-size: 0.6875rem;
+  color: #9ca3af;
+}
+
+.totalAmount {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-expense);
+  margin-top: 0.125rem;
+}
+
+.placeholder {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #9ca3af;
+}
+
+.inlineLink {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.inlineLink:hover {
+  text-decoration: underline;
+}

@@ -1,0 +1,260 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.pageTitleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.pageTitle {
+  margin: 0;
+  font-size: 1.625rem;
+  font-weight: 700;
+  color: var(--color-bg-dark);
+  letter-spacing: -0.03125em;
+}
+
+.pageSubtitle {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.newLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, var(--color-primary), #1a7fc4);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 0.625rem 1.125rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 35%, transparent);
+  white-space: nowrap;
+}
+
+.newLink:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+
+.newLinkIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.summaryRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.summaryCard {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.summaryLabel {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.summaryValue {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--color-bg-dark);
+}
+
+.summaryValueExpense {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--color-expense);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-bg-dark);
+}
+
+.grid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.itemCard {
+  background: var(--color-surface);
+  border: 1px solid #e5e7eb;
+  border-radius: var(--radius-card);
+  padding: 1.125rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  box-shadow: var(--shadow-card);
+}
+
+.itemTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.itemName {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-bg-dark);
+}
+
+.cashBadge {
+  margin-left: 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #047857;
+  background: #d1fae5;
+  border-radius: 999px;
+  padding: 0.0625rem 0.5rem;
+  vertical-align: middle;
+}
+
+.badgeActive {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-income-dim);
+  border-radius: 999px;
+  padding: 0.125rem 0.625rem;
+}
+
+.badgeInactive {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #9ca3af;
+  background: #f3f4f6;
+  border-radius: 999px;
+  padding: 0.125rem 0.625rem;
+}
+
+.itemMeta {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.itemFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.itemAmounts {
+  display: flex;
+  align-items: baseline;
+  gap: 0.625rem;
+}
+
+.itemAmount {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-expense);
+}
+
+.itemAmountSecondary {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.25rem;
+  gap: 0.75rem;
+  text-align: center;
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.emptyIcon {
+  font-size: 3rem;
+  opacity: 0.35;
+}
+
+.emptyText {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #9ca3af;
+}
+
+.emptySub {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #d1d5db;
+}
+
+.emptyLink {
+  margin-top: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #fff;
+  text-decoration: none;
+  background: var(--color-primary);
+  border-radius: 10px;
+  transition: opacity 0.2s;
+}
+
+.emptyLink:hover {
+  opacity: 0.9;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .pageHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
