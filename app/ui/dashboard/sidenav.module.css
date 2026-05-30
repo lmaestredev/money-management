@@ -122,6 +122,10 @@
   z-index: 1;
 }
 
+.signOutForm {
+  display: contents;
+}
+
 .collapseToggle {
   display: none;
   align-items: center;

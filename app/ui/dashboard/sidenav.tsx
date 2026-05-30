@@ -16,6 +16,7 @@ import {
   CurrencyDollarIcon,
 } from '@heroicons/react/24/outline';
 import { PowerIcon } from '@heroicons/react/24/outline';
+import { signOut } from '@/app/lib/actions/auth';
 import styles from './sidenav.module.css';
 
 const links = [
@@ -88,15 +89,16 @@ export default function SideNav({ onNavigate, collapsed = false, onToggleCollaps
         })}
       </nav>
       <footer className={styles.sidebarFooter}>
-        <button
-          type="button"
-          className={`${styles.signOut} ${collapsed ? styles.signOutCollapsed : ''}`}
-          onClick={onNavigate}
-          title={collapsed ? 'Cerrar sesión' : undefined}
-        >
-          <PowerIcon className={styles.linkIcon} />
-          <span className={styles.signOutLabel}>Cerrar sesión</span>
-        </button>
+        <form action={signOut} className={styles.signOutForm}>
+          <button
+            type="submit"
+            className={`${styles.signOut} ${collapsed ? styles.signOutCollapsed : ''}`}
+            title={collapsed ? 'Cerrar sesión' : undefined}
+          >
+            <PowerIcon className={styles.linkIcon} />
+            <span className={styles.signOutLabel}>Cerrar sesión</span>
+          </button>
+        </form>
         {onToggleCollapsed && (
           <button
             type="button"
