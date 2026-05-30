@@ -13,10 +13,17 @@ function buildAccountName(bank: string, currency: AccountCurrency): string {
 
 const currencySchema = z.enum(['peso', 'dollar', 'crypto']);
 
+// El select de dueño envía un UUID o '' (compartida / sin asignar) -> null.
+const ownerSchema = z
+  .union([z.string().uuid(), z.literal('')])
+  .optional()
+  .transform((v) => (v ? v : null));
+
 const createAccountFormSchema = z.object({
   bank: z.string().min(1, 'Indica el banco o institución'),
   currency: currencySchema,
   balance: z.string().transform((s) => parseFloat(s) || 0),
+  owner_id: ownerSchema,
 });
 
 export async function createAccountAction(formData: FormData) {
@@ -24,6 +31,7 @@ export async function createAccountAction(formData: FormData) {
     bank: formData.get('bank'),
     currency: formData.get('currency'),
     balance: formData.get('balance'),
+    owner_id: formData.get('owner_id'),
   };
 
   const parsed = createAccountFormSchema.safeParse(raw);
@@ -31,7 +39,7 @@ export async function createAccountAction(formData: FormData) {
     redirect('/dashboard/cuentas/nueva?error=validation');
   }
 
-  const { bank, currency, balance } = parsed.data;
+  const { bank, currency, balance, owner_id } = parsed.data;
   const name = buildAccountName(bank.trim(), currency as AccountCurrency);
   await createAccount({
     name,
@@ -39,6 +47,7 @@ export async function createAccountAction(formData: FormData) {
     currency: currency as AccountCurrency,
     balance_pesos: currency === 'peso' ? balance : 0,
     balance_dollars: currency !== 'peso' ? balance : 0,
+    owner_id,
   });
 
   redirect('/dashboard/cuentas');
@@ -78,6 +87,7 @@ const updateAccountFormSchema = z.object({
   bank: z.string().min(1, 'Indica el banco o institución'),
   currency: currencySchema,
   balance: z.string().transform((s) => parseFloat(s) || 0),
+  owner_id: ownerSchema,
 });
 
 export async function updateAccountAction(formData: FormData) {
@@ -87,13 +97,14 @@ export async function updateAccountAction(formData: FormData) {
     bank: formData.get('bank'),
     currency: formData.get('currency'),
     balance: formData.get('balance'),
+    owner_id: formData.get('owner_id'),
   });
   if (!parsed.success) {
     const id = typeof rawId === 'string' ? rawId : '';
     redirect(id ? `/dashboard/cuentas/editar/${id}?error=validation` : '/dashboard/cuentas');
   }
 
-  const { id, bank, currency, balance } = parsed.data;
+  const { id, bank, currency, balance, owner_id } = parsed.data;
   const cur = currency as AccountCurrency;
   const updated = await updateAccount(id, {
     name: buildAccountName(bank.trim(), cur),
@@ -101,6 +112,7 @@ export async function updateAccountAction(formData: FormData) {
     currency: cur,
     balance_pesos: cur === 'peso' ? balance : 0,
     balance_dollars: cur !== 'peso' ? balance : 0,
+    owner_id,
   });
   if (!updated) {
     redirect('/dashboard/cuentas?error=notfound');

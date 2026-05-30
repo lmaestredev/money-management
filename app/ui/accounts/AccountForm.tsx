@@ -1,8 +1,11 @@
 import Link from 'next/link';
 import { createAccountAction } from '@/app/lib/actions/accounts';
+import { fetchPeople } from '@/app/lib/data/people';
 import styles from './AccountForm.module.css';
 
-export default function AccountForm() {
+export default async function AccountForm() {
+  const people = await fetchPeople();
+
   return (
     <form action={createAccountAction} className={styles.form}>
       <div className={styles.field}>
@@ -17,6 +20,19 @@ export default function AccountForm() {
           placeholder="Ej. Banco Galicia, Mercado Pago, Binance"
           required
         />
+      </div>
+      <div className={styles.field}>
+        <label htmlFor="owner_id" className={styles.label}>
+          Dueño
+        </label>
+        <select id="owner_id" name="owner_id" className={styles.select} defaultValue="">
+          <option value="">Compartida / sin asignar</option>
+          {people.map((person) => (
+            <option key={person.id} value={person.id}>
+              {person.name}
+            </option>
+          ))}
+        </select>
       </div>
       <div className={styles.field}>
         <label htmlFor="currency" className={styles.label}>

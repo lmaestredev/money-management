@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { updateAccountAction } from '@/app/lib/actions/accounts';
 import { getAccountBalance } from '@/app/lib/data/accounts';
+import { fetchPeople } from '@/app/lib/data/people';
 import type { Account } from '@/app/lib/definitions';
 import styles from './AccountForm.module.css';
 
@@ -8,8 +9,9 @@ type Props = {
   account: Account;
 };
 
-export default function EditAccountForm({ account }: Props) {
+export default async function EditAccountForm({ account }: Props) {
   const balance = getAccountBalance(account);
+  const people = await fetchPeople();
 
   return (
     <form action={updateAccountAction} className={styles.form}>
@@ -26,6 +28,24 @@ export default function EditAccountForm({ account }: Props) {
           defaultValue={account.bank ?? account.name}
           required
         />
+      </div>
+      <div className={styles.field}>
+        <label htmlFor="owner_id" className={styles.label}>
+          Dueño
+        </label>
+        <select
+          id="owner_id"
+          name="owner_id"
+          className={styles.select}
+          defaultValue={account.owner_id ?? ''}
+        >
+          <option value="">Compartida / sin asignar</option>
+          {people.map((person) => (
+            <option key={person.id} value={person.id}>
+              {person.name}
+            </option>
+          ))}
+        </select>
       </div>
       <div className={styles.field}>
         <label htmlFor="currency" className={styles.label}>

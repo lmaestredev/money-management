@@ -102,6 +102,12 @@ export default function AccountCard({ account }: Props) {
 
       <footer className={styles.cardFooter}>
         <span className={styles.badge}>{getBadgeLabel(account.currency)}</span>
+        {account.owner_name && (
+          <span className={styles.ownerBadge}>
+            <span aria-hidden>👤</span>
+            {account.owner_name}
+          </span>
+        )}
       </footer>
     </article>
   );

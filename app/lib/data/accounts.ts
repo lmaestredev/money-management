@@ -13,6 +13,8 @@ function rowToAccount(row: Record<string, unknown>): Account {
     balance_pesos: Number(row.balance_pesos),
     balance_dollars: Number(row.balance_dollars),
     user_id: (row.user_id as string) ?? null,
+    owner_id: (row.owner_id as string) ?? null,
+    owner_name: (row.owner_name as string) ?? null,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
   };
@@ -20,18 +22,22 @@ function rowToAccount(row: Record<string, unknown>): Account {
 
 export async function fetchAccounts(): Promise<Account[]> {
   const rows = await sql`
-    SELECT id, name, bank, currency, balance_pesos, balance_dollars, user_id, created_at, updated_at
-    FROM accounts
-    ORDER BY name ASC
+    SELECT a.id, a.name, a.bank, a.currency, a.balance_pesos, a.balance_dollars,
+           a.user_id, a.owner_id, p.name AS owner_name, a.created_at, a.updated_at
+    FROM accounts a
+    LEFT JOIN people p ON p.id = a.owner_id
+    ORDER BY a.name ASC
   `;
-  return rows.map(rowToAccount);
+  return rows.map((r) => rowToAccount(r as Record<string, unknown>));
 }
 
 export async function fetchAccountById(id: string): Promise<Account | null> {
   const [row] = await sql`
-    SELECT id, name, bank, currency, balance_pesos, balance_dollars, user_id, created_at, updated_at
-    FROM accounts
-    WHERE id = ${id}
+    SELECT a.id, a.name, a.bank, a.currency, a.balance_pesos, a.balance_dollars,
+           a.user_id, a.owner_id, p.name AS owner_name, a.created_at, a.updated_at
+    FROM accounts a
+    LEFT JOIN people p ON p.id = a.owner_id
+    WHERE a.id = ${id}
   `;
   if (!row) return null;
   return rowToAccount(row as Record<string, unknown>);
@@ -56,9 +62,9 @@ export async function createAccount(data: AccountInsert): Promise<Account> {
   const name = data.name.trim() || (data.bank ? `${data.bank} - ${currency}` : currency);
 
   const [row] = await sql`
-    INSERT INTO accounts (name, bank, currency, balance_pesos, balance_dollars, user_id)
-    VALUES (${name}, ${data.bank ?? null}, ${currency}, ${balancePesos}, ${balanceDollars}, ${data.user_id ?? null})
-    RETURNING id, name, bank, currency, balance_pesos, balance_dollars, user_id, created_at, updated_at
+    INSERT INTO accounts (name, bank, currency, balance_pesos, balance_dollars, user_id, owner_id)
+    VALUES (${name}, ${data.bank ?? null}, ${currency}, ${balancePesos}, ${balanceDollars}, ${data.user_id ?? null}, ${data.owner_id ?? null})
+    RETURNING id, name, bank, currency, balance_pesos, balance_dollars, user_id, owner_id, created_at, updated_at
   `;
   return rowToAccount((row ?? {}) as Record<string, unknown>);
 }
@@ -84,6 +90,7 @@ export type AccountUpdate = {
   currency: AccountCurrency;
   balance_pesos: number;
   balance_dollars: number;
+  owner_id?: string | null;
 };
 
 export async function updateAccount(
@@ -97,9 +104,10 @@ export async function updateAccount(
       currency = ${data.currency},
       balance_pesos = ${data.balance_pesos},
       balance_dollars = ${data.balance_dollars},
+      owner_id = ${data.owner_id ?? null},
       updated_at = NOW()
     WHERE id = ${id}
-    RETURNING id, name, bank, currency, balance_pesos, balance_dollars, user_id, created_at, updated_at
+    RETURNING id, name, bank, currency, balance_pesos, balance_dollars, user_id, owner_id, created_at, updated_at
   `;
   if (!row) return null;
   return rowToAccount(row as Record<string, unknown>);

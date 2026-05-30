@@ -13,6 +13,13 @@ export type Revenue = {
   revenue: number;
 };
 
+// Personas del hogar (dueños de cuentas; base del reporte mensual por persona)
+export type Person = {
+  id: string;
+  name: string;
+  sort_order: number;
+};
+
 // Cuentas bancarias
 export type AccountCurrency = 'peso' | 'dollar' | 'crypto';
 
@@ -24,6 +31,8 @@ export type Account = {
   balance_pesos: number;
   balance_dollars: number;
   user_id: string | null;
+  owner_id: string | null;
+  owner_name?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -35,6 +44,7 @@ export type AccountInsert = {
   balance_pesos?: number;
   balance_dollars?: number;
   user_id?: string | null;
+  owner_id?: string | null;
 };
 
 // Categorías
