@@ -40,9 +40,16 @@ export const sql =
   postgres(connectionString, {
     ssl: isLocal ? false : 'require',
     prepare: !isTransactionPooler,
-    // Pool chico: cubre con holgura las queries en paralelo de cada página.
-    max: isLocal ? 10 : 5,
-    idle_timeout: 30,
+    // Session Pooler (5432): postgres.js pipelinea las queries en paralelo de
+    // cada página (el Promise.all del dashboard) sobre UNA sola conexión, así que
+    // no hace falta un pool grande para servirlas. En serverless el límite de 15
+    // clientes en modo sesión de Supavisor se reparte entre TODOS los entornos
+    // conectados (dev local + cada instancia de Vercel); con max:5 por instancia
+    // bastan ~3 instancias para agotarlo (EMAXCONNSESSION). max:1 por instancia
+    // permite hasta 15 instancias concurrentes sin pasarnos.
+    max: isLocal ? 5 : 1,
+    // Liberar conexiones rápido para que otras instancias puedan reusar el cupo.
+    idle_timeout: isLocal ? 30 : 10,
     max_lifetime: 60 * 30,
     connect_timeout: 15,
   });
