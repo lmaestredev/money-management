@@ -1,5 +1,5 @@
 .card {
-  background: var(--color-surface);
+  background: var(--color-surface-container);
   border-radius: var(--radius-card);
   padding: 1.5rem;
   box-shadow: var(--shadow-card);
@@ -10,7 +10,7 @@
 }
 
 .card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
 .cardHeader {
@@ -23,13 +23,13 @@
   margin: 0;
   font-size: 0.9375rem;
   font-weight: 700;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
 }
 
 .cardSubtitle {
   margin: 0.25rem 0 0;
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--color-on-surface-variant);
 }
 
 .list {
@@ -43,7 +43,10 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.625rem 0;
+  border-bottom: 1px solid var(--color-outline-variant);
 }
+
+.categoryItem:last-child { border-bottom: none; }
 
 .categoryInfo {
   display: flex;
@@ -53,33 +56,34 @@
   min-width: 0;
 }
 
-.categoryIcon {
-  font-size: 1rem;
-}
+.categoryIcon { font-size: 1rem; }
 
 .categoryName {
   font-size: 0.8125rem;
   font-weight: 500;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
 }
 
 .categoryAmount {
   font-size: 0.8125rem;
   font-weight: 700;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
   flex-shrink: 0;
 }
 
 .footer {
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--color-outline-variant);
   padding-top: 0.625rem;
   margin-top: 0.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .totalLabel {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
 }
 
 .totalAmount {

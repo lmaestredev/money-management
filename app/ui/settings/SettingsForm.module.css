@@ -6,20 +6,20 @@
 }
 
 .section {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-card);
   padding: 1.25rem;
   margin: 0;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  background: var(--color-surface);
+  background: var(--color-surface-container);
 }
 
 .legend {
   font-size: 0.9375rem;
   font-weight: 700;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
   padding: 0 0.5rem;
 }
 
@@ -29,31 +29,21 @@
   gap: 1rem;
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
+.field { display: flex; flex-direction: column; gap: 0.25rem; }
 
-.label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--color-bg-dark);
-}
+.label { font-size: 0.875rem; font-weight: 500; color: var(--color-on-surface); }
 
 .input,
 .select {
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
-  color: var(--color-bg-dark);
-  border: 1px solid var(--color-surface-dark);
-  border-radius: 0.375rem;
-  background-color: var(--color-surface);
+  color: var(--color-on-surface);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-default);
+  background-color: var(--color-surface-container-high);
 }
 
-.select {
-  cursor: pointer;
-}
+.select { cursor: pointer; }
 
 .input:focus,
 .select:focus {
@@ -61,10 +51,7 @@
   outline-offset: 2px;
 }
 
-.hint {
-  font-size: 0.75rem;
-  color: #9ca3af;
-}
+.hint { font-size: 0.75rem; color: var(--color-on-surface-variant); }
 
 .checkboxRow {
   display: flex;
@@ -73,43 +60,27 @@
   cursor: pointer;
 }
 
-.checkbox {
-  margin-top: 0.1875rem;
-  width: 1rem;
-  height: 1rem;
-  cursor: pointer;
-}
+.checkbox { margin-top: 0.1875rem; width: 1rem; height: 1rem; cursor: pointer; }
 
-.checkboxLabel {
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--color-bg-dark);
-}
+.checkboxLabel { display: block; font-size: 0.875rem; font-weight: 500; color: var(--color-on-surface); }
 
-.actions {
-  display: flex;
-  gap: 0.75rem;
-}
+.actions { display: flex; gap: 0.75rem; }
 
 .button {
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: white;
+  color: var(--color-on-gradient);
   border: none;
-  border-radius: 0.375rem;
-  background-color: var(--color-primary);
+  border-radius: var(--radius-full);
+  background: var(--gradient-primary);
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: box-shadow 0.2s, transform 0.15s;
 }
 
 .button:hover {
-  opacity: 0.9;
+  box-shadow: 0 4px 16px var(--glow-primary);
+  transform: translateY(-1px);
 }
 
-@media (max-width: 540px) {
-  .row {
-    grid-template-columns: 1fr;
-  }
-}
+@media (max-width: 540px) { .row { grid-template-columns: 1fr; } }

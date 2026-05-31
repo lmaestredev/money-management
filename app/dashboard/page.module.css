@@ -28,14 +28,14 @@
   margin: 0;
   font-size: 1.625rem;
   font-weight: 700;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
   letter-spacing: -0.03125em;
 }
 
 .pageSubtitle {
   margin: 0;
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--color-on-surface-variant);
 }
 
 .headerActions {
@@ -45,10 +45,11 @@
 }
 
 .balanceMetaTag {
-  background: #f3f4f6;
+  background: var(--color-surface-container-high);
   border-radius: 6px;
   padding: 2px 7px;
   font-weight: 500;
+  color: var(--color-on-surface-variant);
 }
 
 .grid2 {

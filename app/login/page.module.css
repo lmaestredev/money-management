@@ -4,15 +4,16 @@
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  background: var(--color-bg, #f3f4f6);
+  background: var(--color-background);
 }
 
 .card {
   width: 100%;
   max-width: 22rem;
-  background: var(--color-surface, #fff);
-  border-radius: var(--radius-card, 1rem);
-  box-shadow: var(--shadow-card, 0 4px 24px rgba(0, 0, 0, 0.08));
+  background: var(--color-surface-container);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
   padding: 2rem;
   display: flex;
   flex-direction: column;
@@ -23,23 +24,23 @@
   margin: 0;
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--color-bg-dark, #111827);
+  color: var(--color-on-surface);
   text-align: center;
 }
 
 .subtitle {
   margin: 0;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--color-on-surface-variant);
   text-align: center;
 }
 
 .error {
   padding: 0.625rem 0.875rem;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 0.5rem;
-  color: #b91c1c;
+  background: var(--color-error-container);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-default);
+  color: var(--color-on-error-container);
   font-size: 0.8125rem;
   text-align: center;
 }
@@ -60,20 +61,20 @@
 .label {
   font-size: 0.8125rem;
   font-weight: 500;
-  color: var(--color-bg-dark, #111827);
+  color: var(--color-on-surface);
 }
 
 .input {
   padding: 0.625rem 0.75rem;
   font-size: 0.875rem;
-  color: var(--color-bg-dark, #111827);
-  border: 1px solid var(--color-surface-dark, #d1d5db);
-  border-radius: 0.5rem;
-  background-color: #fff;
+  color: var(--color-on-surface);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-default);
+  background-color: var(--color-surface-container-high);
 }
 
 .input:focus {
-  outline: 2px solid var(--color-primary, #3ea6ec);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
@@ -82,14 +83,15 @@
   padding: 0.625rem 1rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--color-on-gradient);
   border: none;
-  border-radius: 0.5rem;
-  background: var(--color-primary, #3ea6ec);
+  border-radius: var(--radius-full);
+  background: var(--gradient-primary);
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: box-shadow 0.2s, transform 0.15s;
 }
 
 .button:hover {
-  opacity: 0.9;
+  box-shadow: 0 6px 24px var(--glow-primary);
+  transform: translateY(-1px);
 }

@@ -9,13 +9,13 @@
   margin: 0;
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
 }
 
 .subtitle {
   margin: 0;
   font-size: 0.9375rem;
-  color: #6b7280;
+  color: var(--color-on-surface-variant);
 }
 
 .backLink {
@@ -29,16 +29,11 @@
   text-decoration: none;
 }
 
-.backLink:hover {
-  text-decoration: underline;
-}
+.backLink:hover { text-decoration: underline; }
 
 .backLink:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
-.backIcon {
-  width: 1.125rem;
-  height: 1.125rem;
-}
+.backIcon { width: 1.125rem; height: 1.125rem; }

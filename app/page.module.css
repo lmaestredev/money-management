@@ -3,7 +3,7 @@
   min-height: 100vh;
   flex-direction: column;
   padding: 1.5rem;
-  background-color: var(--color-surface);
+  background-color: var(--color-background);
 }
 
 .hero {
@@ -11,9 +11,9 @@
   height: 5rem;
   flex-shrink: 0;
   align-items: flex-end;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-xl);
   padding: 1rem;
-  background-color: var(--color-bg-dark);
+  background: var(--gradient-primary);
 }
 
 @media (min-width: 768px) {
@@ -25,7 +25,7 @@
 .heroTitle {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--color-surface);
+  color: var(--color-on-gradient);
 }
 
 .content {
@@ -47,10 +47,10 @@
   flex-direction: column;
   justify-content: center;
   gap: 1.5rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-xl);
   padding: 2.5rem 1.5rem;
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-surface-dark);
+  background-color: var(--color-surface-container);
+  border: 1px solid var(--color-outline-variant);
 }
 
 @media (min-width: 768px) {
@@ -62,7 +62,7 @@
 
 .text {
   font-size: 1.25rem;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
 }
 
 @media (min-width: 768px) {

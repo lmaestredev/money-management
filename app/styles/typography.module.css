@@ -1,0 +1,46 @@
+/**
+ * Clases utilitarias de tipografía. Una por entrada del type scale del DESIGN.
+ * Son agnósticas al color: solo tamaño, peso, interlineado y tracking.
+ */
+
+.displayLg {
+  font-size: var(--font-size-display-lg);
+  font-weight: var(--font-weight-display-lg);
+  line-height: var(--line-height-display-lg);
+  letter-spacing: var(--letter-spacing-display-lg);
+}
+
+.headlineMd {
+  font-size: var(--font-size-headline-md);
+  font-weight: var(--font-weight-headline-md);
+  line-height: var(--line-height-headline-md);
+  letter-spacing: var(--letter-spacing-headline-md);
+}
+
+.headlineSm {
+  font-size: var(--font-size-headline-sm);
+  font-weight: var(--font-weight-headline-sm);
+  line-height: var(--line-height-headline-sm);
+  letter-spacing: var(--letter-spacing-headline-sm);
+}
+
+.bodyLg {
+  font-size: var(--font-size-body-lg);
+  font-weight: var(--font-weight-body-lg);
+  line-height: var(--line-height-body-lg);
+  letter-spacing: var(--letter-spacing-body-lg);
+}
+
+.bodyMd {
+  font-size: var(--font-size-body-md);
+  font-weight: var(--font-weight-body-md);
+  line-height: var(--line-height-body-md);
+  letter-spacing: var(--letter-spacing-body-md);
+}
+
+.labelMd {
+  font-size: var(--font-size-label-md);
+  font-weight: var(--font-weight-label-md);
+  line-height: var(--line-height-label-md);
+  letter-spacing: var(--letter-spacing-label-md);
+}

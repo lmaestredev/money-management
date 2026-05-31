@@ -1,5 +1,5 @@
 .card {
-  background: var(--color-surface);
+  background: var(--color-surface-container);
   border-radius: var(--radius-card);
   padding: 1.5rem;
   box-shadow: var(--shadow-card);
@@ -10,7 +10,7 @@
 }
 
 .card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
 .cardHeader {
@@ -23,13 +23,13 @@
   margin: 0;
   font-size: 0.9375rem;
   font-weight: 700;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
 }
 
 .cardSubtitle {
   margin: 0.25rem 0 0;
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--color-on-surface-variant);
 }
 
 .budgetBlock {
@@ -47,22 +47,20 @@
 .budgetLabel {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
 }
 
 .budgetAmount {
   font-size: 0.875rem;
   font-weight: 700;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
 }
 
-.progressWrap {
-  margin-top: 0;
-}
+.progressWrap { margin-top: 0; }
 
 .progressTrack {
   height: 8px;
-  background: #f3f4f6;
+  background: var(--color-outline-variant);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -74,9 +72,7 @@
   transition: width 0.6s ease;
 }
 
-.progressFillWarning {
-  background: var(--color-warning);
-}
+.progressFillWarning { background: var(--color-warning); }
 
 .budgetStatus {
   margin: 0;
@@ -88,7 +84,7 @@
 }
 
 .divider {
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--color-outline-variant);
   padding-top: 0.75rem;
   margin-top: 0.25rem;
   display: flex;
@@ -103,13 +99,13 @@
 
 .detailLabel {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--color-on-surface-variant);
 }
 
 .detailValue {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
 }
 
 .detailValueExpense {

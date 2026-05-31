@@ -1,0 +1,45 @@
+/**
+ * Ethereal Finance — global base del design system.
+ *
+ * Importa el token layer y define el reset + base del tema oscuro.
+ *
+ * NOTA: este archivo NO se importa en el root layout para no pisar el tema
+ * actual de la app (que es claro y usa otras variables con los mismos nombres).
+ * Se importa donde se adopte el design system (hoy: la página de preview).
+ * La migración total de la app a este sistema es un paso aparte y opt-in.
+ */
+@import './tokens.css';
+
+/* ---- Reset moderno mínimo ---- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+/* ---- Base ---- */
+body {
+  background-color: var(--color-background);
+  color: var(--color-on-background);
+  font-family: var(--font-family-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Preservado del global anterior: ocultar spinners de inputs numéricos. */
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

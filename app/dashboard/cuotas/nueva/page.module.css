@@ -1,6 +1,1 @@
-.title {
-  margin-bottom: 1.5rem;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--color-bg-dark);
-}
+.title { margin-bottom: 1.5rem; font-size: 1.5rem; font-weight: 700; color: var(--color-on-surface); }

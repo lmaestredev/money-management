@@ -1,5 +1,5 @@
 .card {
-  background: var(--color-surface);
+  background: var(--color-surface-container);
   border-radius: var(--radius-card);
   padding: 1.5rem;
   box-shadow: var(--shadow-card);
@@ -10,7 +10,7 @@
 }
 
 .card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
 .cardHeader {
@@ -23,13 +23,13 @@
   margin: 0;
   font-size: 0.9375rem;
   font-weight: 700;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
 }
 
 .cardSubtitle {
   margin: 0.25rem 0 0;
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--color-on-surface-variant);
 }
 
 .list {
@@ -39,8 +39,8 @@
 }
 
 .accountCard {
-  background: linear-gradient(135deg, var(--color-surface) 0%, #f9fafb 100%);
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-container-high);
+  border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-card);
   padding: 1.125rem 1.25rem;
   display: flex;
@@ -52,7 +52,7 @@
 
 .accountCard:hover {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(62, 166, 236, 0.15);
+  box-shadow: 0 0 0 2px var(--color-primary-dim);
 }
 
 .accountHeader {
@@ -61,9 +61,7 @@
   gap: 0.625rem;
 }
 
-.accountIcon {
-  font-size: 1.125rem;
-}
+.accountIcon { font-size: 1.125rem; }
 
 .accountInfo {
   display: flex;
@@ -74,21 +72,21 @@
 .accountName {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
 }
 
 .accountType {
   font-size: 0.6875rem;
-  color: #9ca3af;
+  color: var(--color-on-surface-variant);
 }
 
 .accountAmount {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
 }
 
 .accountSecondary {
   font-size: 0.6875rem;
-  color: #9ca3af;
+  color: var(--color-on-surface-variant);
 }

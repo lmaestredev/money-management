@@ -1,0 +1,154 @@
+/**
+ * Ethereal Finance — token layer.
+ * Único lugar del codebase donde viven valores crudos (hex / px / rgba).
+ * Todo lo demás debe consumir estas custom properties.
+ */
+:root {
+  /* ---- Color: surfaces ---- */
+  --color-surface: #131313;
+  --color-surface-dim: #131313;
+  --color-surface-bright: #393939;
+  --color-surface-container-lowest: #0e0e0e;
+  --color-surface-container-low: #1c1b1b;
+  --color-surface-container: #201f1f;
+  --color-surface-container-high: #2a2a2a;
+  --color-surface-container-highest: #353534;
+  --color-surface-variant: #353534;
+  --color-surface-tint: #c0c1ff;
+
+  /* ---- Color: on-surface / text ---- */
+  --color-on-surface: #e5e2e1;
+  --color-on-surface-variant: #c7c4d7;
+  --color-inverse-surface: #e5e2e1;
+  --color-inverse-on-surface: #313030;
+
+  /* ---- Color: outlines ---- */
+  --color-outline: #908fa0;
+  --color-outline-variant: #464554;
+
+  /* ---- Color: primary ---- */
+  --color-primary: #c0c1ff;
+  --color-on-primary: #1000a9;
+  --color-primary-container: #8083ff;
+  --color-on-primary-container: #0d0096;
+  --color-inverse-primary: #494bd6;
+
+  /* ---- Color: secondary ---- */
+  --color-secondary: #ddb7ff;
+  --color-on-secondary: #490080;
+  --color-secondary-container: #6f00be;
+  --color-on-secondary-container: #d6a9ff;
+
+  /* ---- Color: tertiary (positive / growth) ---- */
+  --color-tertiary: #3cddc7;
+  --color-on-tertiary: #003731;
+  --color-tertiary-container: #008678;
+  --color-on-tertiary-container: #000705;
+
+  /* ---- Color: error (expenses / alerts) ---- */
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+
+  /* ---- Color: fixed accents ---- */
+  --color-primary-fixed: #e1e0ff;
+  --color-primary-fixed-dim: #c0c1ff;
+  --color-on-primary-fixed: #07006c;
+  --color-on-primary-fixed-variant: #2f2ebe;
+  --color-secondary-fixed: #f0dbff;
+  --color-secondary-fixed-dim: #ddb7ff;
+  --color-on-secondary-fixed: #2c0051;
+  --color-on-secondary-fixed-variant: #6900b3;
+  --color-tertiary-fixed: #62fae3;
+  --color-tertiary-fixed-dim: #3cddc7;
+  --color-on-tertiary-fixed: #00201c;
+  --color-on-tertiary-fixed-variant: #005047;
+
+  /* ---- Color: background ---- */
+  --color-background: #131313;
+  --color-on-background: #e5e2e1;
+
+  /* ---- Extendidos (app-specific, no en el DESIGN base) ---- */
+  --color-warning: #f5b338;
+  --color-tertiary-dim: rgba(60, 221, 199, 0.14);
+  --color-error-dim: rgba(255, 180, 171, 0.14);
+  --color-secondary-dim: rgba(221, 183, 255, 0.14);
+  --color-warning-dim: rgba(245, 179, 56, 0.14);
+  --color-primary-dim: rgba(192, 193, 255, 0.14);
+
+  /* ---- Gradients (Indigo → Purple, action elements) ---- */
+  --color-gradient-start: #6366f1;
+  --color-gradient-end: #a855f7;
+  --color-on-gradient: #ffffff;
+  --gradient-primary: linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-end));
+
+  /* ---- Glass (frosted overlays) ---- */
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-bg-floating: rgba(255, 255, 255, 0.1);
+  --glass-blur: 20px;
+  --glass-blur-floating: 40px;
+  --glass-border-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0));
+
+  /* ---- Glow (interaction bloom = primary at low opacity) ---- */
+  --glow-primary: rgba(192, 193, 255, 0.35);
+  --glow-primary-strong: rgba(192, 193, 255, 0.5);
+
+  /* ---- Typography: font family ---- */
+  --font-family-base: var(--font-inter), 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* ---- Typography: font sizes ---- */
+  --font-size-display-lg: 32px;
+  --font-size-display-lg-mobile: 28px;
+  --font-size-headline-md: 24px;
+  --font-size-headline-sm: 20px;
+  --font-size-body-lg: 16px;
+  --font-size-body-md: 14px;
+  --font-size-label-md: 12px;
+
+  /* ---- Typography: font weights ---- */
+  --font-weight-display-lg: 700;
+  --font-weight-display-lg-mobile: 700;
+  --font-weight-headline-md: 600;
+  --font-weight-headline-sm: 600;
+  --font-weight-body-lg: 400;
+  --font-weight-body-md: 400;
+  --font-weight-label-md: 500;
+
+  /* ---- Typography: line heights ---- */
+  --line-height-display-lg: 1.2;
+  --line-height-display-lg-mobile: 1.2;
+  --line-height-headline-md: 1.3;
+  --line-height-headline-sm: 1.4;
+  --line-height-body-lg: 1.6;
+  --line-height-body-md: 1.5;
+  --line-height-label-md: 1.2;
+
+  /* ---- Typography: letter spacing ---- */
+  --letter-spacing-display-lg: -0.02em;
+  --letter-spacing-display-lg-mobile: -0.02em;
+  --letter-spacing-headline-md: normal;
+  --letter-spacing-headline-sm: normal;
+  --letter-spacing-body-lg: normal;
+  --letter-spacing-body-md: normal;
+  --letter-spacing-label-md: 0.01em;
+
+  /* ---- Radius ---- */
+  --radius-sm: 0.25rem;
+  --radius-default: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* ---- Spacing (8px baseline) ---- */
+  --spacing-base: 4px;
+  --spacing-xs: 8px;
+  --spacing-sm: 16px;
+  --spacing-md: 24px;
+  --spacing-lg: 32px;
+  --spacing-xl: 48px;
+  --spacing-gutter: 16px;
+  --spacing-margin-mobile: 20px;
+  --spacing-margin-desktop: 40px;
+}

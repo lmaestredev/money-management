@@ -1,166 +1,25 @@
-.card {
-  background: var(--color-surface);
-  border-radius: var(--radius-card);
-  padding: 1.5rem;
-  box-shadow: var(--shadow-card);
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-}
-
-.cardHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.cardTitle {
-  margin: 0;
-  font-size: 0.9375rem;
-  font-weight: 700;
-  color: var(--color-bg-dark);
-}
-
-.cardSubtitle {
-  margin: 0.25rem 0 0;
-  font-size: 0.75rem;
-  color: #9ca3af;
-}
-
-.manageLink {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.manageLink:hover {
-  text-decoration: underline;
-}
-
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.item {
-  background: linear-gradient(135deg, var(--color-surface) 0%, #f9fafb 100%);
-  border: 1px solid #e5e7eb;
-  border-radius: var(--radius-card);
-  padding: 1rem 1.125rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.item:hover {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(62, 166, 236, 0.15);
-}
-
-.itemHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.itemName {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-bg-dark);
-}
-
-.itemMonthly {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: var(--color-expense);
-  white-space: nowrap;
-}
-
-.itemMeta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 0.6875rem;
-  color: #9ca3af;
-}
-
-.itemRemaining {
-  white-space: nowrap;
-}
-
-.progressRow {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.progressBar {
-  flex: 1;
-  height: 6px;
-  background: #f3f4f6;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.progressFill {
-  height: 100%;
-  border-radius: 3px;
-  background: var(--color-primary);
-  transition: width 0.6s ease;
-}
-
-.progressLabel {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--color-bg-dark);
-  min-width: 2.5rem;
-  text-align: right;
-}
-
-.totalBlock {
-  background: var(--color-income-dim);
-  border-radius: 0.625rem;
-  padding: 0.625rem 0.75rem;
-  text-align: center;
-  margin-top: 0.25rem;
-}
-
-.totalLabel {
-  font-size: 0.6875rem;
-  color: #9ca3af;
-}
-
-.totalAmount {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: var(--color-expense);
-  margin-top: 0.125rem;
-}
-
-.placeholder {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: #9ca3af;
-}
-
-.inlineLink {
-  color: var(--color-primary);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.inlineLink:hover {
-  text-decoration: underline;
-}
+.card { background: var(--color-surface-container); border-radius: var(--radius-card); padding: 1.5rem; box-shadow: var(--shadow-card); display: flex; flex-direction: column; gap: 1rem; transition: transform 0.2s, box-shadow 0.2s; }
+.card:hover { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45); }
+.cardHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
+.cardTitle { margin: 0; font-size: 0.9375rem; font-weight: 700; color: var(--color-on-surface); }
+.cardSubtitle { margin: 0.25rem 0 0; font-size: 0.75rem; color: var(--color-on-surface-variant); }
+.manageLink { font-size: 0.75rem; font-weight: 600; color: var(--color-primary); text-decoration: none; white-space: nowrap; }
+.manageLink:hover { text-decoration: underline; }
+.list { display: flex; flex-direction: column; gap: 0.75rem; }
+.item { background: var(--color-surface-container-high); border: 1px solid var(--color-outline-variant); border-radius: var(--radius-card); padding: 1rem 1.125rem; display: flex; flex-direction: column; gap: 0.5rem; transition: border-color 0.2s, box-shadow 0.2s; }
+.item:hover { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary-dim); }
+.itemHeader { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.itemName { font-size: 0.8125rem; font-weight: 600; color: var(--color-on-surface); }
+.itemMonthly { font-size: 0.8125rem; font-weight: 700; color: var(--color-expense); white-space: nowrap; }
+.itemMeta { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.6875rem; color: var(--color-on-surface-variant); }
+.itemRemaining { white-space: nowrap; }
+.progressRow { display: flex; align-items: center; gap: 0.5rem; }
+.progressBar { flex: 1; height: 6px; background: var(--color-outline-variant); border-radius: 3px; overflow: hidden; }
+.progressFill { height: 100%; border-radius: 3px; background: var(--color-primary); transition: width 0.6s ease; }
+.progressLabel { font-size: 0.6875rem; font-weight: 600; color: var(--color-on-surface); min-width: 2.5rem; text-align: right; }
+.totalBlock { background: var(--color-expense-dim); border-radius: 0.625rem; padding: 0.625rem 0.75rem; text-align: center; margin-top: 0.25rem; }
+.totalLabel { font-size: 0.6875rem; color: var(--color-on-surface-variant); }
+.totalAmount { font-size: 1.125rem; font-weight: 700; color: var(--color-expense); margin-top: 0.125rem; }
+.placeholder { margin: 0; font-size: 0.8125rem; color: var(--color-on-surface-variant); }
+.inlineLink { color: var(--color-primary); font-weight: 600; text-decoration: none; }
+.inlineLink:hover { text-decoration: underline; }

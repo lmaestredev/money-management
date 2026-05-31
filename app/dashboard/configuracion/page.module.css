@@ -14,16 +14,18 @@
   margin: 0;
   font-size: 1.625rem;
   font-weight: 700;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
   letter-spacing: -0.03125em;
 }
 
 .pageSubtitle {
   margin: 0;
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--color-on-surface-variant);
 }
 
+/* Los banners de éxito/error los dejamos para compatibilidad futura,
+   aunque ya se reemplazaron por toasts en esta pantalla. */
 .successBanner {
   display: flex;
   align-items: center;
@@ -31,10 +33,10 @@
   max-width: 40rem;
   padding: 0.75rem 1rem;
   font-size: 0.875rem;
-  color: #166534;
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-radius: 0.5rem;
+  color: var(--color-income);
+  background: var(--color-income-dim);
+  border: 1px solid var(--color-income);
+  border-radius: var(--radius-default);
 }
 
 .errorBanner {
@@ -44,8 +46,8 @@
   max-width: 40rem;
   padding: 0.75rem 1rem;
   font-size: 0.875rem;
-  color: #991b1b;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 0.5rem;
+  color: var(--color-on-error-container);
+  background: var(--color-error-container);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-default);
 }

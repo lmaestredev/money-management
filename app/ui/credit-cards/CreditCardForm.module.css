@@ -20,16 +20,16 @@
 .label {
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
 }
 
 .input {
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
-  color: var(--color-bg-dark);
-  border: 1px solid var(--color-surface-dark);
-  border-radius: 0.375rem;
-  background-color: var(--color-surface);
+  color: var(--color-on-surface);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-default);
+  background-color: var(--color-surface-container-high);
 }
 
 .input:focus {
@@ -40,34 +40,48 @@
 .select {
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
-  color: var(--color-bg-dark);
-  border: 1px solid var(--color-surface-dark);
-  border-radius: 0.375rem;
-  background-color: var(--color-surface);
+  color: var(--color-on-surface);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-default);
+  background-color: var(--color-surface-container-high);
   cursor: pointer;
+}
+
+.select:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .button {
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: white;
+  color: var(--color-on-gradient);
   border: none;
-  border-radius: 0.375rem;
-  background-color: var(--color-primary);
+  border-radius: var(--radius-full);
+  background: var(--gradient-primary);
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: box-shadow 0.2s, transform 0.15s;
   align-self: flex-start;
 }
 
 .button:hover {
-  opacity: 0.9;
+  box-shadow: 0 4px 16px var(--glow-primary);
+  transform: translateY(-1px);
 }
 
 .buttonSecondary {
-  color: var(--color-bg-dark);
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-surface-dark);
+  color: var(--color-on-surface);
+  background: transparent;
+  border: 1px solid var(--color-outline-variant);
+  box-shadow: none;
+}
+
+.buttonSecondary:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  transform: none;
+  box-shadow: none;
 }
 
 .actions {
@@ -76,8 +90,4 @@
   margin-top: 0.5rem;
 }
 
-@media (max-width: 540px) {
-  .row {
-    grid-template-columns: 1fr;
-  }
-}
+@media (max-width: 540px) { .row { grid-template-columns: 1fr; } }

@@ -5,7 +5,7 @@
 }
 
 .summaryCard {
-  background: var(--color-surface);
+  background: var(--color-surface-container);
   border-radius: var(--radius-card);
   padding: 1.25rem 1.375rem;
   box-shadow: var(--shadow-card);
@@ -19,7 +19,7 @@
 
 .summaryCard:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
 .summaryCard::after {
@@ -31,17 +31,9 @@
   height: 3px;
 }
 
-.summaryCardBalance::after {
-  background: linear-gradient(90deg, var(--color-primary), #1a7fc4);
-}
-
-.summaryCardIncome::after {
-  background: linear-gradient(90deg, var(--color-income), #16a34a);
-}
-
-.summaryCardExpense::after {
-  background: linear-gradient(90deg, var(--color-expense), #dc2626);
-}
+.summaryCardBalance::after { background: var(--gradient-primary); }
+.summaryCardIncome::after  { background: var(--color-income); }
+.summaryCardExpense::after { background: var(--color-expense); }
 
 .summaryCardHeader {
   display: flex;
@@ -54,7 +46,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #9ca3af;
+  color: var(--color-on-surface-variant);
 }
 
 .summaryCardIcon {
@@ -67,40 +59,25 @@
   font-size: 1rem;
 }
 
-.summaryCardIconBalance {
-  background: rgba(62, 166, 236, 0.15);
-}
-
-.summaryCardIconIncome {
-  background: var(--color-income-dim);
-}
-
-.summaryCardIconExpense {
-  background: var(--color-expense-dim);
-}
+.summaryCardIconBalance { background: var(--color-primary-dim); }
+.summaryCardIconIncome  { background: var(--color-income-dim); }
+.summaryCardIconExpense { background: var(--color-expense-dim); }
 
 .summaryCardAmount {
   font-size: 1.75rem;
   font-weight: 700;
   letter-spacing: -0.025em;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
 }
 
-.summaryCardAmountIncome {
-  color: var(--color-income);
-}
+.summaryCardAmountIncome  { color: var(--color-income); }
+.summaryCardAmountExpense { color: var(--color-expense); }
 
-.summaryCardAmountExpense {
-  color: var(--color-expense);
-}
-
-.summaryCardProgress {
-  margin-top: 0.25rem;
-}
+.summaryCardProgress { margin-top: 0.25rem; }
 
 .summaryCardProgressTrack {
   height: 4px;
-  background: #f3f4f6;
+  background: var(--color-outline-variant);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -111,21 +88,13 @@
   transition: width 0.6s ease;
 }
 
-.summaryCardProgressFillBalance {
-  background: linear-gradient(90deg, var(--color-primary), #1a7fc4);
-}
-
-.summaryCardProgressFillIncome {
-  background: var(--color-income);
-}
-
-.summaryCardProgressFillExpense {
-  background: var(--color-expense);
-}
+.summaryCardProgressFillBalance { background: var(--gradient-primary); }
+.summaryCardProgressFillIncome  { background: var(--color-income); }
+.summaryCardProgressFillExpense { background: var(--color-expense); }
 
 .summaryCardMeta {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--color-on-surface-variant);
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -133,10 +102,11 @@
 }
 
 .summaryCardTag {
-  background: #f3f4f6;
+  background: var(--color-surface-container-high);
   border-radius: 6px;
   padding: 2px 7px;
   font-weight: 500;
+  color: var(--color-on-surface-variant);
 }
 
 @media (min-width: 768px) {

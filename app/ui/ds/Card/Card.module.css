@@ -1,0 +1,10 @@
+.card {
+  padding: var(--spacing-md);
+  color: var(--color-on-surface);
+}
+
+/* Variante surface: contenedor sólido charcoal. */
+.surface {
+  background: var(--color-surface-container);
+  border-radius: var(--radius-xl);
+}

@@ -1,5 +1,5 @@
 .card {
-  background: var(--color-surface);
+  background: var(--color-surface-container);
   border-radius: var(--radius-card);
   padding: 1.5rem;
   box-shadow: var(--shadow-card);
@@ -10,7 +10,7 @@
 }
 
 .card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
 .cardHeader {
@@ -23,13 +23,13 @@
   margin: 0;
   font-size: 0.9375rem;
   font-weight: 700;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
 }
 
 .cardSubtitle {
   margin: 0.25rem 0 0;
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--color-on-surface-variant);
 }
 
 .list {
@@ -39,8 +39,8 @@
 }
 
 .creditCard {
-  background: linear-gradient(135deg, var(--color-surface) 0%, #f9fafb 100%);
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-container-high);
+  border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-card);
   padding: 1.125rem 1.25rem;
   display: flex;
@@ -51,7 +51,7 @@
 
 .creditCard:hover {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(62, 166, 236, 0.15);
+  box-shadow: 0 0 0 2px var(--color-primary-dim);
 }
 
 .ccHeader {
@@ -63,12 +63,10 @@
 .ccName {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
 }
 
-.ccIcon {
-  font-size: 1.125rem;
-}
+.ccIcon { font-size: 1.125rem; }
 
 .ccAmount {
   font-size: 1.125rem;
@@ -78,7 +76,7 @@
 
 .ccLimit {
   font-size: 0.6875rem;
-  color: #9ca3af;
+  color: var(--color-on-surface-variant);
 }
 
 .ccProgress {
@@ -91,7 +89,7 @@
 .progressBar {
   flex: 1;
   height: 6px;
-  background: #f3f4f6;
+  background: var(--color-outline-variant);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -106,13 +104,13 @@
 .ccPct {
   font-size: 0.6875rem;
   font-weight: 600;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
   min-width: 2rem;
   text-align: right;
 }
 
 .totalBlock {
-  background: var(--color-income-dim);
+  background: var(--color-expense-dim);
   border-radius: 0.625rem;
   padding: 0.625rem 0.75rem;
   text-align: center;
@@ -121,7 +119,7 @@
 
 .totalLabel {
   font-size: 0.6875rem;
-  color: #9ca3af;
+  color: var(--color-on-surface-variant);
 }
 
 .totalAmount {
@@ -134,7 +132,7 @@
 .placeholder {
   margin: 0;
   font-size: 0.8125rem;
-  color: #9ca3af;
+  color: var(--color-on-surface-variant);
 }
 
 .headerLink {
@@ -145,9 +143,7 @@
   white-space: nowrap;
 }
 
-.headerLink:hover {
-  text-decoration: underline;
-}
+.headerLink:hover { text-decoration: underline; }
 
 .placeholderLink {
   color: var(--color-primary);
@@ -155,6 +151,4 @@
   text-decoration: none;
 }
 
-.placeholderLink:hover {
-  text-decoration: underline;
-}
+.placeholderLink:hover { text-decoration: underline; }

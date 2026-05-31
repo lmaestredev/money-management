@@ -1,0 +1,125 @@
+.page {
+  min-height: 100vh;
+  background: var(--color-background);
+  color: var(--color-on-background);
+  padding: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.pageTitle {
+  color: var(--color-on-surface);
+}
+
+.pageSubtitle {
+  color: var(--color-on-surface-variant);
+  margin-top: var(--spacing-xs);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.sectionTitle {
+  color: var(--color-on-surface);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--color-outline-variant);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.onSurface {
+  color: var(--color-on-surface);
+}
+
+.onSurfaceVariant {
+  color: var(--color-on-surface-variant);
+}
+
+.cardTitle {
+  color: var(--color-on-surface);
+  margin-bottom: var(--spacing-xs);
+}
+
+.cardText {
+  color: var(--color-on-surface-variant);
+}
+
+/* Escenario para mostrar el desenfoque del glass sobre algo de color. */
+.glassStage {
+  position: relative;
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-container-lowest);
+  overflow: hidden;
+}
+
+.blob {
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  border-radius: var(--radius-full);
+  background: var(--gradient-primary);
+  filter: blur(40px);
+  opacity: 0.8;
+  z-index: 0;
+}
+
+.blobOne {
+  top: -40px;
+  left: -20px;
+}
+
+.blobTwo {
+  bottom: -60px;
+  right: 10px;
+  background: linear-gradient(135deg, var(--color-tertiary), var(--color-secondary));
+}
+
+.glassStage > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Swatches de color para verificar tokens. */
+.swatchGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.swatch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-base);
+}
+
+.swatchChip {
+  height: 56px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-outline-variant);
+}
+
+.swatchLabel {
+  color: var(--color-on-surface-variant);
+}

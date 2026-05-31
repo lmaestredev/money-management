@@ -1,26 +1,43 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&display=swap');
+@import '../styles/tokens.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Puente legacy → Ethereal.
+ *
+ * La app se construyó sobre variables propias (--color-surface, --color-bg-dark,
+ * etc.) con semántica de tema claro. Para virar todo al tema oscuro del design
+ * system sin reescribir 59 archivos de una, redefinimos esas variables por su
+ * ROL DOMINANTE en términos de los tokens Ethereal (importados arriba).
+ *
+ * - --color-surface       => fondo de cards/inputs  -> surface-container
+ * - --color-bg-dark       => texto / foreground      -> on-surface
+ * - --color-surface-dark  => bordes / divisores      -> outline-variant
+ * - --color-primary       => lo deja el token Ethereal (no se redefine acá)
+ *
+ * Los pocos lugares donde una variable se usaba con rol inverso (fondos oscuros
+ * del chrome) se corrigen directo en sus módulos por fase.
+ */
 :root {
-  --color-bg-dark: #161d26;
-  --color-surface-dark: #232d3d;
-  --color-surface: #ebebf0;
-  --color-primary: #3ea6ec;
-  --color-income: #22c55e;
-  --color-income-dim: rgba(34, 197, 94, 0.12);
-  --color-expense: #ef4444;
-  --color-expense-dim: rgba(239, 68, 68, 0.12);
-  --color-fixed: #7c3aed;
-  --color-fixed-dim: rgba(124, 58, 237, 0.12);
-  --color-warning: #f59e0b;
-  --color-warning-dim: rgba(245, 158, 11, 0.12);
-  --radius-card: 14px;
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.06);
-  --font-sans: 'DM Sans', system-ui, sans-serif;
-  --font-heading: 'Fraunces', Georgia, serif;
+  --color-surface: var(--color-surface-container);
+  --color-bg-dark: var(--color-on-surface);
+  --color-surface-dark: var(--color-outline-variant);
+
+  --color-income: var(--color-tertiary);
+  --color-income-dim: var(--color-tertiary-dim);
+  --color-expense: var(--color-error);
+  --color-expense-dim: var(--color-error-dim);
+  --color-fixed: var(--color-secondary);
+  --color-fixed-dim: var(--color-secondary-dim);
+  /* --color-warning y --color-warning-dim ya vienen de tokens.css */
+
+  --radius-card: var(--radius-lg);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+
+  --font-sans: var(--font-family-base);
+  --font-heading: var(--font-family-base);
 }
 
 html,
@@ -30,7 +47,8 @@ body {
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--color-surface);
+  background-color: var(--color-background);
+  color: var(--color-on-background);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

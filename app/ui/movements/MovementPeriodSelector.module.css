@@ -2,20 +2,20 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-container);
+  border: 1px solid var(--color-outline-variant);
   border-radius: 0.625rem;
   padding: 0.5rem 0.875rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--color-bg-dark);
+  color: var(--color-on-surface);
   box-shadow: var(--shadow-card);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .wrapper:hover {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(62, 166, 236, 0.15);
+  box-shadow: 0 0 0 3px var(--color-primary-dim);
 }
 
 .button {
@@ -35,7 +35,7 @@
 }
 
 .button:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--color-surface-container-high);
   color: var(--color-primary);
 }
 

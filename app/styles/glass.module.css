@@ -1,0 +1,40 @@
+/**
+ * Glassmorphism reutilizable. Se aplican por composición de className.
+ * El borde de 1px usa un linear-gradient (blanco 20% → transparente) para
+ * simular el "brillo" en el canto del vidrio.
+ */
+
+.glassBase {
+  border: 1px solid transparent;
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(var(--glass-bg), var(--glass-bg)) padding-box,
+    var(--glass-border-gradient) border-box;
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
+/* Capa flotante: más blur y por encima del resto (modales / overlays). */
+.glassFloating {
+  position: relative;
+  z-index: 50;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(var(--glass-bg-floating), var(--glass-bg-floating)) padding-box,
+    var(--glass-border-gradient) border-box;
+  backdrop-filter: blur(var(--glass-blur-floating));
+  -webkit-backdrop-filter: blur(var(--glass-blur-floating));
+}
+
+/* Estado :hover con bloom exterior usando el primary a baja opacidad. */
+.glassHover {
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.glassHover:hover {
+  box-shadow:
+    0 0 0 1px var(--glow-primary),
+    0 12px 48px var(--glow-primary);
+  transform: translateY(-2px);
+}
