@@ -8,6 +8,7 @@ import {
   deleteRecurringIncome,
   receiveRecurringIncome,
 } from '@/app/lib/data/recurring-incomes';
+import { redirectWithToast } from '@/app/lib/toast-redirect';
 
 const optionalNumber = z
   .string()
@@ -57,7 +58,7 @@ export async function createRecurringIncomeAction(formData: FormData) {
 
   revalidatePath('/dashboard/ingresos');
   revalidatePath('/dashboard');
-  redirect('/dashboard/ingresos');
+  redirectWithToast('/dashboard/ingresos', 'Ingreso recurrente creado');
 }
 
 const receiveIncomeFormSchema = z.object({
@@ -84,7 +85,7 @@ export async function receiveRecurringIncomeAction(formData: FormData) {
   revalidatePath('/dashboard/movimientos');
   revalidatePath('/dashboard/ingresos');
   revalidatePath('/dashboard');
-  redirect(`/dashboard/movimientos?period=${period}`);
+  redirectWithToast(`/dashboard/movimientos?period=${period}`, 'Ingreso registrado');
 }
 
 const deleteIncomeFormSchema = z.object({ id: z.string().uuid() });
@@ -108,5 +109,5 @@ export async function deleteRecurringIncomeAction(formData: FormData) {
   revalidatePath('/dashboard/ingresos');
   revalidatePath('/dashboard');
   revalidatePath('/dashboard/movimientos');
-  redirect('/dashboard/ingresos');
+  redirectWithToast('/dashboard/ingresos', 'Ingreso eliminado');
 }

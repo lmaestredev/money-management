@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { fetchAccountById } from '@/app/lib/data/accounts';
 import { fetchCreditCardById } from '@/app/lib/data/credit-cards';
 import { createMovement, deleteMovement, updateMovement } from '@/app/lib/data/movements';
+import { redirectWithToast } from '@/app/lib/toast-redirect';
 import type { AccountCurrency } from '@/app/lib/definitions';
 
 const optionalUuid = z
@@ -144,7 +145,9 @@ export async function createMovementAction(formData: FormData) {
     'app'
   );
 
-  redirect(`/dashboard/movimientos?period=${data.period}`);
+  revalidatePath('/dashboard/movimientos');
+  revalidatePath('/dashboard');
+  redirectWithToast(`/dashboard/movimientos?period=${data.period}`, 'Movimiento guardado');
 }
 
 const updateMovementFormSchema = createMovementFormSchema.extend({
@@ -239,7 +242,7 @@ export async function updateMovementAction(formData: FormData) {
 
   revalidatePath('/dashboard/movimientos');
   revalidatePath('/dashboard');
-  redirect(`/dashboard/movimientos?period=${data.period}`);
+  redirectWithToast(`/dashboard/movimientos?period=${data.period}`, 'Movimiento actualizado');
 }
 
 const deleteMovementFormSchema = z.object({
@@ -263,5 +266,5 @@ export async function deleteMovementAction(formData: FormData) {
   revalidatePath('/dashboard');
   revalidatePath('/dashboard/cuotas');
   revalidatePath('/dashboard/gastos-fijos');
-  redirect(`/dashboard/movimientos?period=${period}`);
+  redirectWithToast(`/dashboard/movimientos?period=${period}`, 'Movimiento eliminado');
 }

@@ -1,0 +1,74 @@
+.container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  pointer-events: none;
+}
+
+.toast {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem 1.4rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  max-width: 340px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  pointer-events: auto;
+  animation: toastFadeIn 0.6s ease-out both;
+}
+
+/* Tema professional */
+.professional {
+  background: #2e2e2e;
+  color: #eee;
+}
+
+.exit {
+  animation: toastFadeOut 0.3s ease-in both;
+}
+
+.icon {
+  width: 1.4rem;
+  height: 1.4rem;
+  flex-shrink: 0;
+}
+
+.iconSuccess {
+  color: #34d399;
+}
+
+.iconError {
+  color: #f87171;
+}
+
+.message {
+  flex: 1;
+}
+
+@keyframes toastFadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes toastFadeOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}

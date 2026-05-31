@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createAccountAction } from '@/app/lib/actions/accounts';
 import { fetchPeople } from '@/app/lib/data/people';
+import SubmitButton from '@/app/ui/SubmitButton';
 import styles from './AccountForm.module.css';
 
 export default async function AccountForm() {
@@ -60,9 +61,7 @@ export default async function AccountForm() {
         />
       </div>
       <div className={styles.actions}>
-        <button type="submit" className={styles.button}>
-          Guardar cuenta
-        </button>
+        <SubmitButton>Guardar cuenta</SubmitButton>
         <Link href="/dashboard/cuentas" className={`${styles.button} ${styles.buttonSecondary}`}>
           Cancelar
         </Link>

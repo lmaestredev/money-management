@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { updateMovementAction } from '@/app/lib/actions/movements';
+import SubmitButton from '@/app/ui/SubmitButton';
 import PaymentSourceSelect, { type PaymentSource } from '@/app/ui/credit-cards/PaymentSourceSelect';
 import type { Account, AccountCurrency, Category, CreditCard, Movement } from '@/app/lib/definitions';
 import styles from './MovementForm.module.css';
@@ -173,9 +174,7 @@ export default function EditMovementForm({ movement, accounts, cards, categories
       </div>
 
       <div className={styles.actions}>
-        <button type="submit" className={styles.button}>
-          Guardar cambios
-        </button>
+        <SubmitButton>Guardar cambios</SubmitButton>
         <Link
           href={`/dashboard/movimientos?period=${movement.period}`}
           className={`${styles.button} ${styles.buttonSecondary}`}

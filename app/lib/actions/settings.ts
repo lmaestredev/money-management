@@ -1,6 +1,5 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { refreshExchangeRates } from '@/app/lib/data/exchange-rates';
@@ -41,7 +40,13 @@ const settingsFormSchema = z.object({
     }),
 });
 
-export async function updateSettingsAction(formData: FormData) {
+// Estado que devuelve la action a useActionState (para disparar el toast).
+export type SettingsActionState = { ok: boolean; message: string } | null;
+
+export async function updateSettingsAction(
+  _prevState: SettingsActionState,
+  formData: FormData
+): Promise<SettingsActionState> {
   const parsed = settingsFormSchema.safeParse({
     budget_total_usd: formData.get('budget_total_usd') ?? undefined,
     budget_variable_usd: formData.get('budget_variable_usd') ?? undefined,
@@ -50,7 +55,7 @@ export async function updateSettingsAction(formData: FormData) {
     manual_rate_value: formData.get('manual_rate_value') ?? undefined,
   });
   if (!parsed.success) {
-    redirect('/dashboard/configuracion?error=validation');
+    return { ok: false, message: 'No se pudo guardar. Revisá los valores.' };
   }
 
   const d = parsed.data;
@@ -62,7 +67,9 @@ export async function updateSettingsAction(formData: FormData) {
     manual_rate_value: d.manual_rate_value,
   });
 
+  // Sin redirect: revalidamos para refrescar los datos en la misma pantalla y
+  // devolvemos el estado para que el cliente muestre el toast de confirmación.
   revalidatePath('/dashboard/configuracion');
   revalidatePath('/dashboard');
-  redirect('/dashboard/configuracion?saved=1');
+  return { ok: true, message: 'Configuración guardada.' };
 }

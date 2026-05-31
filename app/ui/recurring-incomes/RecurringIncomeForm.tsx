@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { createRecurringIncomeAction } from '@/app/lib/actions/recurring-incomes';
+import SubmitButton from '@/app/ui/SubmitButton';
 import type { Account, Category } from '@/app/lib/definitions';
 import styles from './RecurringIncomeForm.module.css';
 
@@ -107,9 +108,7 @@ export default function RecurringIncomeForm({ accounts, categories }: Props) {
       </div>
 
       <div className={styles.actions}>
-        <button type="submit" className={styles.button}>
-          Guardar
-        </button>
+        <SubmitButton>Guardar</SubmitButton>
         <Link href="/dashboard/ingresos" className={`${styles.button} ${styles.buttonSecondary}`}>
           Cancelar
         </Link>

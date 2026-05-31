@@ -8,6 +8,7 @@ import {
   deleteRecurringExpense,
   payRecurringExpense,
 } from '@/app/lib/data/recurring';
+import { redirectWithToast } from '@/app/lib/toast-redirect';
 
 const optionalNumber = z
   .string()
@@ -68,7 +69,7 @@ export async function createRecurringExpenseAction(formData: FormData) {
 
   revalidatePath('/dashboard/gastos-fijos');
   revalidatePath('/dashboard');
-  redirect('/dashboard/gastos-fijos');
+  redirectWithToast('/dashboard/gastos-fijos', 'Gasto fijo creado');
 }
 
 const payRecurringFormSchema = z.object({
@@ -95,7 +96,7 @@ export async function payRecurringExpenseAction(formData: FormData) {
   revalidatePath('/dashboard/movimientos');
   revalidatePath('/dashboard/gastos-fijos');
   revalidatePath('/dashboard');
-  redirect(`/dashboard/movimientos?period=${period}`);
+  redirectWithToast(`/dashboard/movimientos?period=${period}`, 'Gasto fijo pagado');
 }
 
 const deleteRecurringFormSchema = z.object({ id: z.string().uuid() });
@@ -119,5 +120,5 @@ export async function deleteRecurringExpenseAction(formData: FormData) {
   revalidatePath('/dashboard/gastos-fijos');
   revalidatePath('/dashboard');
   revalidatePath('/dashboard/movimientos');
-  redirect('/dashboard/gastos-fijos');
+  redirectWithToast('/dashboard/gastos-fijos', 'Gasto fijo eliminado');
 }

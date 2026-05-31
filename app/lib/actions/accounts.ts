@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createAccount, deleteAccount, updateAccount } from '@/app/lib/data/accounts';
+import { redirectWithToast } from '@/app/lib/toast-redirect';
 import type { AccountCurrency } from '@/app/lib/definitions';
 
 function buildAccountName(bank: string, currency: AccountCurrency): string {
@@ -50,7 +51,9 @@ export async function createAccountAction(formData: FormData) {
     owner_id,
   });
 
-  redirect('/dashboard/cuentas');
+  revalidatePath('/dashboard/cuentas');
+  revalidatePath('/dashboard');
+  redirectWithToast('/dashboard/cuentas', 'Cuenta creada');
 }
 
 const deleteAccountFormSchema = z.object({
@@ -79,7 +82,7 @@ export async function deleteAccountAction(formData: FormData) {
 
   revalidatePath('/dashboard/cuentas');
   revalidatePath('/dashboard');
-  redirect('/dashboard/cuentas');
+  redirectWithToast('/dashboard/cuentas', 'Cuenta eliminada');
 }
 
 const updateAccountFormSchema = z.object({
@@ -120,5 +123,5 @@ export async function updateAccountAction(formData: FormData) {
 
   revalidatePath('/dashboard/cuentas');
   revalidatePath('/dashboard');
-  redirect('/dashboard/cuentas');
+  redirectWithToast('/dashboard/cuentas', 'Cuenta actualizada');
 }

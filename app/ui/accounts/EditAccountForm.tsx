@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { updateAccountAction } from '@/app/lib/actions/accounts';
 import { getAccountBalance } from '@/app/lib/data/accounts';
 import { fetchPeople } from '@/app/lib/data/people';
+import SubmitButton from '@/app/ui/SubmitButton';
 import type { Account } from '@/app/lib/definitions';
 import styles from './AccountForm.module.css';
 
@@ -78,9 +79,7 @@ export default async function EditAccountForm({ account }: Props) {
         />
       </div>
       <div className={styles.actions}>
-        <button type="submit" className={styles.button}>
-          Guardar cambios
-        </button>
+        <SubmitButton>Guardar cambios</SubmitButton>
         <Link href="/dashboard/cuentas" className={`${styles.button} ${styles.buttonSecondary}`}>
           Cancelar
         </Link>

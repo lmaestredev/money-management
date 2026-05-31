@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { updateSettingsAction } from '@/app/lib/actions/settings';
+import { useActionState, useEffect, useRef, useState } from 'react';
+import { updateSettingsAction, type SettingsActionState } from '@/app/lib/actions/settings';
+import SubmitButton from '@/app/ui/SubmitButton';
+import { useToast } from '@/app/ui/toast/ToastProvider';
 import type { AppSettings } from '@/app/lib/definitions';
 import styles from './SettingsForm.module.css';
 
@@ -11,9 +13,24 @@ type Props = {
 
 export default function SettingsForm({ settings }: Props) {
   const [manualEnabled, setManualEnabled] = useState(settings.manual_rate_enabled);
+  const { toast } = useToast();
+
+  const [state, formAction] = useActionState<SettingsActionState, FormData>(
+    updateSettingsAction,
+    null
+  );
+
+  // Dispara el toast cada vez que la action devuelve un resultado nuevo.
+  const lastShown = useRef<SettingsActionState>(null);
+  useEffect(() => {
+    if (state && state !== lastShown.current) {
+      lastShown.current = state;
+      toast(state.message, state.ok ? 'success' : 'error');
+    }
+  }, [state, toast]);
 
   return (
-    <form action={updateSettingsAction} className={styles.form}>
+    <form action={formAction} className={styles.form}>
       <input type="hidden" name="manual_rate_enabled" value={manualEnabled ? 'true' : 'false'} />
 
       <fieldset className={styles.section}>
@@ -107,9 +124,7 @@ export default function SettingsForm({ settings }: Props) {
       </fieldset>
 
       <div className={styles.actions}>
-        <button type="submit" className={styles.button}>
-          Guardar configuración
-        </button>
+        <SubmitButton>Guardar configuración</SubmitButton>
       </div>
     </form>
   );

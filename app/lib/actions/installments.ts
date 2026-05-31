@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createInstallment, payInstallment } from '@/app/lib/data/installments';
+import { redirectWithToast } from '@/app/lib/toast-redirect';
 
 const optionalNumber = z
   .string()
@@ -86,7 +87,7 @@ export async function createInstallmentAction(formData: FormData) {
 
   revalidatePath('/dashboard/cuotas');
   revalidatePath('/dashboard');
-  redirect('/dashboard/cuotas');
+  redirectWithToast('/dashboard/cuotas', 'Compra en cuotas registrada');
 }
 
 const payInstallmentFormSchema = z.object({
@@ -108,5 +109,5 @@ export async function payInstallmentAction(formData: FormData) {
   revalidatePath('/dashboard/movimientos');
   revalidatePath('/dashboard/cuotas');
   revalidatePath('/dashboard');
-  redirect(`/dashboard/movimientos?period=${period}`);
+  redirectWithToast(`/dashboard/movimientos?period=${period}`, 'Cuota registrada');
 }

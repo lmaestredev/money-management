@@ -9,6 +9,7 @@ import {
   payStatement,
   updateCreditCard,
 } from '@/app/lib/data/credit-cards';
+import { redirectWithToast } from '@/app/lib/toast-redirect';
 import type { AccountCurrency, CardBrand } from '@/app/lib/definitions';
 
 const currencySchema = z.enum(['peso', 'dollar', 'crypto']);
@@ -73,7 +74,7 @@ export async function createCreditCardAction(formData: FormData) {
 
   revalidatePath('/dashboard/tarjetas');
   revalidatePath('/dashboard');
-  redirect('/dashboard/tarjetas');
+  redirectWithToast('/dashboard/tarjetas', 'Tarjeta creada');
 }
 
 const updateCardFormSchema = cardFormSchema.extend({
@@ -121,7 +122,7 @@ export async function updateCreditCardAction(formData: FormData) {
 
   revalidatePath('/dashboard/tarjetas');
   revalidatePath('/dashboard');
-  redirect('/dashboard/tarjetas');
+  redirectWithToast('/dashboard/tarjetas', 'Tarjeta actualizada');
 }
 
 const deleteCardFormSchema = z.object({ id: z.string().uuid() });
@@ -147,7 +148,7 @@ export async function deleteCreditCardAction(formData: FormData) {
 
   revalidatePath('/dashboard/tarjetas');
   revalidatePath('/dashboard');
-  redirect('/dashboard/tarjetas');
+  redirectWithToast('/dashboard/tarjetas', 'Tarjeta eliminada');
 }
 
 const payStatementFormSchema = z.object({
@@ -171,5 +172,5 @@ export async function payStatementAction(formData: FormData) {
 
   revalidatePath('/dashboard/tarjetas');
   revalidatePath('/dashboard');
-  redirect('/dashboard/tarjetas');
+  redirectWithToast('/dashboard/tarjetas', 'Resumen pagado');
 }

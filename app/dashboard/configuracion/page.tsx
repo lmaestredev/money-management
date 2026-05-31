@@ -4,12 +4,7 @@ import SettingsForm from '@/app/ui/settings/SettingsForm';
 import RatesPanel from '@/app/ui/settings/RatesPanel';
 import styles from './page.module.css';
 
-type Props = {
-  searchParams: Promise<{ error?: string; saved?: string }>;
-};
-
-export default async function ConfiguracionPage({ searchParams }: Props) {
-  const { error, saved } = await searchParams;
+export default async function ConfiguracionPage() {
   const [settings, rates] = await Promise.all([getSettings(), fetchExchangeRates()]);
 
   return (
@@ -20,19 +15,6 @@ export default async function ConfiguracionPage({ searchParams }: Props) {
           Presupuestos mensuales y cotización del dólar para tus reportes.
         </p>
       </header>
-
-      {saved && (
-        <div className={styles.successBanner} role="status">
-          <span aria-hidden>✅</span>
-          <span>Configuración guardada.</span>
-        </div>
-      )}
-      {error && (
-        <div className={styles.errorBanner} role="alert">
-          <span aria-hidden>⛔</span>
-          <span>No se pudo guardar. Revisá los valores.</span>
-        </div>
-      )}
 
       <RatesPanel rates={rates} />
       <SettingsForm settings={settings} />

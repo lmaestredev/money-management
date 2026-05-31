@@ -4,6 +4,7 @@ import {
   updateCreditCardAction,
 } from '@/app/lib/actions/credit-cards';
 import { fetchPeople } from '@/app/lib/data/people';
+import SubmitButton from '@/app/ui/SubmitButton';
 import type { CreditCard } from '@/app/lib/definitions';
 import styles from './CreditCardForm.module.css';
 
@@ -174,9 +175,7 @@ export default async function CreditCardForm({ card }: Props) {
       )}
 
       <div className={styles.actions}>
-        <button type="submit" className={styles.button}>
-          {isEdit ? 'Guardar cambios' : 'Guardar tarjeta'}
-        </button>
+        <SubmitButton>{isEdit ? 'Guardar cambios' : 'Guardar tarjeta'}</SubmitButton>
         <Link href="/dashboard/tarjetas" className={`${styles.button} ${styles.buttonSecondary}`}>
           Cancelar
         </Link>

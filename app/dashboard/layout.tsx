@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/app/lib/supabase/server';
 import DashboardShell from '@/app/ui/dashboard/DashboardShell';
+import ToastProvider from '@/app/ui/toast/ToastProvider';
 
 // El dashboard es inherentemente dinámico: depende del usuario autenticado y de
 // datos vivos. Lo declaramos a nivel de segmento (se hereda a todas las rutas
@@ -20,5 +21,9 @@ export default async function DashboardLayout({
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  return <DashboardShell>{children}</DashboardShell>;
+  return (
+    <DashboardShell>
+      <ToastProvider>{children}</ToastProvider>
+    </DashboardShell>
+  );
 }

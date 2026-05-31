@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { createRecurringExpenseAction } from '@/app/lib/actions/recurring';
+import SubmitButton from '@/app/ui/SubmitButton';
 import PaymentSourceSelect from '@/app/ui/credit-cards/PaymentSourceSelect';
 import type { Account, Category, CreditCard } from '@/app/lib/definitions';
 import styles from './RecurringExpenseForm.module.css';
@@ -129,9 +130,7 @@ export default function RecurringExpenseForm({ accounts, cards, categories }: Pr
       </div>
 
       <div className={styles.actions}>
-        <button type="submit" className={styles.button}>
-          Guardar
-        </button>
+        <SubmitButton>Guardar</SubmitButton>
         <Link
           href="/dashboard/gastos-fijos"
           className={`${styles.button} ${styles.buttonSecondary}`}

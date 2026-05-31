@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { createInstallmentAction } from '@/app/lib/actions/installments';
+import SubmitButton from '@/app/ui/SubmitButton';
 import PaymentSourceSelect from '@/app/ui/credit-cards/PaymentSourceSelect';
 import type { Account, Category, CreditCard } from '@/app/lib/definitions';
 import styles from './InstallmentForm.module.css';
@@ -153,9 +154,7 @@ export default function InstallmentForm({ accounts, cards, categories }: Props) 
       </div>
 
       <div className={styles.actions}>
-        <button type="submit" className={styles.button}>
-          Guardar
-        </button>
+        <SubmitButton>Guardar</SubmitButton>
         <Link href="/dashboard/cuotas" className={`${styles.button} ${styles.buttonSecondary}`}>
           Cancelar
         </Link>
