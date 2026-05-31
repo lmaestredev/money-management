@@ -101,6 +101,28 @@ export type CardStatement = {
   updated_at: string;
 };
 
+// Configuración (presupuestos + preferencias de tasa de cambio)
+export type RateSource = 'blue' | 'oficial';
+
+export type AppSettings = {
+  budget_total_usd: number;
+  budget_variable_usd: number;
+  rate_source: RateSource;
+  manual_rate_enabled: boolean;
+  manual_rate_value: number | null;
+};
+
+export type SettingsUpdate = Partial<AppSettings>;
+
+// Cotización del dólar (una fila por casa)
+export type ExchangeRate = {
+  source: RateSource;
+  compra: number;
+  venta: number;
+  source_updated_at: string | null;
+  updated_at: string;
+};
+
 // Categorías
 export type Category = {
   id: string;

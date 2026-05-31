@@ -6,6 +6,8 @@ type Props = {
   spent?: number;
   percentUsed?: number;
   showWarning?: boolean;
+  title?: string;
+  subtitle?: string;
 };
 
 export default function BudgetCard({
@@ -14,6 +16,8 @@ export default function BudgetCard({
   spent = 0,
   percentUsed = 0,
   showWarning = false,
+  title = 'Presupuesto variables',
+  subtitle = 'Límite mensual establecido',
 }: Props) {
   const pct = total > 0 ? Math.min(100, (spent / total) * 100) : 0;
   const displayPct = percentUsed || pct;
@@ -22,8 +26,8 @@ export default function BudgetCard({
     <section className={styles.card}>
       <div className={styles.cardHeader}>
         <div>
-          <h2 className={styles.cardTitle}>Presupuesto variables</h2>
-          <p className={styles.cardSubtitle}>Límite mensual establecido</p>
+          <h2 className={styles.cardTitle}>{title}</h2>
+          <p className={styles.cardSubtitle}>{subtitle}</p>
         </div>
       </div>
       <div className={styles.budgetBlock}>

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Movement } from '@/app/lib/definitions';
 import { fetchAccounts } from '@/app/lib/data/accounts';
 import { fetchMovementsByPeriod } from '@/app/lib/data/movements';
@@ -5,6 +6,12 @@ import { fetchInstallments } from '@/app/lib/data/installments';
 import { fetchRecurringExpenses } from '@/app/lib/data/recurring';
 import { fetchRecurringIncomes } from '@/app/lib/data/recurring-incomes';
 import { fetchCreditCards, fetchStatementPaymentIds } from '@/app/lib/data/credit-cards';
+import { getSettings } from '@/app/lib/data/settings';
+import {
+  fetchExchangeRates,
+  getEffectiveRate,
+  refreshExchangeRatesIfStale,
+} from '@/app/lib/data/exchange-rates';
 import SummaryCards from '@/app/ui/movements/SummaryCards';
 import MovementPeriodSelector from '@/app/ui/movements/MovementPeriodSelector';
 import DashboardAlert from '@/app/ui/dashboard/DashboardAlert';
@@ -17,6 +24,7 @@ import RecurringIncomesCard from '@/app/ui/recurring-incomes/RecurringIncomesCar
 import CategoryBreakdownCard from '@/app/ui/dashboard/CategoryBreakdownCard';
 import type { CategoryTotal } from '@/app/ui/dashboard/CategoryBreakdownCard';
 import CreditCardsCard from '@/app/ui/dashboard/CreditCardsCard';
+import RateInfoCard from '@/app/ui/dashboard/RateInfoCard';
 import styles from './page.module.css';
 
 function getCurrentPeriod(): string {
@@ -32,7 +40,21 @@ function formatPeriodLabel(period: string): string {
   return d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
 }
 
-function computeSummary(movements: Movement[], statementPaymentIds: Set<string>) {
+/**
+ * Valor del movimiento en USD. Los importes en dólares se toman directo; los de
+ * pesos se convierten con la tasa efectiva. Si no hay tasa, el monto en pesos no
+ * puede convertirse y aporta 0 (se avisa en el dashboard).
+ */
+function toUsd(m: Movement, rate: number | null): number {
+  const pesosUsd = rate && rate > 0 ? m.amount_pesos / rate : 0;
+  return m.amount_dollars + pesosUsd;
+}
+
+function computeSummary(
+  movements: Movement[],
+  statementPaymentIds: Set<string>,
+  rate: number | null
+) {
   let totalIncome = 0;
   let totalExpense = 0;
   let incomeCount = 0;
@@ -43,7 +65,7 @@ function computeSummary(movements: Movement[], statementPaymentIds: Set<string>)
 
   for (const m of movements) {
     if (m.record_type === 'income') {
-      totalIncome += m.amount_dollars;
+      totalIncome += toUsd(m, rate);
       incomeCount += 1;
     } else if (
       m.record_type === 'variable_payment' ||
@@ -58,11 +80,12 @@ function computeSummary(movements: Movement[], statementPaymentIds: Set<string>)
       // (el gasto ya se hizo); un gasto contra cuenta cuenta cuando está pagado.
       const counts = m.credit_card_id ? true : m.status === true;
       if (counts) {
-        totalExpense += m.amount_dollars;
-        if (m.record_type === 'fixed_payment') fixedTotal += m.amount_dollars;
-        else variableTotal += m.amount_dollars;
+        const usd = toUsd(m, rate);
+        totalExpense += usd;
+        if (m.record_type === 'fixed_payment') fixedTotal += usd;
+        else variableTotal += usd;
         const cat = m.category_name?.trim() || 'Sin categoría';
-        categoryMap.set(cat, (categoryMap.get(cat) ?? 0) + m.amount_dollars);
+        categoryMap.set(cat, (categoryMap.get(cat) ?? 0) + usd);
       }
       expenseCount += 1;
     }
@@ -96,6 +119,9 @@ export default async function DashboardPage({ searchParams }: Props) {
       ? periodParam
       : getCurrentPeriod();
 
+  // Red de seguridad: si las cotizaciones quedaron viejas, refrescamos antes de leer.
+  await refreshExchangeRatesIfStale();
+
   const [
     accounts,
     movements,
@@ -104,6 +130,9 @@ export default async function DashboardPage({ searchParams }: Props) {
     recurringIncomes,
     creditCards,
     statementPaymentIds,
+    settings,
+    effectiveRate,
+    rates,
   ] = await Promise.all([
     fetchAccounts(),
     fetchMovementsByPeriod(period),
@@ -112,17 +141,39 @@ export default async function DashboardPage({ searchParams }: Props) {
     fetchRecurringIncomes(),
     fetchCreditCards(),
     fetchStatementPaymentIds(),
+    getSettings(),
+    getEffectiveRate(),
+    fetchExchangeRates(),
   ]);
 
-  const summary = computeSummary(movements, statementPaymentIds);
+  const rate = effectiveRate?.rate ?? null;
+  const summary = computeSummary(movements, statementPaymentIds, rate);
   const periodLabel = formatPeriodLabel(period);
   const capitalizedPeriod = periodLabel.charAt(0).toUpperCase() + periodLabel.slice(1);
 
-  const budgetTotal = 500;
-  const budgetSpent = summary.variableTotal;
-  const budgetAvailable = Math.max(0, budgetTotal - budgetSpent);
-  const budgetPercentUsed = budgetTotal > 0 ? (budgetSpent / budgetTotal) * 100 : 0;
-  const showBudgetWarning = budgetPercentUsed >= 80;
+  // Brecha blue / oficial (sobre venta), para mostrar en el dashboard.
+  const blue = rates.find((r) => r.source === 'blue');
+  const oficial = rates.find((r) => r.source === 'oficial');
+  const gapPercent =
+    blue && oficial && oficial.venta > 0
+      ? ((blue.venta - oficial.venta) / oficial.venta) * 100
+      : null;
+
+  // Presupuesto total (todos los gastos).
+  const budgetTotalLimit = settings.budget_total_usd;
+  const totalSpent = summary.totalExpense;
+  const totalAvailable = Math.max(0, budgetTotalLimit - totalSpent);
+  const totalPercentUsed = budgetTotalLimit > 0 ? (totalSpent / budgetTotalLimit) * 100 : 0;
+  const showTotalWarning = totalPercentUsed >= 80;
+
+  // Presupuesto de gastos variables.
+  const budgetVarLimit = settings.budget_variable_usd;
+  const varSpent = summary.variableTotal;
+  const varAvailable = Math.max(0, budgetVarLimit - varSpent);
+  const varPercentUsed = budgetVarLimit > 0 ? (varSpent / budgetVarLimit) * 100 : 0;
+  const showVarWarning = varPercentUsed >= 80;
+
+  const noRate = rate == null;
 
   return (
     <div className={styles.page}>
@@ -136,12 +187,40 @@ export default async function DashboardPage({ searchParams }: Props) {
         </div>
       </header>
 
-      {showBudgetWarning && (
+      {noRate && (
         <DashboardAlert
           message={
             <>
-              <strong>Presupuesto de gastos variables casi agotado:</strong> Has gastado $
-              {budgetSpent.toFixed(2)} de ${budgetTotal} disponibles este mes.
+              <strong>Sin cotización del dólar:</strong> los gastos en pesos no se están
+              convirtiendo a USD.{' '}
+              <Link href="/dashboard/configuracion" className={styles.alertLink}>
+                Actualizá la tasa en Configuración
+              </Link>
+              .
+            </>
+          }
+        />
+      )}
+
+      {showTotalWarning && (
+        <DashboardAlert
+          message={
+            <>
+              <strong>Presupuesto total casi agotado:</strong> llevás gastados $
+              {totalSpent.toFixed(2)} de ${budgetTotalLimit.toFixed(2)} este mes (
+              {Math.round(totalPercentUsed)}%).
+            </>
+          }
+        />
+      )}
+
+      {showVarWarning && (
+        <DashboardAlert
+          message={
+            <>
+              <strong>Presupuesto de variables casi agotado:</strong> $
+              {varSpent.toFixed(2)} de ${budgetVarLimit.toFixed(2)} este mes (
+              {Math.round(varPercentUsed)}%).
             </>
           }
         />
@@ -158,18 +237,33 @@ export default async function DashboardPage({ searchParams }: Props) {
       />
 
       <div className={styles.grid2}>
+        <BudgetCard
+          title="Presupuesto total"
+          subtitle="Todos los gastos del mes"
+          available={totalAvailable}
+          total={budgetTotalLimit}
+          spent={totalSpent}
+          percentUsed={totalPercentUsed}
+          showWarning={showTotalWarning}
+        />
+        <BudgetCard
+          title="Presupuesto variables"
+          subtitle="Tarjeta + efectivo/cuentas"
+          available={varAvailable}
+          total={budgetVarLimit}
+          spent={varSpent}
+          percentUsed={varPercentUsed}
+          showWarning={showVarWarning}
+        />
+      </div>
+
+      <div className={styles.grid2}>
         <ExpenseBreakdownCard
           periodLabel={capitalizedPeriod}
           fixedTotal={summary.fixedTotal}
           variableTotal={summary.variableTotal}
         />
-        <BudgetCard
-          available={budgetAvailable}
-          total={budgetTotal}
-          spent={budgetSpent}
-          percentUsed={budgetPercentUsed}
-          showWarning={showBudgetWarning}
-        />
+        <RateInfoCard effective={effectiveRate} gapPercent={gapPercent} />
       </div>
 
       <div className={styles.grid2}>
