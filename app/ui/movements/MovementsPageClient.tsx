@@ -41,7 +41,7 @@ function filterMovements(
     list = list.filter((m) => {
       const desc = (m.description ?? '').toLowerCase();
       const cat = (m.category_name ?? '').toLowerCase();
-      const account = (accountNames.get(m.account_id) ?? '').toLowerCase();
+      const account = ((m.account_id && accountNames.get(m.account_id)) ?? '').toLowerCase();
       return desc.includes(q) || cat.includes(q) || account.includes(q);
     });
   }

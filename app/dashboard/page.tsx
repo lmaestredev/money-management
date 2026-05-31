@@ -4,6 +4,7 @@ import { fetchMovementsByPeriod } from '@/app/lib/data/movements';
 import { fetchInstallments } from '@/app/lib/data/installments';
 import { fetchRecurringExpenses } from '@/app/lib/data/recurring';
 import { fetchRecurringIncomes } from '@/app/lib/data/recurring-incomes';
+import { fetchCreditCards, fetchStatementPaymentIds } from '@/app/lib/data/credit-cards';
 import SummaryCards from '@/app/ui/movements/SummaryCards';
 import MovementPeriodSelector from '@/app/ui/movements/MovementPeriodSelector';
 import DashboardAlert from '@/app/ui/dashboard/DashboardAlert';
@@ -15,6 +16,7 @@ import RecurringExpensesCard from '@/app/ui/recurring/RecurringExpensesCard';
 import RecurringIncomesCard from '@/app/ui/recurring-incomes/RecurringIncomesCard';
 import CategoryBreakdownCard from '@/app/ui/dashboard/CategoryBreakdownCard';
 import type { CategoryTotal } from '@/app/ui/dashboard/CategoryBreakdownCard';
+import CreditCardsCard from '@/app/ui/dashboard/CreditCardsCard';
 import styles from './page.module.css';
 
 function getCurrentPeriod(): string {
@@ -30,7 +32,7 @@ function formatPeriodLabel(period: string): string {
   return d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
 }
 
-function computeSummary(movements: Movement[]) {
+function computeSummary(movements: Movement[], statementPaymentIds: Set<string>) {
   let totalIncome = 0;
   let totalExpense = 0;
   let incomeCount = 0;
@@ -47,7 +49,15 @@ function computeSummary(movements: Movement[]) {
       m.record_type === 'variable_payment' ||
       m.record_type === 'fixed_payment'
     ) {
-      if (m.status === true) {
+      // El pago de un resumen de tarjeta es una liquidación de deuda, no un gasto
+      // nuevo: se excluye del total para no duplicar los cargos del mes.
+      if (statementPaymentIds.has(m.id)) {
+        continue;
+      }
+      // Un cargo con tarjeta cuenta como gasto del mes aunque quede "pendiente"
+      // (el gasto ya se hizo); un gasto contra cuenta cuenta cuando está pagado.
+      const counts = m.credit_card_id ? true : m.status === true;
+      if (counts) {
         totalExpense += m.amount_dollars;
         if (m.record_type === 'fixed_payment') fixedTotal += m.amount_dollars;
         else variableTotal += m.amount_dollars;
@@ -86,16 +96,25 @@ export default async function DashboardPage({ searchParams }: Props) {
       ? periodParam
       : getCurrentPeriod();
 
-  const [accounts, movements, installments, recurringExpenses, recurringIncomes] =
-    await Promise.all([
-      fetchAccounts(),
-      fetchMovementsByPeriod(period),
-      fetchInstallments(),
-      fetchRecurringExpenses(),
-      fetchRecurringIncomes(),
-    ]);
+  const [
+    accounts,
+    movements,
+    installments,
+    recurringExpenses,
+    recurringIncomes,
+    creditCards,
+    statementPaymentIds,
+  ] = await Promise.all([
+    fetchAccounts(),
+    fetchMovementsByPeriod(period),
+    fetchInstallments(),
+    fetchRecurringExpenses(),
+    fetchRecurringIncomes(),
+    fetchCreditCards(),
+    fetchStatementPaymentIds(),
+  ]);
 
-  const summary = computeSummary(movements);
+  const summary = computeSummary(movements, statementPaymentIds);
   const periodLabel = formatPeriodLabel(period);
   const capitalizedPeriod = periodLabel.charAt(0).toUpperCase() + periodLabel.slice(1);
 
@@ -159,11 +178,14 @@ export default async function DashboardPage({ searchParams }: Props) {
       </div>
 
       <div className={styles.grid2}>
+        <CreditCardsCard cards={creditCards} />
+        <CategoryBreakdownCard items={summary.categoryTotals} />
+      </div>
+
+      <div className={styles.grid2}>
         <RecurringIncomesCard incomes={recurringIncomes} />
         <RecurringExpensesCard expenses={recurringExpenses} />
       </div>
-
-      <CategoryBreakdownCard items={summary.categoryTotals} />
     </div>
   );
 }

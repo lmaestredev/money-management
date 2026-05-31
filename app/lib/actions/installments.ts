@@ -17,6 +17,10 @@ const createInstallmentFormSchema = z.object({
     .union([z.string().uuid(), z.literal('')])
     .optional()
     .transform((s) => (s && String(s).trim() ? s : null)),
+  credit_card_id: z
+    .union([z.string().uuid(), z.literal('')])
+    .optional()
+    .transform((s) => (s && String(s).trim() ? s : null)),
   category_id: z
     .union([z.string().uuid(), z.literal('')])
     .optional()
@@ -35,6 +39,7 @@ export async function createInstallmentAction(formData: FormData) {
   const raw = {
     name: formData.get('name') ?? '',
     account_id: formData.get('account_id') ?? undefined,
+    credit_card_id: formData.get('credit_card_id') ?? undefined,
     category_id: formData.get('category_id') ?? undefined,
     total_installments: formData.get('total_installments') ?? '',
     paid_installments: formData.get('paid_installments') ?? undefined,
@@ -67,6 +72,7 @@ export async function createInstallmentAction(formData: FormData) {
   await createInstallment({
     name: data.name.trim(),
     account_id: data.account_id,
+    credit_card_id: data.credit_card_id,
     category_id: data.category_id,
     total_installments: total,
     paid_installments: paid,

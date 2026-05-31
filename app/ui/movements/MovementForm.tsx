@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { createMovementAction } from '@/app/lib/actions/movements';
-import type { Account, Category } from '@/app/lib/definitions';
+import PaymentSourceSelect, { type PaymentSource } from '@/app/ui/credit-cards/PaymentSourceSelect';
+import type { Account, AccountCurrency, Category, CreditCard } from '@/app/lib/definitions';
 import styles from './MovementForm.module.css';
 
 function getTodayISO(): string {
@@ -13,6 +14,7 @@ function getTodayISO(): string {
 type Props = {
   period: string;
   accounts: Account[];
+  cards: CreditCard[];
   categories: Category[];
   defaultPaymentDate?: string;
 };
@@ -20,20 +22,17 @@ type Props = {
 export default function MovementForm({
   period,
   accounts,
+  cards,
   categories,
   defaultPaymentDate = getTodayISO(),
 }: Props) {
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
-
-  const selectedAccount = useMemo(
-    () => accounts.find((a) => a.id === selectedAccountId) ?? null,
-    [accounts, selectedAccountId]
-  );
+  const [source, setSource] = useState<PaymentSource>(null);
+  const currency: AccountCurrency | null = source?.currency ?? null;
 
   const amountLabel =
-    selectedAccount?.currency === 'peso'
+    currency === 'peso'
       ? 'Monto (pesos)'
-      : selectedAccount?.currency === 'dollar'
+      : currency === 'dollar'
         ? 'Monto (dólares)'
         : 'Monto';
 
@@ -41,25 +40,17 @@ export default function MovementForm({
     <form action={createMovementAction} className={styles.form}>
       <input type="hidden" name="period" value={period} />
       <div className={styles.field}>
-        <label htmlFor="account_id" className={styles.label}>
-          Cuenta
+        <label htmlFor="payment_source" className={styles.label}>
+          Cuenta o tarjeta
         </label>
-        <select
-          id="account_id"
-          name="account_id"
+        <PaymentSourceSelect
+          accounts={accounts}
+          cards={cards}
           className={styles.select}
           required
-          value={selectedAccountId}
-          onChange={(e) => setSelectedAccountId(e.target.value)}
-        >
-          <option value="">Seleccionar cuenta</option>
-          {accounts.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-              {a.currency === 'peso' ? ' (pesos)' : a.currency === 'dollar' ? ' (dólares)' : ''}
-            </option>
-          ))}
-        </select>
+          noneLabel="Seleccionar cuenta o tarjeta"
+          onSelect={setSource}
+        />
       </div>
       <div className={styles.field}>
         <label htmlFor="record_type" className={styles.label}>
@@ -114,8 +105,8 @@ export default function MovementForm({
           min="0"
           className={styles.input}
           required
-          disabled={!selectedAccountId}
-          placeholder={selectedAccountId ? '0' : 'Selecciona una cuenta'}
+          disabled={!source}
+          placeholder={source ? '0' : 'Selecciona una cuenta o tarjeta'}
         />
       </div>
       <div className={styles.field}>

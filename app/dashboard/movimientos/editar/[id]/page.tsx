@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { fetchAccounts } from '@/app/lib/data/accounts';
+import { fetchActiveCreditCards } from '@/app/lib/data/credit-cards';
 import { fetchCategories } from '@/app/lib/data/categories';
 import { fetchMovementById } from '@/app/lib/data/movements';
 import EditMovementForm from '@/app/ui/movements/EditMovementForm';
@@ -11,9 +12,10 @@ type Props = {
 
 export default async function EditarMovimientoPage({ params }: Props) {
   const { id } = await params;
-  const [movement, accounts, categories] = await Promise.all([
+  const [movement, accounts, cards, categories] = await Promise.all([
     fetchMovementById(id),
     fetchAccounts(),
+    fetchActiveCreditCards(),
     fetchCategories(),
   ]);
 
@@ -22,7 +24,12 @@ export default async function EditarMovimientoPage({ params }: Props) {
   return (
     <div>
       <h1 className={styles.title}>Editar movimiento</h1>
-      <EditMovementForm movement={movement} accounts={accounts} categories={categories} />
+      <EditMovementForm
+        movement={movement}
+        accounts={accounts}
+        cards={cards}
+        categories={categories}
+      />
     </div>
   );
 }

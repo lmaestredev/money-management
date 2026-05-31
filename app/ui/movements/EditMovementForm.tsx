@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { updateMovementAction } from '@/app/lib/actions/movements';
-import type { Account, Category, Movement } from '@/app/lib/definitions';
+import PaymentSourceSelect, { type PaymentSource } from '@/app/ui/credit-cards/PaymentSourceSelect';
+import type { Account, AccountCurrency, Category, CreditCard, Movement } from '@/app/lib/definitions';
 import styles from './MovementForm.module.css';
 
 function toDateInput(v: string | null): string {
@@ -16,27 +17,43 @@ function toDateInput(v: string | null): string {
 type Props = {
   movement: Movement;
   accounts: Account[];
+  cards: CreditCard[];
   categories: Category[];
 };
 
-export default function EditMovementForm({ movement, accounts, categories }: Props) {
-  const [selectedAccountId, setSelectedAccountId] = useState<string>(movement.account_id);
+export default function EditMovementForm({ movement, accounts, cards, categories }: Props) {
+  const initialCard = movement.credit_card_id
+    ? cards.find((c) => c.id === movement.credit_card_id)
+    : undefined;
+  const initialAccount = movement.account_id
+    ? accounts.find((a) => a.id === movement.account_id)
+    : undefined;
 
-  const selectedAccount = useMemo(
-    () => accounts.find((a) => a.id === selectedAccountId) ?? null,
-    [accounts, selectedAccountId]
-  );
+  const initialSource: PaymentSource = initialCard
+    ? { kind: 'card', id: initialCard.id, currency: initialCard.currency }
+    : initialAccount
+      ? { kind: 'account', id: initialAccount.id, currency: initialAccount.currency }
+      : null;
+
+  const initialEncoded = initialCard
+    ? `card:${initialCard.id}`
+    : initialAccount
+      ? `acc:${initialAccount.id}`
+      : '';
+
+  const [source, setSource] = useState<PaymentSource>(initialSource);
+  const currency: AccountCurrency | null = source?.currency ?? null;
 
   const amountLabel =
-    selectedAccount?.currency === 'peso'
+    currency === 'peso'
       ? 'Monto (pesos)'
-      : selectedAccount?.currency === 'dollar'
+      : currency === 'dollar'
         ? 'Monto (dólares)'
         : 'Monto';
 
-  const initialAccount = accounts.find((a) => a.id === movement.account_id);
+  const initialCurrency = initialSource?.currency;
   const initialAmount =
-    initialAccount?.currency === 'peso'
+    initialCurrency === 'peso'
       ? movement.amount_pesos
       : movement.amount_dollars || movement.amount_pesos;
 
@@ -49,25 +66,18 @@ export default function EditMovementForm({ movement, accounts, categories }: Pro
       <input type="hidden" name="period" value={movement.period} />
 
       <div className={styles.field}>
-        <label htmlFor="account_id" className={styles.label}>
-          Cuenta
+        <label htmlFor="payment_source" className={styles.label}>
+          Cuenta o tarjeta
         </label>
-        <select
-          id="account_id"
-          name="account_id"
+        <PaymentSourceSelect
+          accounts={accounts}
+          cards={cards}
           className={styles.select}
           required
-          value={selectedAccountId}
-          onChange={(e) => setSelectedAccountId(e.target.value)}
-        >
-          <option value="">Seleccionar cuenta</option>
-          {accounts.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-              {a.currency === 'peso' ? ' (pesos)' : a.currency === 'dollar' ? ' (dólares)' : ''}
-            </option>
-          ))}
-        </select>
+          defaultValue={initialEncoded}
+          noneLabel="Seleccionar cuenta o tarjeta"
+          onSelect={setSource}
+        />
       </div>
 
       <div className={styles.field}>
@@ -133,7 +143,7 @@ export default function EditMovementForm({ movement, accounts, categories }: Pro
           min="0"
           className={styles.input}
           required
-          disabled={!selectedAccountId}
+          disabled={!source}
           defaultValue={initialAmount}
         />
       </div>

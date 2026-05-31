@@ -3,15 +3,17 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { createRecurringExpenseAction } from '@/app/lib/actions/recurring';
-import type { Account, Category } from '@/app/lib/definitions';
+import PaymentSourceSelect from '@/app/ui/credit-cards/PaymentSourceSelect';
+import type { Account, Category, CreditCard } from '@/app/lib/definitions';
 import styles from './RecurringExpenseForm.module.css';
 
 type Props = {
   accounts: Account[];
+  cards: CreditCard[];
   categories: Category[];
 };
 
-export default function RecurringExpenseForm({ accounts, categories }: Props) {
+export default function RecurringExpenseForm({ accounts, cards, categories }: Props) {
   const [isCash, setIsCash] = useState(false);
 
   return (
@@ -63,21 +65,18 @@ export default function RecurringExpenseForm({ accounts, categories }: Props) {
 
       {!isCash && (
         <div className={styles.field}>
-          <label htmlFor="account_id" className={styles.label}>
-            Cuenta de pago
+          <label htmlFor="payment_source" className={styles.label}>
+            Cuenta o tarjeta de pago
           </label>
-          <select id="account_id" name="account_id" className={styles.select}>
-            <option value="">Sin asignar</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-                {a.bank ? ` · ${a.bank}` : ''}
-              </option>
-            ))}
-          </select>
+          <PaymentSourceSelect
+            accounts={accounts}
+            cards={cards}
+            className={styles.select}
+            noneLabel="Sin asignar"
+          />
           <span className={styles.hint}>
-            Si la asignas, el pago mensual se registra con un clic. Si la dejas sin asignar,
-            elegirás la cuenta al pagar.
+            Si la asignas, el pago mensual se registra con un clic. Con tarjeta, el gasto suma a
+            su resumen. Si la dejas sin asignar, elegirás la cuenta al pagar.
           </span>
         </div>
       )}

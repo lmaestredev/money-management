@@ -1,0 +1,44 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 36rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-bg-dark);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: #6b7280;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.backLink:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.backIcon {
+  width: 1.125rem;
+  height: 1.125rem;
+}

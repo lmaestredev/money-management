@@ -47,6 +47,60 @@ export type AccountInsert = {
   owner_id?: string | null;
 };
 
+// Tarjetas de crédito
+export type CardBrand = 'visa' | 'mastercard' | 'amex' | 'otra';
+
+export type CreditCard = {
+  id: string;
+  name: string;
+  bank: string | null;
+  brand: CardBrand | null;
+  currency: AccountCurrency;
+  credit_limit: number;
+  closing_day: number | null;
+  due_day: number | null;
+  current_balance_pesos: number;
+  current_balance_dollars: number;
+  owner_id: string | null;
+  owner_name?: string | null;
+  active: boolean;
+  user_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreditCardInsert = {
+  name: string;
+  bank?: string | null;
+  brand?: CardBrand | null;
+  currency?: AccountCurrency;
+  credit_limit?: number;
+  closing_day?: number | null;
+  due_day?: number | null;
+  current_balance_pesos?: number;
+  current_balance_dollars?: number;
+  owner_id?: string | null;
+  active?: boolean;
+  user_id?: string | null;
+};
+
+// Resúmenes (estados de cuenta) por ciclo de facturación
+export type StatementStatus = 'open' | 'closed' | 'paid';
+
+export type CardStatement = {
+  id: string;
+  credit_card_id: string;
+  period: string;
+  closing_date: string | null;
+  due_date: string | null;
+  total_pesos: number;
+  total_dollars: number;
+  status: StatementStatus;
+  paid_movement_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 // Categorías
 export type Category = {
   id: string;
@@ -72,7 +126,9 @@ export type Movement = {
   id: string;
   period: string;
   record_type: RecordType;
-  account_id: string;
+  account_id: string | null;
+  credit_card_id?: string | null;
+  statement_id?: string | null;
   category_id: string | null;
   category_name?: string | null;
   description: string | null;
@@ -94,7 +150,9 @@ export type Movement = {
 export type MovementInsert = {
   period: string;
   record_type: RecordType;
-  account_id: string;
+  account_id?: string | null;
+  credit_card_id?: string | null;
+  statement_id?: string | null;
   category_id?: string | null;
   description?: string | null;
   status?: boolean | null;
@@ -119,6 +177,8 @@ export type InstallmentPurchase = {
   name: string;
   account_id: string | null;
   account_name?: string | null;
+  credit_card_id: string | null;
+  credit_card_name?: string | null;
   category_id: string | null;
   category_name?: string | null;
   total_installments: number;
@@ -142,6 +202,7 @@ export type InstallmentPurchase = {
 export type InstallmentInsert = {
   name: string;
   account_id?: string | null;
+  credit_card_id?: string | null;
   category_id?: string | null;
   total_installments: number;
   paid_installments?: number;
@@ -162,6 +223,8 @@ export type RecurringExpense = {
   category_name?: string | null;
   account_id: string | null;
   account_name?: string | null;
+  credit_card_id: string | null;
+  credit_card_name?: string | null;
   amount_pesos: number;
   amount_dollars: number;
   pay_before_day: number | null;
@@ -176,6 +239,7 @@ export type RecurringExpenseInsert = {
   name: string;
   category_id?: string | null;
   account_id?: string | null;
+  credit_card_id?: string | null;
   amount_pesos?: number;
   amount_dollars?: number;
   pay_before_day?: number | null;

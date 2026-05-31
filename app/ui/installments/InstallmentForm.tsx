@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { createInstallmentAction } from '@/app/lib/actions/installments';
-import type { Account, Category } from '@/app/lib/definitions';
+import PaymentSourceSelect from '@/app/ui/credit-cards/PaymentSourceSelect';
+import type { Account, Category, CreditCard } from '@/app/lib/definitions';
 import styles from './InstallmentForm.module.css';
 
 function currentPeriod(): string {
@@ -11,10 +12,11 @@ function currentPeriod(): string {
 
 type Props = {
   accounts: Account[];
+  cards: CreditCard[];
   categories: Category[];
 };
 
-export default function InstallmentForm({ accounts, categories }: Props) {
+export default function InstallmentForm({ accounts, cards, categories }: Props) {
   return (
     <form action={createInstallmentAction} className={styles.form}>
       <div className={styles.field}>
@@ -32,18 +34,15 @@ export default function InstallmentForm({ accounts, categories }: Props) {
       </div>
 
       <div className={styles.field}>
-        <label htmlFor="account_id" className={styles.label}>
+        <label htmlFor="payment_source" className={styles.label}>
           Tarjeta / cuenta
         </label>
-        <select id="account_id" name="account_id" className={styles.select}>
-          <option value="">Sin asignar</option>
-          {accounts.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-              {a.bank ? ` · ${a.bank}` : ''}
-            </option>
-          ))}
-        </select>
+        <PaymentSourceSelect
+          accounts={accounts}
+          cards={cards}
+          className={styles.select}
+          noneLabel="Sin asignar"
+        />
       </div>
 
       <div className={styles.field}>

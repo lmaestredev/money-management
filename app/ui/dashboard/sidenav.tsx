@@ -9,6 +9,7 @@ import {
   BanknotesIcon,
   CreditCardIcon,
   CalendarDaysIcon,
+  RectangleStackIcon,
   ArrowDownCircleIcon,
   XMarkIcon,
   ChevronLeftIcon,
@@ -28,7 +29,8 @@ const links = [
   },
   { name: 'Ingresos', href: '/dashboard/ingresos', icon: ArrowDownCircleIcon },
   { name: 'Cuentas', href: '/dashboard/cuentas', icon: BanknotesIcon },
-  { name: 'Cuotas', href: '/dashboard/cuotas', icon: CreditCardIcon },
+  { name: 'Tarjetas', href: '/dashboard/tarjetas', icon: CreditCardIcon },
+  { name: 'Cuotas', href: '/dashboard/cuotas', icon: RectangleStackIcon },
   { name: 'Gastos fijos', href: '/dashboard/gastos-fijos', icon: CalendarDaysIcon },
   { name: 'Categorías', href: '/dashboard/categorias', icon: Squares2X2Icon },
 ];

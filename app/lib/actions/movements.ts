@@ -4,7 +4,30 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { fetchAccountById } from '@/app/lib/data/accounts';
+import { fetchCreditCardById } from '@/app/lib/data/credit-cards';
 import { createMovement, deleteMovement, updateMovement } from '@/app/lib/data/movements';
+import type { AccountCurrency } from '@/app/lib/definitions';
+
+const optionalUuid = z
+  .union([z.string().uuid(), z.literal('')])
+  .optional()
+  .transform((s) => (s && String(s).trim() ? (s as string) : null));
+
+/** Resuelve la moneda del medio de pago (cuenta o tarjeta) para repartir el monto. */
+async function resolveSourceCurrency(
+  accountId: string | null,
+  cardId: string | null
+): Promise<AccountCurrency | null> {
+  if (accountId) {
+    const account = await fetchAccountById(accountId);
+    return account ? account.currency : null;
+  }
+  if (cardId) {
+    const card = await fetchCreditCardById(cardId);
+    return card ? card.currency : null;
+  }
+  return null;
+}
 
 const recordTypeSchema = z.enum([
   'income',
@@ -16,7 +39,8 @@ const recordTypeSchema = z.enum([
 const createMovementFormSchema = z.object({
   period: z.string().regex(/^\d{4}-\d{2}$/, 'period must be YYYY-MM'),
   record_type: recordTypeSchema,
-  account_id: z.string().uuid(),
+  account_id: optionalUuid,
+  credit_card_id: optionalUuid,
   category_id: z
     .union([z.string().uuid(), z.literal('')])
     .optional()
@@ -38,7 +62,8 @@ export async function createMovementAction(formData: FormData) {
   const raw = {
     period: formData.get('period'),
     record_type: formData.get('record_type') ?? undefined,
-    account_id: formData.get('account_id'),
+    account_id: formData.get('account_id') ?? undefined,
+    credit_card_id: formData.get('credit_card_id') ?? undefined,
     category_id: formData.get('category_id') ?? undefined,
     description: formData.get('description') ?? undefined,
     status: formData.get('status') ?? undefined,
@@ -60,6 +85,9 @@ export async function createMovementAction(formData: FormData) {
   }
 
   const data = parsed.data;
+  if (!data.account_id && !data.credit_card_id) {
+    redirect(`/dashboard/movimientos/nuevo?period=${data.period}&error=validation`);
+  }
   let amountPesos: number;
   let amountDollars: number;
 
@@ -69,12 +97,12 @@ export async function createMovementAction(formData: FormData) {
       const period = data.period;
       redirect(`/dashboard/movimientos/nuevo?period=${period}&error=validation`);
     }
-    const account = await fetchAccountById(data.account_id);
-    if (!account) {
+    const currency = await resolveSourceCurrency(data.account_id, data.credit_card_id);
+    if (!currency) {
       const period = data.period;
       redirect(`/dashboard/movimientos/nuevo?period=${period}&error=validation`);
     }
-    if (account.currency === 'peso') {
+    if (currency === 'peso') {
       amountPesos = amount;
       amountDollars = 0;
     } else {
@@ -103,6 +131,7 @@ export async function createMovementAction(formData: FormData) {
       period: data.period,
       record_type: data.record_type,
       account_id: data.account_id,
+      credit_card_id: data.credit_card_id,
       category_id: data.category_id ?? null,
       description: data.description || null,
       status: data.status ?? null,
@@ -127,7 +156,8 @@ export async function updateMovementAction(formData: FormData) {
     id: formData.get('id'),
     period: formData.get('period'),
     record_type: formData.get('record_type') ?? undefined,
-    account_id: formData.get('account_id'),
+    account_id: formData.get('account_id') ?? undefined,
+    credit_card_id: formData.get('credit_card_id') ?? undefined,
     category_id: formData.get('category_id') ?? undefined,
     description: formData.get('description') ?? undefined,
     status: formData.get('status') ?? undefined,
@@ -155,6 +185,9 @@ export async function updateMovementAction(formData: FormData) {
 
   const data = parsed.data;
   const errorTarget = `/dashboard/movimientos/editar/${data.id}?period=${data.period}&error=validation`;
+  if (!data.account_id && !data.credit_card_id) {
+    redirect(errorTarget);
+  }
   let amountPesos: number;
   let amountDollars: number;
 
@@ -163,11 +196,11 @@ export async function updateMovementAction(formData: FormData) {
     if (Number.isNaN(amount) || amount < 0) {
       redirect(errorTarget);
     }
-    const account = await fetchAccountById(data.account_id);
-    if (!account) {
+    const currency = await resolveSourceCurrency(data.account_id, data.credit_card_id);
+    if (!currency) {
       redirect(errorTarget);
     }
-    if (account.currency === 'peso') {
+    if (currency === 'peso') {
       amountPesos = amount;
       amountDollars = 0;
     } else {
@@ -193,6 +226,7 @@ export async function updateMovementAction(formData: FormData) {
     period: data.period,
     record_type: data.record_type,
     account_id: data.account_id,
+    credit_card_id: data.credit_card_id,
     category_id: data.category_id ?? null,
     description: data.description || null,
     status: data.status ?? null,

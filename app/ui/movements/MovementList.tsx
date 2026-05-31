@@ -202,7 +202,7 @@ export default function MovementList({ movements, accountNames }: Props) {
                         {recordTypeLabel(m.record_type)}
                       </span>
                       <span className={styles.movAccount}>
-                        🏦 {accountNames.get(m.account_id) ?? m.account_id}
+                        🏦 {(m.account_id && (accountNames.get(m.account_id) ?? m.account_id)) ?? '—'}
                       </span>
                     </div>
                   </div>

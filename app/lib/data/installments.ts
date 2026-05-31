@@ -1,5 +1,6 @@
 import { sql } from '../db';
-import { getBalanceDeltas } from './movements';
+import { getBalanceDeltas, getCardDeltas } from './movements';
+import { applyCardCharge, resolveOrCreateStatement } from './credit-cards';
 import type { InstallmentInsert, InstallmentPurchase, InstallmentStatus } from '../definitions';
 
 function rowToInstallment(row: Record<string, unknown>): InstallmentPurchase {
@@ -15,6 +16,8 @@ function rowToInstallment(row: Record<string, unknown>): InstallmentPurchase {
     name: row.name as string,
     account_id: (row.account_id as string) ?? null,
     account_name: (row.account_name as string) ?? null,
+    credit_card_id: (row.credit_card_id as string) ?? null,
+    credit_card_name: (row.credit_card_name as string) ?? null,
     category_id: (row.category_id as string) ?? null,
     category_name: (row.category_name as string) ?? null,
     total_installments: total,
@@ -37,6 +40,7 @@ function rowToInstallment(row: Record<string, unknown>): InstallmentPurchase {
 
 const SELECT_COLUMNS = sql`
   i.id, i.name, i.account_id, a.name AS account_name,
+  i.credit_card_id, cc.name AS credit_card_name,
   i.category_id, c.name AS category_name,
   i.total_installments, i.paid_installments,
   i.monthly_amount_pesos, i.monthly_amount_dollars,
@@ -50,6 +54,7 @@ export async function fetchInstallments(): Promise<InstallmentPurchase[]> {
     SELECT ${SELECT_COLUMNS}
     FROM installment_purchases i
     LEFT JOIN accounts a ON i.account_id = a.id
+    LEFT JOIN credit_cards cc ON i.credit_card_id = cc.id
     LEFT JOIN categories c ON i.category_id = c.id
     ORDER BY (i.status = 'active') DESC, i.name ASC
   `;
@@ -61,6 +66,7 @@ export async function fetchActiveInstallments(): Promise<InstallmentPurchase[]> 
     SELECT ${SELECT_COLUMNS}
     FROM installment_purchases i
     LEFT JOIN accounts a ON i.account_id = a.id
+    LEFT JOIN credit_cards cc ON i.credit_card_id = cc.id
     LEFT JOIN categories c ON i.category_id = c.id
     WHERE i.status = 'active' AND i.paid_installments < i.total_installments
     ORDER BY i.name ASC
@@ -73,6 +79,7 @@ export async function fetchInstallmentById(id: string): Promise<InstallmentPurch
     SELECT ${SELECT_COLUMNS}
     FROM installment_purchases i
     LEFT JOIN accounts a ON i.account_id = a.id
+    LEFT JOIN credit_cards cc ON i.credit_card_id = cc.id
     LEFT JOIN categories c ON i.category_id = c.id
     WHERE i.id = ${id}
   `;
@@ -95,7 +102,7 @@ export async function createInstallment(
 ): Promise<InstallmentPurchase> {
   const [row] = await sql`
     INSERT INTO installment_purchases (
-      name, account_id, category_id, total_installments, paid_installments,
+      name, account_id, credit_card_id, category_id, total_installments, paid_installments,
       monthly_amount_pesos, monthly_amount_dollars,
       total_amount_pesos, total_amount_dollars,
       pay_before_day, start_period, user_id
@@ -103,6 +110,7 @@ export async function createInstallment(
     VALUES (
       ${data.name},
       ${data.account_id ?? null},
+      ${data.credit_card_id ?? null},
       ${data.category_id ?? null},
       ${data.total_installments},
       ${data.paid_installments ?? 0},
@@ -125,8 +133,10 @@ export type PayInstallmentResult =
   | { ok: false; reason: 'not_found' | 'completed' | 'already_paid' | 'no_account' };
 
 /**
- * Registra el pago de la cuota del mes: crea un movement enlazado,
- * actualiza el saldo de la cuenta e incrementa paid_installments. Atómico.
+ * Registra el pago de la cuota del mes: crea un movement enlazado e incrementa
+ * paid_installments. Si la compra está asociada a una tarjeta, carga la cuota a
+ * su resumen (suma a la deuda); si está asociada a una cuenta, debita el saldo.
+ * Atómico.
  */
 export async function payInstallment(
   installmentId: string,
@@ -134,14 +144,17 @@ export async function payInstallment(
 ): Promise<PayInstallmentResult> {
   return sql.begin(async (tx) => {
     const [inst] = await tx`
-      SELECT id, name, account_id, category_id, total_installments, paid_installments,
+      SELECT id, name, account_id, credit_card_id, category_id,
+             total_installments, paid_installments,
              monthly_amount_pesos, monthly_amount_dollars, status
       FROM installment_purchases
       WHERE id = ${installmentId}
       FOR UPDATE
     `;
     if (!inst) return { ok: false, reason: 'not_found' as const };
-    if (!inst.account_id) return { ok: false, reason: 'no_account' as const };
+    if (!inst.account_id && !inst.credit_card_id) {
+      return { ok: false, reason: 'no_account' as const };
+    }
 
     const total = Number(inst.total_installments);
     const paid = Number(inst.paid_installments);
@@ -161,32 +174,50 @@ export async function payInstallment(
     const amountDollars = Number(inst.monthly_amount_dollars);
     const description = `${inst.name} (cuota ${nextNumber}/${total})`;
 
-    await tx`
-      INSERT INTO movements (
-        period, record_type, account_id, category_id, description, status,
-        amount_pesos, amount_dollars, payment_date, comment, source, installment_id
-      )
-      VALUES (
-        ${period}, 'fixed_payment', ${inst.account_id}, ${inst.category_id ?? null},
-        ${description}, true, ${amountPesos}, ${amountDollars}, NULL, NULL, 'app',
-        ${installmentId}
-      )
-    `;
-
-    const { deltaPesos, deltaDollars } = getBalanceDeltas(
-      'fixed_payment',
-      true,
-      amountPesos,
-      amountDollars
-    );
-    if (deltaPesos !== 0 || deltaDollars !== 0) {
+    if (inst.credit_card_id) {
+      const st = await resolveOrCreateStatement(tx, inst.credit_card_id as string, new Date());
       await tx`
-        UPDATE accounts
-        SET balance_pesos = balance_pesos + ${deltaPesos},
-            balance_dollars = balance_dollars + ${deltaDollars},
-            updated_at = NOW()
-        WHERE id = ${inst.account_id}
+        INSERT INTO movements (
+          period, record_type, credit_card_id, statement_id, category_id,
+          description, status,
+          amount_pesos, amount_dollars, payment_date, comment, source, installment_id
+        )
+        VALUES (
+          ${period}, 'fixed_payment', ${inst.credit_card_id}, ${st.id}, ${inst.category_id ?? null},
+          ${description}, true, ${amountPesos}, ${amountDollars}, NULL, NULL, 'app',
+          ${installmentId}
+        )
       `;
+      const card = getCardDeltas('fixed_payment', amountPesos, amountDollars);
+      await applyCardCharge(tx, inst.credit_card_id as string, st.id, card.deltaPesos, card.deltaDollars);
+    } else {
+      await tx`
+        INSERT INTO movements (
+          period, record_type, account_id, category_id, description, status,
+          amount_pesos, amount_dollars, payment_date, comment, source, installment_id
+        )
+        VALUES (
+          ${period}, 'fixed_payment', ${inst.account_id}, ${inst.category_id ?? null},
+          ${description}, true, ${amountPesos}, ${amountDollars}, NULL, NULL, 'app',
+          ${installmentId}
+        )
+      `;
+
+      const { deltaPesos, deltaDollars } = getBalanceDeltas(
+        'fixed_payment',
+        true,
+        amountPesos,
+        amountDollars
+      );
+      if (deltaPesos !== 0 || deltaDollars !== 0) {
+        await tx`
+          UPDATE accounts
+          SET balance_pesos = balance_pesos + ${deltaPesos},
+              balance_dollars = balance_dollars + ${deltaDollars},
+              updated_at = NOW()
+          WHERE id = ${inst.account_id}
+        `;
+      }
     }
 
     const finished = nextNumber >= total;
