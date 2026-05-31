@@ -73,6 +73,15 @@
 .summaryCardAmountIncome  { color: var(--color-income); }
 .summaryCardAmountExpense { color: var(--color-expense); }
 
+/* Valor de referencia secundario (moneda complementaria, menos prominente). */
+.summaryCardSecondary {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-on-surface-variant);
+  letter-spacing: 0;
+  margin-top: -0.25rem;
+}
+
 .summaryCardProgress { margin-top: 0.25rem; }
 
 .summaryCardProgressTrack {

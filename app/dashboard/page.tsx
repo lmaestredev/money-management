@@ -55,8 +55,10 @@ function computeSummary(
   statementPaymentIds: Set<string>,
   rate: number | null
 ) {
-  let totalIncome = 0;
-  let totalExpense = 0;
+  let totalIncome = 0;       // USD (convertido)
+  let totalExpense = 0;      // USD (convertido)
+  let totalIncomePesos = 0;  // ARS crudo
+  let totalExpensePesos = 0; // ARS crudo
   let incomeCount = 0;
   let expenseCount = 0;
   let fixedTotal = 0;
@@ -66,22 +68,19 @@ function computeSummary(
   for (const m of movements) {
     if (m.record_type === 'income') {
       totalIncome += toUsd(m, rate);
+      totalIncomePesos += m.amount_pesos;
       incomeCount += 1;
     } else if (
       m.record_type === 'variable_payment' ||
       m.record_type === 'fixed_payment'
     ) {
-      // El pago de un resumen de tarjeta es una liquidación de deuda, no un gasto
-      // nuevo: se excluye del total para no duplicar los cargos del mes.
-      if (statementPaymentIds.has(m.id)) {
-        continue;
-      }
-      // Un cargo con tarjeta cuenta como gasto del mes aunque quede "pendiente"
-      // (el gasto ya se hizo); un gasto contra cuenta cuenta cuando está pagado.
+      if (statementPaymentIds.has(m.id)) continue;
+
       const counts = m.credit_card_id ? true : m.status === true;
       if (counts) {
         const usd = toUsd(m, rate);
         totalExpense += usd;
+        totalExpensePesos += m.amount_pesos;
         if (m.record_type === 'fixed_payment') fixedTotal += usd;
         else variableTotal += usd;
         const cat = m.category_name?.trim() || 'Sin categoría';
@@ -100,6 +99,8 @@ function computeSummary(
     balance,
     totalIncome,
     totalExpense,
+    totalIncomePesos,
+    totalExpensePesos,
     incomeCount,
     expenseCount,
     fixedTotal,
@@ -230,6 +231,9 @@ export default async function DashboardPage({ searchParams }: Props) {
         balance={summary.balance}
         totalIncome={summary.totalIncome}
         totalExpense={summary.totalExpense}
+        totalExpensePesos={summary.totalExpensePesos}
+        totalIncomePesos={summary.totalIncomePesos}
+        rate={rate}
         incomeCount={summary.incomeCount}
         expenseCount={summary.expenseCount}
         balanceLabel="Balance neto"
