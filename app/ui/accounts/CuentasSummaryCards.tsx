@@ -1,3 +1,4 @@
+import { formatUsd } from '@/app/lib/utils';
 import styles from './CuentasSummaryCards.module.css';
 
 function formatPesos(amount: number): string {
@@ -6,15 +7,6 @@ function formatPesos(amount: number): string {
     currency: 'ARS',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  });
-}
-
-function formatDollars(amount: number): string {
-  return amount.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
   });
 }
 
@@ -62,7 +54,7 @@ export default function CuentasSummaryCards({
           <span className={styles.cardLabel}>En dólares / efectivo</span>
           <div className={styles.cardIcon}>💵</div>
         </div>
-        <div className={styles.cardAmount}>{formatDollars(totalDollars)}</div>
+        <div className={styles.cardAmount}>{formatUsd(totalDollars)}</div>
         <div className={styles.cardMeta}>
           {countDollars} {countDollars === 1 ? 'cuenta' : 'cuentas'}
         </div>

@@ -1,22 +1,6 @@
+import { formatUsd, formatArs } from '@/app/lib/utils';
 import styles from './SummaryCards.module.css';
 
-function fmtUsd(amount: number): string {
-  return amount.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
-function fmtArs(amount: number): string {
-  return amount.toLocaleString('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
-}
 
 export type SummaryCardsProps = {
   balance: number;
@@ -70,9 +54,9 @@ export default function SummaryCards({
           <span className={styles.summaryCardLabel}>{balanceLabel}</span>
           <div className={`${styles.summaryCardIcon} ${styles.summaryCardIconBalance}`}>💼</div>
         </div>
-        <div className={styles.summaryCardAmount}>{fmtUsd(balance)}</div>
+        <div className={styles.summaryCardAmount}>{formatUsd(balance)}</div>
         {balanceArs !== null && (
-          <div className={styles.summaryCardSecondary}>≈ {fmtArs(balanceArs)}</div>
+          <div className={styles.summaryCardSecondary}>≈ {formatArs(balanceArs)}</div>
         )}
         <div className={styles.summaryCardProgress}>
           <div className={styles.summaryCardProgressTrack}>
@@ -107,10 +91,10 @@ export default function SummaryCards({
           <div className={`${styles.summaryCardIcon} ${styles.summaryCardIconIncome}`}>📈</div>
         </div>
         <div className={`${styles.summaryCardAmount} ${styles.summaryCardAmountIncome}`}>
-          {fmtUsd(totalIncome)}
+          {formatUsd(totalIncome)}
         </div>
         {incomeArs !== null && (
-          <div className={styles.summaryCardSecondary}>≈ {fmtArs(incomeArs)}</div>
+          <div className={styles.summaryCardSecondary}>≈ {formatArs(incomeArs)}</div>
         )}
         <div className={styles.summaryCardProgress}>
           <div className={styles.summaryCardProgressTrack}>
@@ -133,9 +117,9 @@ export default function SummaryCards({
           <div className={`${styles.summaryCardIcon} ${styles.summaryCardIconExpense}`}>📉</div>
         </div>
         <div className={`${styles.summaryCardAmount} ${styles.summaryCardAmountExpense}`}>
-          {fmtArs(totalExpensePesos)}
+          {formatArs(totalExpensePesos)}
         </div>
-        <div className={styles.summaryCardSecondary}>≈ {fmtUsd(totalExpense)}</div>
+        <div className={styles.summaryCardSecondary}>≈ {formatUsd(totalExpense)}</div>
         <div className={styles.summaryCardProgress}>
           <div className={styles.summaryCardProgressTrack}>
             <div

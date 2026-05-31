@@ -1,15 +1,7 @@
 import type { InstallmentPurchase } from '@/app/lib/definitions';
+import { formatUsd } from '@/app/lib/utils';
 import { payInstallmentAction } from '@/app/lib/actions/installments';
 import styles from './MonthlyInstallmentsSection.module.css';
-
-function formatDollars(amount: number): string {
-  return amount.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 function formatPesos(amount: number): string {
   return amount.toLocaleString('es-AR', {
@@ -41,7 +33,7 @@ export default function MonthlyInstallmentsSection({ installments, paidIds, peri
           <span className={styles.countBadge}>{installments.length}</span>
         </h2>
         <span className={styles.pendingTotal}>
-          Pendiente: {formatDollars(pendingTotal)}
+          Pendiente: {formatUsd(pendingTotal)}
         </span>
       </div>
 
@@ -65,7 +57,7 @@ export default function MonthlyInstallmentsSection({ installments, paidIds, peri
               </div>
               <div className={styles.amounts}>
                 <div className={styles.amountPrimary}>
-                  −{formatDollars(i.monthly_amount_dollars)}
+                  −{formatUsd(i.monthly_amount_dollars)}
                 </div>
                 <div className={styles.amountSecondary}>
                   {formatPesos(i.monthly_amount_pesos)}

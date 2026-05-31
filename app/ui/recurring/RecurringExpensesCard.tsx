@@ -1,15 +1,7 @@
 import Link from 'next/link';
+import { formatUsd } from '@/app/lib/utils';
 import type { RecurringExpense } from '@/app/lib/definitions';
 import styles from './RecurringExpensesCard.module.css';
-
-function formatDollars(amount: number): string {
-  return amount.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 type Props = {
   expenses: RecurringExpense[];
@@ -51,13 +43,13 @@ export default function RecurringExpensesCard({ expenses }: Props) {
                     {e.pay_before_day ? ` · vence día ${e.pay_before_day}` : ''}
                   </span>
                 </div>
-                <span className={styles.itemAmount}>{formatDollars(e.amount_dollars)}</span>
+                <span className={styles.itemAmount}>{formatUsd(e.amount_dollars)}</span>
               </div>
             ))}
           </div>
           <div className={styles.totalBlock}>
             <div className={styles.totalLabel}>Total fijo mensual</div>
-            <div className={styles.totalAmount}>{formatDollars(monthlyTotal)}</div>
+            <div className={styles.totalAmount}>{formatUsd(monthlyTotal)}</div>
           </div>
         </>
       )}

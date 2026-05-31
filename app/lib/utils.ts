@@ -7,6 +7,33 @@ export const formatCurrency = (amount: number) => {
   });
 };
 
+/**
+ * Formatea un monto en USD con el símbolo "u$d" para distinguirlo del peso.
+ * Ej: 1234.5 → "u$d 1.234,50"
+ */
+export function formatUsd(amount: number): string {
+  const abs = Math.abs(amount);
+  const formatted = abs.toLocaleString('es-AR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const sign = amount < 0 ? '−' : '';
+  return `${sign}u$d ${formatted}`;
+}
+
+/**
+ * Formatea un monto en pesos argentinos.
+ * Ej: 150000 → "$ 150.000"
+ */
+export function formatArs(amount: number): string {
+  return amount.toLocaleString('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+}
+
 export const formatDateToLocal = (
   dateStr: string,
   locale: string = 'en-US',

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { fetchCreditCards, fetchUnpaidStatements } from '@/app/lib/data/credit-cards';
+import { formatUsd } from '@/app/lib/utils';
 import { fetchAccounts } from '@/app/lib/data/accounts';
 import CreditCardItem from '@/app/ui/credit-cards/CreditCardItem';
 import styles from './page.module.css';
@@ -22,15 +23,6 @@ function formatPesos(amount: number): string {
     currency: 'ARS',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  });
-}
-
-function formatDollars(amount: number): string {
-  return amount.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
   });
 }
 
@@ -91,7 +83,7 @@ export default async function TarjetasPage({ searchParams }: Props) {
           </div>
           <div className={styles.summaryCard}>
             <span className={styles.summaryLabel}>Deuda total (dólares)</span>
-            <span className={styles.summaryValueExpense}>{formatDollars(totalDebtDollars)}</span>
+            <span className={styles.summaryValueExpense}>{formatUsd(totalDebtDollars)}</span>
           </div>
         </div>
       )}

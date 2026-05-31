@@ -1,4 +1,5 @@
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { formatUsd } from '@/app/lib/utils';
 import { refreshRatesAction } from '@/app/lib/actions/settings';
 import type { ExchangeRate } from '@/app/lib/definitions';
 import styles from './RatesPanel.module.css';
@@ -7,7 +8,7 @@ type Props = {
   rates: ExchangeRate[];
 };
 
-function formatPesos(amount: number): string {
+function formatArs(amount: number): string {
   return amount.toLocaleString('es-AR', {
     style: 'currency',
     currency: 'ARS',
@@ -68,11 +69,11 @@ export default function RatesPanel({ rates }: Props) {
                 <div className={styles.rateValues}>
                   <div className={styles.rateValueBlock}>
                     <span className={styles.rateValueLabel}>Compra</span>
-                    <span className={styles.rateValue}>{formatPesos(r.compra)}</span>
+                    <span className={styles.rateValue}>{formatArs(r.compra)}</span>
                   </div>
                   <div className={styles.rateValueBlock}>
                     <span className={styles.rateValueLabel}>Venta</span>
-                    <span className={styles.rateValue}>{formatPesos(r.venta)}</span>
+                    <span className={styles.rateValue}>{formatArs(r.venta)}</span>
                   </div>
                 </div>
                 <div className={styles.rateUpdated}>

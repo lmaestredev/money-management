@@ -1,17 +1,9 @@
 import Link from 'next/link';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { fetchRecurringExpenses } from '@/app/lib/data/recurring';
+import { formatUsd } from '@/app/lib/utils';
 import DeleteRecurringButton from '@/app/ui/recurring/DeleteRecurringButton';
 import styles from './page.module.css';
-
-function formatDollars(amount: number): string {
-  return amount.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 function formatPesos(amount: number): string {
   return amount.toLocaleString('es-AR', {
@@ -48,7 +40,7 @@ export default async function GastosFijosPage() {
           </div>
           <div className={styles.summaryCard}>
             <span className={styles.summaryLabel}>Total fijo mensual</span>
-            <span className={styles.summaryValueExpense}>{formatDollars(monthlyTotal)}</span>
+            <span className={styles.summaryValueExpense}>{formatUsd(monthlyTotal)}</span>
           </div>
         </div>
       )}
@@ -88,7 +80,7 @@ export default async function GastosFijosPage() {
                 </div>
                 <div className={styles.itemFooter}>
                   <div className={styles.itemAmounts}>
-                    <span className={styles.itemAmount}>{formatDollars(e.amount_dollars)}</span>
+                    <span className={styles.itemAmount}>{formatUsd(e.amount_dollars)}</span>
                     <span className={styles.itemAmountSecondary}>{formatPesos(e.amount_pesos)}</span>
                   </div>
                   <DeleteRecurringButton id={e.id} name={e.name} />

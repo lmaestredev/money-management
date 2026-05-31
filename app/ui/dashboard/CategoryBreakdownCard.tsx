@@ -1,13 +1,5 @@
+import { formatUsd } from '@/app/lib/utils';
 import styles from './CategoryBreakdownCard.module.css';
-
-function formatDollars(amount: number): string {
-  return amount.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 const CATEGORY_ICONS: Record<string, string> = {
   vivienda: '🏠',
@@ -58,14 +50,14 @@ export default function CategoryBreakdownCard({ items }: Props) {
               </span>
               <span className={styles.categoryName}>{item.name}</span>
             </div>
-            <span className={styles.categoryAmount}>{formatDollars(item.amount)}</span>
+            <span className={styles.categoryAmount}>{formatUsd(item.amount)}</span>
           </div>
         ))}
       </div>
       <div className={styles.footer}>
         <div className={styles.categoryItem}>
           <span className={styles.totalLabel}>Total</span>
-          <span className={styles.totalAmount}>{formatDollars(total)}</span>
+          <span className={styles.totalAmount}>{formatUsd(total)}</span>
         </div>
       </div>
     </section>

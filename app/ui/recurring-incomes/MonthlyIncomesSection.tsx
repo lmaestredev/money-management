@@ -1,15 +1,7 @@
 import type { Account, RecurringIncome } from '@/app/lib/definitions';
+import { formatUsd } from '@/app/lib/utils';
 import { receiveRecurringIncomeAction } from '@/app/lib/actions/recurring-incomes';
 import styles from './MonthlyIncomesSection.module.css';
-
-function formatDollars(amount: number): string {
-  return amount.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 function formatPesos(amount: number): string {
   return amount.toLocaleString('es-AR', {
@@ -44,7 +36,7 @@ export default function MonthlyIncomesSection({ incomes, receivedIds, period, ac
             {receivedCount}/{incomes.length} cobrados
           </span>
         </h2>
-        <span className={styles.pendingTotal}>Por cobrar: {formatDollars(pendingTotal)}</span>
+        <span className={styles.pendingTotal}>Por cobrar: {formatUsd(pendingTotal)}</span>
       </div>
 
       <div className={styles.list}>
@@ -64,7 +56,7 @@ export default function MonthlyIncomesSection({ incomes, receivedIds, period, ac
                 </div>
               </div>
               <div className={styles.amounts}>
-                <div className={styles.amountPrimary}>+{formatDollars(i.amount_dollars)}</div>
+                <div className={styles.amountPrimary}>+{formatUsd(i.amount_dollars)}</div>
                 <div className={styles.amountSecondary}>{formatPesos(i.amount_pesos)}</div>
               </div>
               <div className={styles.action}>

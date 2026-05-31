@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { formatUsd, formatArs } from '@/app/lib/utils';
 import type { CreditCard } from '@/app/lib/definitions';
 import styles from './CreditCardsCard.module.css';
 
@@ -79,10 +80,10 @@ export default function CreditCardsCard({ cards = [] }: Props) {
           <div className={styles.totalBlock}>
             <div className={styles.totalLabel}>Deuda total en tarjetas</div>
             <div className={styles.totalAmount}>
-              {totalPesos !== 0 && formatMoney(totalPesos, 'peso')}
+              {totalPesos !== 0 && formatArs(totalPesos)}
               {totalPesos !== 0 && totalDollars !== 0 && ' · '}
-              {totalDollars !== 0 && formatMoney(totalDollars, 'dollar')}
-              {totalPesos === 0 && totalDollars === 0 && formatMoney(0, 'peso')}
+              {totalDollars !== 0 && formatUsd(totalDollars)}
+              {totalPesos === 0 && totalDollars === 0 && formatArs(0)}
             </div>
           </div>
         </>

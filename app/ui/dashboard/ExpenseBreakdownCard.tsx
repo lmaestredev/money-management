@@ -1,13 +1,5 @@
+import { formatUsd } from '@/app/lib/utils';
 import styles from './ExpenseBreakdownCard.module.css';
-
-function formatDollars(amount: number): string {
-  return amount.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 export type ExpenseBreakdownCardProps = {
   periodLabel: string;
@@ -39,7 +31,7 @@ export default function ExpenseBreakdownCard({
             <span className={styles.expenseStatus}>Alquiler, servicios, etc.</span>
           </div>
         </div>
-        <span className={styles.expenseAmount}>−{formatDollars(fixedTotal)}</span>
+        <span className={styles.expenseAmount}>−{formatUsd(fixedTotal)}</span>
       </div>
       <div className={styles.expenseRow}>
         <div className={styles.expenseInfo}>
@@ -49,7 +41,7 @@ export default function ExpenseBreakdownCard({
             <span className={styles.expenseStatus}>Comida, entretenimiento, etc.</span>
           </div>
         </div>
-        <span className={styles.expenseAmount}>−{formatDollars(variableTotal)}</span>
+        <span className={styles.expenseAmount}>−{formatUsd(variableTotal)}</span>
       </div>
       <div className={styles.progressWrap}>
         <div className={styles.progressTrack}>
@@ -60,7 +52,7 @@ export default function ExpenseBreakdownCard({
         </div>
       </div>
       <div className={styles.meta}>
-        <span className={styles.tag}>Total: {formatDollars(total)}</span>
+        <span className={styles.tag}>Total: {formatUsd(total)}</span>
       </div>
     </section>
   );

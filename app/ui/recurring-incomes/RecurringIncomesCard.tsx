@@ -1,15 +1,7 @@
 import Link from 'next/link';
+import { formatUsd } from '@/app/lib/utils';
 import type { RecurringIncome } from '@/app/lib/definitions';
 import styles from './RecurringIncomesCard.module.css';
-
-function formatDollars(amount: number): string {
-  return amount.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 type Props = {
   incomes: RecurringIncome[];
@@ -51,13 +43,13 @@ export default function RecurringIncomesCard({ incomes }: Props) {
                     {i.receive_day ? ` · día ${i.receive_day}` : ''}
                   </span>
                 </div>
-                <span className={styles.itemAmount}>+{formatDollars(i.amount_dollars)}</span>
+                <span className={styles.itemAmount}>+{formatUsd(i.amount_dollars)}</span>
               </div>
             ))}
           </div>
           <div className={styles.totalBlock}>
             <div className={styles.totalLabel}>Ingreso mensual estimado</div>
-            <div className={styles.totalAmount}>+{formatDollars(monthlyTotal)}</div>
+            <div className={styles.totalAmount}>+{formatUsd(monthlyTotal)}</div>
           </div>
         </>
       )}

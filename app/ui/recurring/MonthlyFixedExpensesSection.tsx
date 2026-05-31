@@ -1,15 +1,7 @@
 import type { Account, RecurringExpense } from '@/app/lib/definitions';
+import { formatUsd } from '@/app/lib/utils';
 import { payRecurringExpenseAction } from '@/app/lib/actions/recurring';
 import styles from './MonthlyFixedExpensesSection.module.css';
-
-function formatDollars(amount: number): string {
-  return amount.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 function formatPesos(amount: number): string {
   return amount.toLocaleString('es-AR', {
@@ -49,7 +41,7 @@ export default function MonthlyFixedExpensesSection({
             {paidCount}/{expenses.length} pagados
           </span>
         </h2>
-        <span className={styles.pendingTotal}>Pendiente: {formatDollars(pendingTotal)}</span>
+        <span className={styles.pendingTotal}>Pendiente: {formatUsd(pendingTotal)}</span>
       </div>
 
       <div className={styles.list}>
@@ -72,7 +64,7 @@ export default function MonthlyFixedExpensesSection({
                 </div>
               </div>
               <div className={styles.amounts}>
-                <div className={styles.amountPrimary}>−{formatDollars(e.amount_dollars)}</div>
+                <div className={styles.amountPrimary}>−{formatUsd(e.amount_dollars)}</div>
                 <div className={styles.amountSecondary}>{formatPesos(e.amount_pesos)}</div>
               </div>
               <div className={styles.action}>

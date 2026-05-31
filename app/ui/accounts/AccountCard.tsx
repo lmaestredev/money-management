@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { PencilIcon } from '@heroicons/react/24/outline';
 import { getAccountBalance } from '@/app/lib/data/accounts';
+import { formatUsd, formatArs } from '@/app/lib/utils';
 import DeleteAccountButton from './DeleteAccountButton';
 import type { Account, AccountCurrency } from '@/app/lib/definitions';
 import styles from './AccountCard.module.css';
@@ -18,22 +19,8 @@ const CURRENCY_VARIANTS: Record<AccountCurrency, 'peso' | 'dollar' | 'crypto'> =
 };
 
 function formatBalance(currency: AccountCurrency, amount: number): string {
-  if (currency === 'peso') {
-    return amount.toLocaleString('es-AR', {
-      style: 'currency',
-      currency: 'ARS',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    });
-  }
-  if (currency === 'dollar') {
-    return amount.toLocaleString('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  }
+  if (currency === 'peso') return formatArs(amount);
+  if (currency === 'dollar') return formatUsd(amount);
   return amount.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 8 });
 }
 

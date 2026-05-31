@@ -1,15 +1,7 @@
 import Link from 'next/link';
+import { formatUsd } from '@/app/lib/utils';
 import type { InstallmentPurchase } from '@/app/lib/definitions';
 import styles from './InstallmentsCard.module.css';
-
-function formatDollars(amount: number): string {
-  return amount.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 type Props = {
   installments: InstallmentPurchase[];
@@ -52,13 +44,13 @@ export default function InstallmentsCard({ installments }: Props) {
                   <div className={styles.itemHeader}>
                     <span className={styles.itemName}>{i.name}</span>
                     <span className={styles.itemMonthly}>
-                      {formatDollars(i.monthly_amount_dollars)}/mes
+                      {formatUsd(i.monthly_amount_dollars)}/mes
                     </span>
                   </div>
                   <div className={styles.itemMeta}>
                     <span className={styles.itemBank}>💳 {i.account_name ?? 'Sin tarjeta'}</span>
                     <span className={styles.itemRemaining}>
-                      Faltan {formatDollars(i.remaining_amount_dollars)}
+                      Faltan {formatUsd(i.remaining_amount_dollars)}
                     </span>
                   </div>
                   <div className={styles.progressRow}>
@@ -75,7 +67,7 @@ export default function InstallmentsCard({ installments }: Props) {
           </div>
           <div className={styles.totalBlock}>
             <div className={styles.totalLabel}>Cuota mensual comprometida</div>
-            <div className={styles.totalAmount}>{formatDollars(monthlyCommitted)}</div>
+            <div className={styles.totalAmount}>{formatUsd(monthlyCommitted)}</div>
           </div>
         </>
       )}

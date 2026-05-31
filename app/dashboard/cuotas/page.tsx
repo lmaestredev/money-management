@@ -1,16 +1,8 @@
 import Link from 'next/link';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { fetchInstallments } from '@/app/lib/data/installments';
+import { formatUsd } from '@/app/lib/utils';
 import styles from './page.module.css';
-
-function formatDollars(amount: number): string {
-  return amount.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 export default async function CuotasPage() {
   const installments = await fetchInstallments();
@@ -39,11 +31,11 @@ export default async function CuotasPage() {
           </div>
           <div className={styles.summaryCard}>
             <span className={styles.summaryLabel}>Cuota mensual comprometida</span>
-            <span className={styles.summaryValueExpense}>{formatDollars(monthlyCommitted)}</span>
+            <span className={styles.summaryValueExpense}>{formatUsd(monthlyCommitted)}</span>
           </div>
           <div className={styles.summaryCard}>
             <span className={styles.summaryLabel}>Saldo total faltante</span>
-            <span className={styles.summaryValueExpense}>{formatDollars(remainingTotal)}</span>
+            <span className={styles.summaryValueExpense}>{formatUsd(remainingTotal)}</span>
           </div>
         </div>
       )}
@@ -80,10 +72,10 @@ export default async function CuotasPage() {
                   <div className={styles.itemBank}>💳 {i.account_name ?? 'Sin tarjeta'}</div>
                   <div className={styles.itemAmounts}>
                     <span className={styles.itemMonthly}>
-                      {formatDollars(i.monthly_amount_dollars)}/mes
+                      {formatUsd(i.monthly_amount_dollars)}/mes
                     </span>
                     <span className={styles.itemRemaining}>
-                      Faltan {formatDollars(i.remaining_amount_dollars)}
+                      Faltan {formatUsd(i.remaining_amount_dollars)}
                     </span>
                   </div>
                   <div className={styles.progressRow}>

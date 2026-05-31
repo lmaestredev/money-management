@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { formatUsd } from '@/app/lib/utils';
 import type { Movement } from '@/app/lib/definitions';
 import DeleteMovementButton from './DeleteMovementButton';
 import styles from './MovementList.module.css';
@@ -9,15 +10,6 @@ function formatPesos(amount: number): string {
     currency: 'ARS',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  });
-}
-
-function formatDollars(amount: number): string {
-  return amount.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
   });
 }
 
@@ -164,7 +156,7 @@ export default function MovementList({ movements, accountNames }: Props) {
                 }
               >
                 {dayTotal >= 0 ? '+' : '−'}
-                {formatDollars(Math.abs(dayTotal))}
+                {formatUsd(Math.abs(dayTotal))}
               </span>
             </div>
 
@@ -212,7 +204,7 @@ export default function MovementList({ movements, accountNames }: Props) {
                   <div className={styles.movAmounts}>
                     <div className={`${styles.movAmountPrimary} ${amountClass}`}>
                       {isIncome ? '+' : '−'}
-                      {formatDollars(m.amount_dollars)}
+                      {formatUsd(m.amount_dollars)}
                     </div>
                     <div className={styles.movAmountSecondary}>
                       {formatPesos(m.amount_pesos)}

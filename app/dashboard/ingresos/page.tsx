@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { fetchRecurringIncomes } from '@/app/lib/data/recurring-incomes';
+import { formatUsd } from '@/app/lib/utils';
 import DeleteRecurringIncomeButton from '@/app/ui/recurring-incomes/DeleteRecurringIncomeButton';
 import styles from './page.module.css';
 
@@ -9,15 +10,6 @@ const ERROR_MESSAGES: Record<string, string> = {
   notfound: 'El ingreso no existe o ya fue eliminado.',
   validation: 'Solicitud inválida.',
 };
-
-function formatDollars(amount: number): string {
-  return amount.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 function formatPesos(amount: number): string {
   return amount.toLocaleString('es-AR', {
@@ -67,7 +59,7 @@ export default async function IngresosPage({ searchParams }: Props) {
           </div>
           <div className={styles.summaryCard}>
             <span className={styles.summaryLabel}>Ingreso mensual estimado</span>
-            <span className={styles.summaryValueIncome}>+{formatDollars(monthlyTotal)}</span>
+            <span className={styles.summaryValueIncome}>+{formatUsd(monthlyTotal)}</span>
           </div>
         </div>
       )}
@@ -104,7 +96,7 @@ export default async function IngresosPage({ searchParams }: Props) {
                 </div>
                 <div className={styles.itemFooter}>
                   <div className={styles.itemAmounts}>
-                    <span className={styles.itemAmount}>+{formatDollars(i.amount_dollars)}</span>
+                    <span className={styles.itemAmount}>+{formatUsd(i.amount_dollars)}</span>
                     <span className={styles.itemAmountSecondary}>{formatPesos(i.amount_pesos)}</span>
                   </div>
                   <DeleteRecurringIncomeButton id={i.id} name={i.name} />

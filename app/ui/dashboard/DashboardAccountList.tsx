@@ -1,4 +1,5 @@
 import type { Account } from '@/app/lib/definitions';
+import { formatUsd } from '@/app/lib/utils';
 import styles from './DashboardAccountList.module.css';
 
 function formatPesos(amount: number): string {
@@ -7,15 +8,6 @@ function formatPesos(amount: number): string {
     currency: 'ARS',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  });
-}
-
-function formatDollars(amount: number): string {
-  return amount.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
   });
 }
 
@@ -56,7 +48,7 @@ export default function DashboardAccountList({ accounts }: Props) {
               {formatPesos(account.balance_pesos)}
             </div>
             <div className={styles.accountSecondary}>
-              {formatDollars(account.balance_dollars)} USD
+              {formatUsd(account.balance_dollars)}
             </div>
           </div>
         ))}

@@ -1,4 +1,5 @@
 'use client';
+import { formatUsd, formatArs } from '@/app/lib/utils';
 
 import { useState } from 'react';
 import { payStatementAction } from '@/app/lib/actions/credit-cards';
@@ -42,8 +43,8 @@ export default function PayStatementForm({ statement, accounts }: Props) {
   const due = formatDate(statement.due_date);
 
   const totalLabel = [
-    hasPesos ? formatMoney(statement.total_pesos, 'peso') : null,
-    hasDollars ? formatMoney(statement.total_dollars, 'dollar') : null,
+    hasPesos ? formatArs(statement.total_pesos) : null,
+    hasDollars ? formatUsd(statement.total_dollars) : null,
   ]
     .filter(Boolean)
     .join(' + ');
