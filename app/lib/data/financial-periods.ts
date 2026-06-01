@@ -1,15 +1,33 @@
 import { sql } from '../db';
 import type { FinancialPeriod, FinancialPeriodStatus } from '../definitions';
 
+/**
+ * El driver `postgres` devuelve columnas DATE como objetos Date de JS, no como
+ * strings. Extraemos solo la parte YYYY-MM-DD para que el resto del código
+ * pueda hacer split('-') sin problemas.
+ */
+function toDateStr(val: unknown): string {
+  if (!val) return '';
+  if (val instanceof Date) return val.toISOString().slice(0, 10);
+  return String(val).slice(0, 10);
+}
+
+/** Lo mismo para TIMESTAMPTZ — devuelve ISO completo. */
+function toTsStr(val: unknown): string | null {
+  if (!val) return null;
+  if (val instanceof Date) return val.toISOString();
+  return String(val);
+}
+
 function rowToPeriod(row: Record<string, unknown>): FinancialPeriod {
   const status = row.status as string;
   return {
     id: row.id as string,
-    start_date: row.start_date as string,
-    end_date: (row.end_date as string) ?? null,
+    start_date: toDateStr(row.start_date),
+    end_date: row.end_date ? toDateStr(row.end_date) : null,
     status: (['open', 'closed'].includes(status) ? status : 'open') as FinancialPeriodStatus,
-    closed_at: (row.closed_at as string) ?? null,
-    created_at: row.created_at as string,
+    closed_at: toTsStr(row.closed_at),
+    created_at: toTsStr(row.created_at) ?? '',
   };
 }
 

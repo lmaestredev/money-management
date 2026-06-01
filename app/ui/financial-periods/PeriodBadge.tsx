@@ -1,10 +1,11 @@
 import type { FinancialPeriod } from '@/app/lib/definitions';
 import styles from './PeriodBadge.module.css';
 
-/** Formatea una fecha ISO "YYYY-MM-DD" como "1 may. 2025". */
-export function formatShortDate(iso: string): string {
-  // Parseamos en hora local (mediodía) para evitar off-by-one por TZ.
-  const [y, m, d] = iso.split('-').map(Number);
+/** Formatea una fecha ISO "YYYY-MM-DD" (o un Date) como "1 may. 2025". */
+export function formatShortDate(iso: string | Date): string {
+  // Si llega un Date object (el driver postgres devuelve DATE así), extraemos YYYY-MM-DD.
+  const isoStr = iso instanceof Date ? iso.toISOString().slice(0, 10) : iso;
+  const [y, m, d] = isoStr.split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString('es-AR', {
     day: 'numeric',
     month: 'short',
