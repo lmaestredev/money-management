@@ -1,0 +1,33 @@
+.page { display: flex; flex-direction: column; gap: 1.5rem; }
+
+.pageHeader { display: flex; flex-direction: column; gap: 0.375rem; }
+
+.backLink {
+  display: inline-flex; align-items: center; gap: 0.375rem;
+  font-size: 0.8125rem; font-weight: 500; color: var(--color-primary);
+  text-decoration: none; margin-bottom: 0.25rem;
+}
+.backLink:hover { text-decoration: underline; }
+.backIcon { width: 1rem; height: 1rem; }
+
+.pageTitle { margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--color-on-surface); }
+.pageSubtitle { margin: 0; font-size: 0.8125rem; color: var(--color-on-surface-variant); }
+
+.closedChip {
+  display: inline-flex; align-items: center; gap: 0.375rem;
+  font-size: 0.75rem; font-weight: 600;
+  color: var(--color-on-surface-variant);
+  background: var(--color-surface-container-high);
+  border-radius: var(--radius-full);
+  padding: 0.25rem 0.75rem;
+  align-self: flex-start;
+}
+
+.readonlyNote {
+  font-size: 0.8125rem;
+  color: var(--color-on-surface-variant);
+  background: var(--color-surface-container);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-default);
+  padding: var(--spacing-xs) var(--spacing-sm);
+}

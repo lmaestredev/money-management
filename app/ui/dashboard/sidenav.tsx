@@ -12,6 +12,7 @@ import {
   RectangleStackIcon,
   ArrowDownCircleIcon,
   Cog6ToothIcon,
+  ClockIcon,
   XMarkIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -34,6 +35,7 @@ const links = [
   { name: 'Cuotas', href: '/dashboard/cuotas', icon: RectangleStackIcon },
   { name: 'Gastos fijos', href: '/dashboard/gastos-fijos', icon: CalendarDaysIcon },
   { name: 'Categorías', href: '/dashboard/categorias', icon: Squares2X2Icon },
+  { name: 'Historial', href: '/dashboard/historial', icon: ClockIcon },
   { name: 'Configuración', href: '/dashboard/configuracion', icon: Cog6ToothIcon },
 ];
 

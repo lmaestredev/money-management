@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { LockClosedIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { closePeriodAction, previewClosePeriod } from '@/app/lib/actions/financial-periods';
 import { useToast } from '@/app/ui/toast/ToastProvider';
@@ -212,6 +213,13 @@ export default function ClosePeriodButton() {
                 </div>
 
                 <div className={styles.actions}>
+                  <Link
+                    href={`/dashboard/historial/${result.closedPeriod.id}`}
+                    className={styles.cancelBtn}
+                    onClick={closeModal}
+                  >
+                    Ver detalle
+                  </Link>
                   <button type="button" className={styles.confirmBtn} onClick={closeModal}>
                     Entendido
                   </button>

@@ -18,6 +18,8 @@ type Props = {
   movements: Movement[];
   accountNames: Map<string, string>;
   summary: MovementSummary;
+  /** En true oculta los botones de edición/eliminación (períodos cerrados). */
+  readOnly?: boolean;
 };
 
 function filterMovements(
@@ -53,6 +55,7 @@ export default function MovementsPageClient({
   movements,
   accountNames,
   summary,
+  readOnly = false,
 }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
@@ -64,13 +67,15 @@ export default function MovementsPageClient({
 
   return (
     <>
-      <SummaryCards
-        balance={summary.balance}
-        totalIncome={summary.totalIncome}
-        totalExpense={summary.totalExpense}
-        incomeCount={summary.incomeCount}
-        expenseCount={summary.expenseCount}
-      />
+      {!readOnly && (
+        <SummaryCards
+          balance={summary.balance}
+          totalIncome={summary.totalIncome}
+          totalExpense={summary.totalExpense}
+          incomeCount={summary.incomeCount}
+          expenseCount={summary.expenseCount}
+        />
+      )}
 
       <MovementsFiltersBar
         searchQuery={searchQuery}
@@ -79,7 +84,7 @@ export default function MovementsPageClient({
         onTypeChange={setTypeFilter}
       />
 
-      <MovementList movements={filteredMovements} accountNames={accountNames} />
+      <MovementList movements={filteredMovements} accountNames={accountNames} readOnly={readOnly} />
     </>
   );
 }

@@ -99,9 +99,10 @@ function getStatusLabel(m: Movement): 'paid' | 'pending' | 'overdue' {
 type Props = {
   movements: Movement[];
   accountNames: Map<string, string>;
+  readOnly?: boolean;
 };
 
-export default function MovementList({ movements, accountNames }: Props) {
+export default function MovementList({ movements, accountNames, readOnly = false }: Props) {
   if (movements.length === 0) {
     return (
       <div className={styles.emptyState}>
@@ -224,17 +225,19 @@ export default function MovementList({ movements, accountNames }: Props) {
                       {status === 'paid' ? 'Pagado' : status === 'overdue' ? 'Vencido' : 'Pendiente'}
                     </span>
                   </div>
-                  <div className={styles.movActions}>
-                    <Link
-                      href={`/dashboard/movimientos/editar/${m.id}?period=${m.period}`}
-                      className={styles.actionBtn}
-                      title="Editar"
-                      aria-label="Editar movimiento"
-                    >
-                      ✏️
-                    </Link>
-                    <DeleteMovementButton id={m.id} period={m.period} description={m.description} />
-                  </div>
+                  {!readOnly && (
+                    <div className={styles.movActions}>
+                      <Link
+                        href={`/dashboard/movimientos/editar/${m.id}?period=${m.period}`}
+                        className={styles.actionBtn}
+                        title="Editar"
+                        aria-label="Editar movimiento"
+                      >
+                        ✏️
+                      </Link>
+                      <DeleteMovementButton id={m.id} period={m.period} description={m.description} />
+                    </div>
+                  )}
                 </div>
               );
             })}
