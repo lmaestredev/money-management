@@ -8,6 +8,7 @@ import {
   deleteRecurringExpense,
   payRecurringExpense,
 } from '@/app/lib/data/recurring';
+import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
 
 const optionalNumber = z
@@ -92,7 +93,9 @@ export async function payRecurringExpenseAction(formData: FormData) {
   }
 
   const { recurring_expense_id, period, account_id } = parsed.data;
-  await payRecurringExpense(recurring_expense_id, period, account_id);
+  const currentPeriod = await fetchCurrentPeriod();
+  if (!currentPeriod) redirect('/dashboard/movimientos');
+  await payRecurringExpense(recurring_expense_id, period, currentPeriod.id, account_id);
   revalidatePath('/dashboard/movimientos');
   revalidatePath('/dashboard/gastos-fijos');
   revalidatePath('/dashboard');

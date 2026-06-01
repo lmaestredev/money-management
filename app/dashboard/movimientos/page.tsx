@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { fetchAccounts } from '@/app/lib/data/accounts';
-import { fetchMovementsByPeriod } from '@/app/lib/data/movements';
+import { fetchMovementsByFinancialPeriod } from '@/app/lib/data/movements';
+import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
 import { fetchActiveInstallments, fetchInstallmentPaidIds } from '@/app/lib/data/installments';
 import { fetchActiveRecurringExpenses, fetchRecurringPaidIds } from '@/app/lib/data/recurring';
 import {
@@ -9,7 +10,7 @@ import {
   fetchRecurringIncomeReceivedIds,
 } from '@/app/lib/data/recurring-incomes';
 import type { Movement } from '@/app/lib/definitions';
-import MovementPeriodSelector from '@/app/ui/movements/MovementPeriodSelector';
+import PeriodBadge from '@/app/ui/financial-periods/PeriodBadge';
 import MovementsPageClient, { type MovementSummary } from '@/app/ui/movements/MovementsPageClient';
 import MonthlyInstallmentsSection from '@/app/ui/installments/MonthlyInstallmentsSection';
 import MonthlyFixedExpensesSection from '@/app/ui/recurring/MonthlyFixedExpensesSection';
@@ -55,16 +56,13 @@ function computeSummary(movements: Movement[]): MovementSummary {
   };
 }
 
-type Props = {
-  searchParams: Promise<{ period?: string }>;
-};
+export default async function MovimientosPage() {
+  // Período YYYY-MM de hoy — usado como campo secundario en los forms
+  // (el filtro principal es financial_period_id del período activo).
+  const period = getCurrentPeriod();
 
-export default async function MovimientosPage({ searchParams }: Props) {
-  const { period: periodParam } = await searchParams;
-  const period =
-    periodParam && /^\d{4}-\d{2}$/.test(periodParam)
-      ? periodParam
-      : getCurrentPeriod();
+  const currentFinancialPeriod = await fetchCurrentPeriod();
+  const financialPeriodId = currentFinancialPeriod?.id ?? '';
 
   const [
     accounts,
@@ -77,13 +75,13 @@ export default async function MovimientosPage({ searchParams }: Props) {
     receivedIncomeIds,
   ] = await Promise.all([
     fetchAccounts(),
-    fetchMovementsByPeriod(period),
+    fetchMovementsByFinancialPeriod(financialPeriodId),
     fetchActiveInstallments(),
-    fetchInstallmentPaidIds(period),
+    fetchInstallmentPaidIds(financialPeriodId),
     fetchActiveRecurringExpenses(),
-    fetchRecurringPaidIds(period),
+    fetchRecurringPaidIds(financialPeriodId),
     fetchActiveRecurringIncomes(),
-    fetchRecurringIncomeReceivedIds(period),
+    fetchRecurringIncomeReceivedIds(financialPeriodId),
   ]);
 
   const accountNames = new Map(accounts.map((a) => [a.id, a.name]));
@@ -94,12 +92,10 @@ export default async function MovimientosPage({ searchParams }: Props) {
       <header className={styles.pageHeader}>
         <div className={styles.pageTitleGroup}>
           <h1 className={styles.pageTitle}>Movimientos</h1>
-          <p className={styles.pageSubtitle}>
-            Seguimiento de ingresos y egresos
-          </p>
+          <p className={styles.pageSubtitle}>Seguimiento de ingresos y egresos</p>
         </div>
         <div className={styles.headerActions}>
-          <MovementPeriodSelector currentPeriod={period} />
+          <PeriodBadge period={currentFinancialPeriod} />
           <Link
             href={`/dashboard/movimientos/nuevo?period=${period}`}
             className={styles.newLink}

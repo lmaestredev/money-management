@@ -101,6 +101,18 @@ export type CardStatement = {
   updated_at: string;
 };
 
+// Períodos financieros personalizados
+export type FinancialPeriodStatus = 'open' | 'closed';
+
+export type FinancialPeriod = {
+  id: string;
+  start_date: string;  // ISO date "YYYY-MM-DD"
+  end_date: string | null;
+  status: FinancialPeriodStatus;
+  closed_at: string | null;
+  created_at: string;
+};
+
 // Configuración (presupuestos + preferencias de tasa de cambio)
 export type RateSource = 'blue' | 'oficial';
 
@@ -147,6 +159,7 @@ export type MovementSource = 'app' | 'telegram' | 'import';
 export type Movement = {
   id: string;
   period: string;
+  financial_period_id: string;
   record_type: RecordType;
   account_id: string | null;
   credit_card_id?: string | null;
@@ -171,6 +184,8 @@ export type Movement = {
 
 export type MovementInsert = {
   period: string;
+  /** Opcional: createMovement auto-asigna el período financiero activo si no se provee. */
+  financial_period_id?: string;
   record_type: RecordType;
   account_id?: string | null;
   credit_card_id?: string | null;

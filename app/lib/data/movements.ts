@@ -4,6 +4,7 @@ import {
   resolveOrCreateStatement,
   reverseCardCharge,
 } from './credit-cards';
+import { fetchCurrentPeriod } from './financial-periods';
 import type {
   Movement,
   MovementInsert,
@@ -15,6 +16,7 @@ function rowToMovement(row: Record<string, unknown>): Movement {
   return {
     id: row.id as string,
     period: row.period as string,
+    financial_period_id: row.financial_period_id as string,
     record_type: row.record_type as RecordType,
     account_id: (row.account_id as string) ?? null,
     credit_card_id: (row.credit_card_id as string) ?? null,
@@ -38,7 +40,7 @@ function rowToMovement(row: Record<string, unknown>): Movement {
 
 export async function fetchMovementsByPeriod(period: string): Promise<Movement[]> {
   const rows = await sql`
-    SELECT m.id, m.period, m.record_type, m.account_id, m.credit_card_id,
+    SELECT m.id, m.period, m.financial_period_id, m.record_type, m.account_id, m.credit_card_id,
            m.statement_id, m.category_id,
            c.name AS category_name,
            m.description, m.status, m.amount_pesos, m.amount_dollars,
@@ -52,12 +54,29 @@ export async function fetchMovementsByPeriod(period: string): Promise<Movement[]
   return rows.map((r) => rowToMovement(r as Record<string, unknown>));
 }
 
+/** Movimientos del período financiero (rango de fechas del período activo o cerrado). */
+export async function fetchMovementsByFinancialPeriod(financialPeriodId: string): Promise<Movement[]> {
+  const rows = await sql`
+    SELECT m.id, m.period, m.financial_period_id, m.record_type, m.account_id, m.credit_card_id,
+           m.statement_id, m.category_id,
+           c.name AS category_name,
+           m.description, m.status, m.amount_pesos, m.amount_dollars,
+           m.payment_date, m.dollar_rate, m.exchange_rate, m.comment,
+           m.created_at, m.user_id, m.source
+    FROM movements m
+    LEFT JOIN categories c ON m.category_id = c.id
+    WHERE m.financial_period_id = ${financialPeriodId}
+    ORDER BY m.record_type, m.created_at ASC
+  `;
+  return rows.map((r) => rowToMovement(r as Record<string, unknown>));
+}
+
 export async function fetchMovementsByPeriodAndType(
   period: string,
   recordType: RecordType
 ): Promise<Movement[]> {
   const rows = await sql`
-    SELECT m.id, m.period, m.record_type, m.account_id, m.credit_card_id,
+    SELECT m.id, m.period, m.financial_period_id, m.record_type, m.account_id, m.credit_card_id,
            m.statement_id, m.category_id,
            c.name AS category_name,
            m.description, m.status, m.amount_pesos, m.amount_dollars,
@@ -73,7 +92,7 @@ export async function fetchMovementsByPeriodAndType(
 
 export async function fetchMovementById(id: string): Promise<Movement | null> {
   const [row] = await sql`
-    SELECT m.id, m.period, m.record_type, m.account_id, m.credit_card_id,
+    SELECT m.id, m.period, m.financial_period_id, m.record_type, m.account_id, m.credit_card_id,
            m.statement_id, m.category_id,
            c.name AS category_name,
            m.description, m.status, m.amount_pesos, m.amount_dollars,
@@ -131,6 +150,12 @@ export async function createMovement(
 ): Promise<Movement> {
   const sourceValue = data.source ?? source;
 
+  // Resuelve el financial_period_id: usa el del data si viene (cierre automático),
+  // si no, toma el período abierto activo.
+  const financialPeriodId = data.financial_period_id
+    ?? (await fetchCurrentPeriod())?.id
+    ?? (() => { throw new Error('No hay período financiero abierto'); })();
+
   const [row] = await sql.begin(async (tx) => {
     // Cargo a tarjeta: ubica el resumen del ciclo; no se debita ninguna cuenta.
     let statementId: string | null = data.statement_id ?? null;
@@ -142,13 +167,14 @@ export async function createMovement(
 
     const [inserted] = await tx`
       INSERT INTO movements (
-        period, record_type, account_id, credit_card_id, statement_id,
+        period, financial_period_id, record_type, account_id, credit_card_id, statement_id,
         category_id, description, status,
         amount_pesos, amount_dollars, payment_date, dollar_rate, exchange_rate,
         comment, user_id, source
       )
       VALUES (
         ${data.period},
+        ${financialPeriodId},
         ${data.record_type},
         ${data.account_id ?? null},
         ${data.credit_card_id ?? null},
@@ -165,7 +191,7 @@ export async function createMovement(
         ${data.user_id ?? null},
         ${sourceValue}
       )
-      RETURNING id, period, record_type, account_id, credit_card_id, statement_id,
+      RETURNING id, period, financial_period_id, record_type, account_id, credit_card_id, statement_id,
                 category_id, description, status,
                 amount_pesos, amount_dollars, payment_date, dollar_rate, exchange_rate,
                 comment, created_at, user_id, source

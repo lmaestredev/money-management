@@ -70,12 +70,12 @@ export async function fetchRecurringExpenseById(id: string): Promise<RecurringEx
   return rowToRecurring(row as Record<string, unknown>);
 }
 
-/** IDs de gastos fijos cuyo pago ya se registró en el periodo dado. */
-export async function fetchRecurringPaidIds(period: string): Promise<Set<string>> {
+/** IDs de gastos fijos ya pagados en el período financiero dado. */
+export async function fetchRecurringPaidIds(financialPeriodId: string): Promise<Set<string>> {
   const rows = (await sql`
     SELECT DISTINCT recurring_expense_id
     FROM movements
-    WHERE period = ${period} AND recurring_expense_id IS NOT NULL
+    WHERE financial_period_id = ${financialPeriodId} AND recurring_expense_id IS NOT NULL
   `) as { recurring_expense_id: string }[];
   return new Set(rows.map((r) => r.recurring_expense_id));
 }
@@ -143,6 +143,7 @@ export type PayRecurringResult =
 export async function payRecurringExpense(
   recurringId: string,
   period: string,
+  financialPeriodId: string,
   overrideAccountId?: string | null
 ): Promise<PayRecurringResult> {
   return sql.begin(async (tx) => {
@@ -162,7 +163,7 @@ export async function payRecurringExpense(
 
     const [existing] = await tx`
       SELECT id FROM movements
-      WHERE recurring_expense_id = ${recurringId} AND period = ${period}
+      WHERE recurring_expense_id = ${recurringId} AND financial_period_id = ${financialPeriodId}
       LIMIT 1
     `;
     if (existing) return { ok: false, reason: 'already_paid' as const };
@@ -174,12 +175,12 @@ export async function payRecurringExpense(
       const st = await resolveOrCreateStatement(tx, rec.credit_card_id as string, new Date());
       await tx`
         INSERT INTO movements (
-          period, record_type, credit_card_id, statement_id, category_id,
+          period, financial_period_id, record_type, credit_card_id, statement_id, category_id,
           description, status,
           amount_pesos, amount_dollars, payment_date, comment, source, recurring_expense_id
         )
         VALUES (
-          ${period}, 'fixed_payment', ${rec.credit_card_id}, ${st.id}, ${rec.category_id ?? null},
+          ${period}, ${financialPeriodId}, 'fixed_payment', ${rec.credit_card_id}, ${st.id}, ${rec.category_id ?? null},
           ${rec.name}, true, ${amountPesos}, ${amountDollars}, NULL, NULL, 'app',
           ${recurringId}
         )
@@ -189,11 +190,11 @@ export async function payRecurringExpense(
     } else {
       await tx`
         INSERT INTO movements (
-          period, record_type, account_id, category_id, description, status,
+          period, financial_period_id, record_type, account_id, category_id, description, status,
           amount_pesos, amount_dollars, payment_date, comment, source, recurring_expense_id
         )
         VALUES (
-          ${period}, 'fixed_payment', ${accountId}, ${rec.category_id ?? null},
+          ${period}, ${financialPeriodId}, 'fixed_payment', ${accountId}, ${rec.category_id ?? null},
           ${rec.name}, true, ${amountPesos}, ${amountDollars}, NULL, NULL, 'app',
           ${recurringId}
         )

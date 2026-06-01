@@ -1,6 +1,7 @@
 import postgres from 'postgres';
 import { sql } from '../db';
 import { getBalanceDeltas } from './movements';
+import { fetchCurrentPeriod } from './financial-periods';
 import type {
   AccountCurrency,
   CardBrand,
@@ -414,13 +415,17 @@ export async function payStatement(
     const cardName = (card?.name as string) ?? 'Tarjeta';
     const description = `Pago resumen ${cardName} (${st.period})`;
 
+    const currentPeriod = await fetchCurrentPeriod();
+    const financialPeriodId = currentPeriod?.id;
+    if (!financialPeriodId) throw new Error('No hay período financiero abierto');
+
     const [mov] = await tx`
       INSERT INTO movements (
-        period, record_type, account_id, description, status,
+        period, financial_period_id, record_type, account_id, description, status,
         amount_pesos, amount_dollars, payment_date, source
       )
       VALUES (
-        ${st.period}, 'fixed_payment', ${accountId}, ${description}, true,
+        ${st.period}, ${financialPeriodId}, 'fixed_payment', ${accountId}, ${description}, true,
         ${totalPesos}, ${totalDollars}, NULL, 'app'
       )
       RETURNING id

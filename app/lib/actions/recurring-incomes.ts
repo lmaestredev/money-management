@@ -8,6 +8,7 @@ import {
   deleteRecurringIncome,
   receiveRecurringIncome,
 } from '@/app/lib/data/recurring-incomes';
+import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
 
 const optionalNumber = z
@@ -81,7 +82,9 @@ export async function receiveRecurringIncomeAction(formData: FormData) {
   }
 
   const { recurring_income_id, period, account_id } = parsed.data;
-  await receiveRecurringIncome(recurring_income_id, period, account_id);
+  const currentPeriod = await fetchCurrentPeriod();
+  if (!currentPeriod) redirect('/dashboard/movimientos');
+  await receiveRecurringIncome(recurring_income_id, period, currentPeriod.id, account_id);
   revalidatePath('/dashboard/movimientos');
   revalidatePath('/dashboard/ingresos');
   revalidatePath('/dashboard');

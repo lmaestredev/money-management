@@ -87,12 +87,12 @@ export async function fetchInstallmentById(id: string): Promise<InstallmentPurch
   return rowToInstallment(row as Record<string, unknown>);
 }
 
-/** IDs de compras cuyo pago de cuota ya se registró en el periodo dado. */
-export async function fetchInstallmentPaidIds(period: string): Promise<Set<string>> {
+/** IDs de cuotas ya pagadas en el período financiero dado. */
+export async function fetchInstallmentPaidIds(financialPeriodId: string): Promise<Set<string>> {
   const rows = (await sql`
     SELECT DISTINCT installment_id
     FROM movements
-    WHERE period = ${period} AND installment_id IS NOT NULL
+    WHERE financial_period_id = ${financialPeriodId} AND installment_id IS NOT NULL
   `) as { installment_id: string }[];
   return new Set(rows.map((r) => r.installment_id));
 }
@@ -140,7 +140,8 @@ export type PayInstallmentResult =
  */
 export async function payInstallment(
   installmentId: string,
-  period: string
+  period: string,
+  financialPeriodId: string
 ): Promise<PayInstallmentResult> {
   return sql.begin(async (tx) => {
     const [inst] = await tx`
@@ -164,7 +165,7 @@ export async function payInstallment(
 
     const [existing] = await tx`
       SELECT id FROM movements
-      WHERE installment_id = ${installmentId} AND period = ${period}
+      WHERE installment_id = ${installmentId} AND financial_period_id = ${financialPeriodId}
       LIMIT 1
     `;
     if (existing) return { ok: false, reason: 'already_paid' as const };
@@ -178,12 +179,12 @@ export async function payInstallment(
       const st = await resolveOrCreateStatement(tx, inst.credit_card_id as string, new Date());
       await tx`
         INSERT INTO movements (
-          period, record_type, credit_card_id, statement_id, category_id,
+          period, financial_period_id, record_type, credit_card_id, statement_id, category_id,
           description, status,
           amount_pesos, amount_dollars, payment_date, comment, source, installment_id
         )
         VALUES (
-          ${period}, 'fixed_payment', ${inst.credit_card_id}, ${st.id}, ${inst.category_id ?? null},
+          ${period}, ${financialPeriodId}, 'fixed_payment', ${inst.credit_card_id}, ${st.id}, ${inst.category_id ?? null},
           ${description}, true, ${amountPesos}, ${amountDollars}, NULL, NULL, 'app',
           ${installmentId}
         )
@@ -193,11 +194,11 @@ export async function payInstallment(
     } else {
       await tx`
         INSERT INTO movements (
-          period, record_type, account_id, category_id, description, status,
+          period, financial_period_id, record_type, account_id, category_id, description, status,
           amount_pesos, amount_dollars, payment_date, comment, source, installment_id
         )
         VALUES (
-          ${period}, 'fixed_payment', ${inst.account_id}, ${inst.category_id ?? null},
+          ${period}, ${financialPeriodId}, 'fixed_payment', ${inst.account_id}, ${inst.category_id ?? null},
           ${description}, true, ${amountPesos}, ${amountDollars}, NULL, NULL, 'app',
           ${installmentId}
         )

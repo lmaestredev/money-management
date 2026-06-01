@@ -62,12 +62,12 @@ export async function fetchRecurringIncomeById(id: string): Promise<RecurringInc
   return rowToRecurringIncome(row as Record<string, unknown>);
 }
 
-/** IDs de ingresos cuyo cobro ya se registró en el periodo dado. */
-export async function fetchRecurringIncomeReceivedIds(period: string): Promise<Set<string>> {
+/** IDs de ingresos ya cobrados en el período financiero dado. */
+export async function fetchRecurringIncomeReceivedIds(financialPeriodId: string): Promise<Set<string>> {
   const rows = (await sql`
     SELECT DISTINCT recurring_income_id
     FROM movements
-    WHERE period = ${period} AND recurring_income_id IS NOT NULL
+    WHERE financial_period_id = ${financialPeriodId} AND recurring_income_id IS NOT NULL
   `) as { recurring_income_id: string }[];
   return new Set(rows.map((r) => r.recurring_income_id));
 }
@@ -126,6 +126,7 @@ export type ReceiveIncomeResult =
 export async function receiveRecurringIncome(
   recurringId: string,
   period: string,
+  financialPeriodId: string,
   overrideAccountId?: string | null
 ): Promise<ReceiveIncomeResult> {
   return sql.begin(async (tx) => {
@@ -143,7 +144,7 @@ export async function receiveRecurringIncome(
 
     const [existing] = await tx`
       SELECT id FROM movements
-      WHERE recurring_income_id = ${recurringId} AND period = ${period}
+      WHERE recurring_income_id = ${recurringId} AND financial_period_id = ${financialPeriodId}
       LIMIT 1
     `;
     if (existing) return { ok: false, reason: 'already_received' as const };
@@ -153,11 +154,11 @@ export async function receiveRecurringIncome(
 
     await tx`
       INSERT INTO movements (
-        period, record_type, account_id, category_id, description, status,
+        period, financial_period_id, record_type, account_id, category_id, description, status,
         amount_pesos, amount_dollars, payment_date, comment, source, recurring_income_id
       )
       VALUES (
-        ${period}, 'income', ${accountId}, ${rec.category_id ?? null},
+        ${period}, ${financialPeriodId}, 'income', ${accountId}, ${rec.category_id ?? null},
         ${rec.name}, true, ${amountPesos}, ${amountDollars}, NULL, NULL, 'app',
         ${recurringId}
       )

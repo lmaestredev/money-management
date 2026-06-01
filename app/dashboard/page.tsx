@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import type { Movement } from '@/app/lib/definitions';
 import { fetchAccounts } from '@/app/lib/data/accounts';
-import { fetchMovementsByPeriod } from '@/app/lib/data/movements';
+import { fetchMovementsByFinancialPeriod } from '@/app/lib/data/movements';
 import { fetchInstallments } from '@/app/lib/data/installments';
 import { fetchRecurringExpenses } from '@/app/lib/data/recurring';
 import { fetchRecurringIncomes } from '@/app/lib/data/recurring-incomes';
 import { fetchCreditCards, fetchStatementPaymentIds } from '@/app/lib/data/credit-cards';
+import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
 import { getSettings } from '@/app/lib/data/settings';
 import {
   fetchExchangeRates,
@@ -13,8 +14,8 @@ import {
   refreshExchangeRatesIfStale,
 } from '@/app/lib/data/exchange-rates';
 import SummaryCards from '@/app/ui/movements/SummaryCards';
-import MovementPeriodSelector from '@/app/ui/movements/MovementPeriodSelector';
 import DashboardAlert from '@/app/ui/dashboard/DashboardAlert';
+import PeriodBadge, { formatPeriodRange } from '@/app/ui/financial-periods/PeriodBadge';
 import ExpenseBreakdownCard from '@/app/ui/dashboard/ExpenseBreakdownCard';
 import BudgetCard from '@/app/ui/dashboard/BudgetCard';
 import DashboardAccountList from '@/app/ui/dashboard/DashboardAccountList';
@@ -25,19 +26,13 @@ import CategoryBreakdownCard from '@/app/ui/dashboard/CategoryBreakdownCard';
 import type { CategoryTotal } from '@/app/ui/dashboard/CategoryBreakdownCard';
 import CreditCardsCard from '@/app/ui/dashboard/CreditCardsCard';
 import RateInfoCard from '@/app/ui/dashboard/RateInfoCard';
+import ClosePeriodButton from '@/app/ui/financial-periods/ClosePeriodButton';
 import styles from './page.module.css';
 
 function getCurrentPeriod(): string {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  return `${year}-${month}`;
-}
-
-function formatPeriodLabel(period: string): string {
-  const [y, m] = period.split('-').map(Number);
-  const d = new Date(y, m - 1, 1);
-  return d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  return `${now.getFullYear()}-${mm}`;
 }
 
 /**
@@ -109,19 +104,16 @@ function computeSummary(
   };
 }
 
-type Props = {
-  searchParams: Promise<{ period?: string }>;
-};
-
-export default async function DashboardPage({ searchParams }: Props) {
-  const { period: periodParam } = await searchParams;
-  const period =
-    periodParam && /^\d{4}-\d{2}$/.test(periodParam)
-      ? periodParam
-      : getCurrentPeriod();
+export default async function DashboardPage() {
+  // Período YYYY-MM del mes actual: se usa como campo secundario en movimientos
+  // (el filtro principal ya es financial_period_id).
+  const period = getCurrentPeriod();
 
   // Red de seguridad: si las cotizaciones quedaron viejas, refrescamos antes de leer.
   await refreshExchangeRatesIfStale();
+
+  const currentFinancialPeriod = await fetchCurrentPeriod();
+  const currentFinancialPeriodId = currentFinancialPeriod?.id ?? '';
 
   const [
     accounts,
@@ -136,7 +128,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     rates,
   ] = await Promise.all([
     fetchAccounts(),
-    fetchMovementsByPeriod(period),
+    fetchMovementsByFinancialPeriod(currentFinancialPeriodId),
     fetchInstallments(),
     fetchRecurringExpenses(),
     fetchRecurringIncomes(),
@@ -149,8 +141,8 @@ export default async function DashboardPage({ searchParams }: Props) {
 
   const rate = effectiveRate?.rate ?? null;
   const summary = computeSummary(movements, statementPaymentIds, rate);
-  const periodLabel = formatPeriodLabel(period);
-  const capitalizedPeriod = periodLabel.charAt(0).toUpperCase() + periodLabel.slice(1);
+  // Label del período para las cards (rango de fechas del período financiero).
+  const periodLabel = formatPeriodRange(currentFinancialPeriod);
 
   // Brecha blue / oficial (sobre venta), para mostrar en el dashboard.
   const blue = rates.find((r) => r.source === 'blue');
@@ -184,7 +176,8 @@ export default async function DashboardPage({ searchParams }: Props) {
           <p className={styles.pageSubtitle}>Resumen de tu situación financiera</p>
         </div>
         <div className={styles.headerActions}>
-          <MovementPeriodSelector currentPeriod={period} basePath="/dashboard" />
+          <PeriodBadge period={currentFinancialPeriod} />
+          <ClosePeriodButton />
         </div>
       </header>
 
@@ -263,7 +256,7 @@ export default async function DashboardPage({ searchParams }: Props) {
 
       <div className={styles.grid2}>
         <ExpenseBreakdownCard
-          periodLabel={capitalizedPeriod}
+          periodLabel={periodLabel}
           fixedTotal={summary.fixedTotal}
           variableTotal={summary.variableTotal}
         />

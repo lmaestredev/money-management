@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createInstallment, payInstallment } from '@/app/lib/data/installments';
+import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
 
 const optionalNumber = z
@@ -105,7 +106,9 @@ export async function payInstallmentAction(formData: FormData) {
   }
 
   const { installment_id, period } = parsed.data;
-  await payInstallment(installment_id, period);
+  const currentPeriod = await fetchCurrentPeriod();
+  if (!currentPeriod) redirect('/dashboard/movimientos');
+  await payInstallment(installment_id, period, currentPeriod.id);
   revalidatePath('/dashboard/movimientos');
   revalidatePath('/dashboard/cuotas');
   revalidatePath('/dashboard');
