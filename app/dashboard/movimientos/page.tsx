@@ -3,13 +3,17 @@ import { PlusIcon } from '@heroicons/react/24/outline';
 import { fetchAccounts } from '@/app/lib/data/accounts';
 import { fetchMovementsByFinancialPeriod } from '@/app/lib/data/movements';
 import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
-import { fetchActiveInstallments, fetchInstallmentPaidIds } from '@/app/lib/data/installments';
+import { fetchActiveInstallments } from '@/app/lib/data/installments';
 import { fetchActiveRecurringExpenses, fetchRecurringPaidIds } from '@/app/lib/data/recurring';
 import {
   fetchActiveRecurringIncomes,
   fetchRecurringIncomeReceivedIds,
 } from '@/app/lib/data/recurring-incomes';
-import { fetchCreditCards, fetchStatementPaymentIds } from '@/app/lib/data/credit-cards';
+import {
+  fetchCreditCards,
+  fetchStatementPaymentIds,
+  fetchUnpaidStatements,
+} from '@/app/lib/data/credit-cards';
 import { computeMovementSummary, computeRecurringIncomeProgress } from '@/app/lib/data/movement-summary';
 import {
   getEffectiveRate,
@@ -42,11 +46,11 @@ export default async function MovimientosPage() {
     cards,
     movements,
     activeInstallments,
-    paidInstallmentIds,
     activeRecurring,
     paidRecurringIds,
     activeIncomes,
     receivedIncomeIds,
+    unpaidStatements,
     statementPaymentIds,
     effectiveRate,
   ] = await Promise.all([
@@ -54,11 +58,11 @@ export default async function MovimientosPage() {
     fetchCreditCards(),
     fetchMovementsByFinancialPeriod(financialPeriodId),
     fetchActiveInstallments(),
-    fetchInstallmentPaidIds(financialPeriodId),
     fetchActiveRecurringExpenses(),
     fetchRecurringPaidIds(financialPeriodId),
     fetchActiveRecurringIncomes(),
     fetchRecurringIncomeReceivedIds(financialPeriodId),
+    fetchUnpaidStatements(),
     fetchStatementPaymentIds(),
     getEffectiveRate(),
   ]);
@@ -66,7 +70,11 @@ export default async function MovimientosPage() {
   const accountNames = Object.fromEntries(accounts.map((a) => [a.id, a.name]));
   const cardNames = Object.fromEntries(cards.map((c) => [c.id, c.name]));
   const rate = effectiveRate?.rate ?? null;
-  const summary = computeMovementSummary(movements, rate, { statementPaymentIds });
+  const summary = computeMovementSummary(movements, rate, {
+    statementPaymentIds,
+    cards,
+    installments: activeInstallments,
+  });
   const incomeProgress = computeRecurringIncomeProgress(
     activeIncomes,
     receivedIncomeIds,
@@ -136,8 +144,9 @@ export default async function MovimientosPage() {
           receivedIncomeIds: [...receivedIncomeIds],
           expenses: activeRecurring,
           paidRecurringIds: [...paidRecurringIds],
+          cards,
           installments: activeInstallments,
-          paidInstallmentIds: [...paidInstallmentIds],
+          unpaidStatements,
           period,
           accounts,
         }}

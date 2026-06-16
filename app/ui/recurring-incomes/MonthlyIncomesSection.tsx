@@ -75,7 +75,9 @@ export default function MonthlyIncomesSection({
                 <div className={styles.amountPrimary}>
                   +{formatUsd(amountsToUsd(i.amount_pesos, i.amount_dollars, rate))}
                 </div>
-                <div className={styles.amountSecondary}>{formatPesos(i.amount_pesos)}</div>
+                {i.amount_pesos > 0 && (
+                  <div className={styles.amountSecondary}>{formatPesos(i.amount_pesos)}</div>
+                )}
               </div>
               <div className={styles.action}>
                 {hasPresetAccount ? (

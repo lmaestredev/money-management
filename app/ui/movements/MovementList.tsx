@@ -81,11 +81,9 @@ function getDayTotal(movements: Movement[], rate: number | null): number {
     const usd = movementToUsd(m, rate);
     if (m.record_type === 'income') {
       total += usd;
-    } else if (
-      (m.record_type === 'variable_payment' || m.record_type === 'fixed_payment') &&
-      m.status === true
-    ) {
-      total -= usd;
+    } else if (m.record_type === 'variable_payment' || m.record_type === 'fixed_payment') {
+      const counts = m.credit_card_id ? true : m.status === true;
+      if (counts) total -= usd;
     }
   }
   return total;

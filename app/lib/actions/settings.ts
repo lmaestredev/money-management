@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { refreshExchangeRates } from '@/app/lib/data/exchange-rates';
-import { updateSettings } from '@/app/lib/data/settings';
+import { updateSettings, getSettings } from '@/app/lib/data/settings';
 import type { RateSource } from '@/app/lib/definitions';
 
 /** Botón "Actualizar ahora": refresca las cotizaciones contra dolarapi. */
@@ -60,12 +60,13 @@ export async function updateSettingsAction(
   }
 
   const d = parsed.data;
+  const current = await getSettings();
   await updateSettings({
     budget_total_usd: d.budget_total_usd,
     budget_variable_usd: d.budget_variable_usd,
     rate_source: d.rate_source as RateSource,
     manual_rate_enabled: d.manual_rate_enabled,
-    manual_rate_value: d.manual_rate_value,
+    manual_rate_value: d.manual_rate_enabled ? d.manual_rate_value : current.manual_rate_value,
   });
 
   // Sin redirect: revalidamos para refrescar los datos en la misma pantalla y

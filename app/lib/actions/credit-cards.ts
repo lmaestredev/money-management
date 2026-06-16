@@ -7,8 +7,12 @@ import {
   createCreditCard,
   deleteCreditCard,
   payStatement,
+  setCardStatementTotal,
   updateCreditCard,
 } from '@/app/lib/data/credit-cards';
+import { fetchActiveInstallments } from '@/app/lib/data/installments';
+import { getCardMonthlyInstallmentFloor } from '@/app/lib/utils/card-totals';
+import { revalidateFinancialScreens } from '@/app/lib/revalidate-financial';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
 import type { AccountCurrency, CardBrand } from '@/app/lib/definitions';
 
@@ -170,7 +174,52 @@ export async function payStatementAction(formData: FormData) {
     redirect(`/dashboard/tarjetas?error=${result.reason}`);
   }
 
-  revalidatePath('/dashboard/tarjetas');
-  revalidatePath('/dashboard');
+  revalidateFinancialScreens();
   redirectWithToast('/dashboard/tarjetas', 'Resumen pagado');
+}
+
+const setCardTotalFormSchema = z.object({
+  card_id: z.string().uuid(),
+  period: z.string().regex(/^\d{4}-\d{2}$/),
+  total_pesos: z.string(),
+  total_dollars: z.string().optional().or(z.literal('')),
+});
+
+export async function setCardStatementTotalAction(formData: FormData) {
+  const parsed = setCardTotalFormSchema.safeParse({
+    card_id: formData.get('card_id'),
+    period: formData.get('period'),
+    total_pesos: formData.get('total_pesos') ?? '',
+    total_dollars: formData.get('total_dollars') ?? '',
+  });
+  if (!parsed.success) {
+    redirect('/dashboard/movimientos?error=validation');
+  }
+
+  const { card_id, period } = parsed.data;
+  const totalPesos = parseFloat(parsed.data.total_pesos);
+  const totalDollars = parseFloat(parsed.data.total_dollars || '0');
+  if (Number.isNaN(totalPesos) || Number.isNaN(totalDollars) || totalPesos < 0 || totalDollars < 0) {
+    redirect(`/dashboard/movimientos?period=${period}&error=validation`);
+  }
+
+  const installments = await fetchActiveInstallments();
+  const floor = getCardMonthlyInstallmentFloor(card_id, installments);
+
+  const result = await setCardStatementTotal(
+    card_id,
+    totalPesos,
+    totalDollars,
+    floor.pesos,
+    floor.dollars
+  );
+
+  if (!result.ok) {
+    const err =
+      result.reason === 'below_cuota_minimum' ? 'below_cuota_minimum' : result.reason;
+    redirect(`/dashboard/movimientos?period=${period}&error=${err}`);
+  }
+
+  revalidateFinancialScreens();
+  redirectWithToast(`/dashboard/movimientos?period=${period}`, 'Total de tarjeta actualizado');
 }

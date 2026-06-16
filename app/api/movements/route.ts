@@ -4,12 +4,7 @@ import {
   fetchMovementsByPeriod,
 } from '@/app/lib/data/movements';
 
-const recordTypeSchema = z.enum([
-  'income',
-  'conversion',
-  'variable_payment',
-  'fixed_payment',
-]);
+const recordTypeSchema = z.enum(['income', 'variable_payment', 'fixed_payment']);
 
 const createMovementSchema = z.object({
   period: z.string().regex(/^\d{4}-\d{2}$/, 'period must be YYYY-MM'),

@@ -1,7 +1,8 @@
 import postgres from 'postgres';
 import { sql } from '../db';
-import { getBalanceDeltas } from './movements';
+import { getAccountBalanceDeltas } from './movements';
 import { fetchCurrentPeriod } from './financial-periods';
+import { getEffectiveRate } from './exchange-rates';
 import type {
   AccountCurrency,
   CardBrand,
@@ -419,6 +420,9 @@ export async function payStatement(
     const financialPeriodId = currentPeriod?.id;
     if (!financialPeriodId) throw new Error('No hay período financiero abierto');
 
+    const rate = (await getEffectiveRate())?.rate ?? null;
+    const [account] = await tx`SELECT currency FROM accounts WHERE id = ${accountId}`;
+
     const [mov] = await tx`
       INSERT INTO movements (
         period, financial_period_id, record_type, account_id, description, status,
@@ -431,11 +435,13 @@ export async function payStatement(
       RETURNING id
     `;
 
-    const { deltaPesos, deltaDollars } = getBalanceDeltas(
+    const { deltaPesos, deltaDollars } = getAccountBalanceDeltas(
+      (account?.currency as AccountCurrency) ?? null,
       'fixed_payment',
       true,
       totalPesos,
-      totalDollars
+      totalDollars,
+      rate
     );
     if (deltaPesos !== 0 || deltaDollars !== 0) {
       await tx`
@@ -460,6 +466,65 @@ export async function payStatement(
       SET status = 'paid', paid_movement_id = ${(mov as { id: string }).id}, updated_at = NOW()
       WHERE id = ${statementId}
     `;
+
+    return { ok: true as const };
+  });
+}
+
+export type SetCardStatementTotalResult =
+  | { ok: true }
+  | { ok: false; reason: 'not_found' | 'below_cuota_minimum' | 'validation' };
+
+/**
+ * Fija el total del resumen del ciclo actual (reemplaza el total del período).
+ * Ajusta la deuda de la tarjeta por la diferencia respecto al total anterior del resumen.
+ */
+export async function setCardStatementTotal(
+  cardId: string,
+  totalPesos: number,
+  totalDollars: number,
+  minPesos = 0,
+  minDollars = 0
+): Promise<SetCardStatementTotalResult> {
+  if (totalPesos < 0 || totalDollars < 0) {
+    return { ok: false, reason: 'validation' };
+  }
+  if (totalPesos < minPesos || totalDollars < minDollars) {
+    return { ok: false, reason: 'below_cuota_minimum' };
+  }
+
+  const card = await fetchCreditCardById(cardId);
+  if (!card) return { ok: false, reason: 'not_found' };
+
+  return sql.begin(async (tx) => {
+    const st = await resolveOrCreateStatement(tx, cardId, new Date());
+    const [current] = await tx`
+      SELECT total_pesos, total_dollars FROM credit_card_statements WHERE id = ${st.id}
+    `;
+    if (!current) return { ok: false, reason: 'not_found' as const };
+
+    const oldPesos = Number(current.total_pesos);
+    const oldDollars = Number(current.total_dollars);
+    const deltaPesos = totalPesos - oldPesos;
+    const deltaDollars = totalDollars - oldDollars;
+
+    await tx`
+      UPDATE credit_card_statements
+      SET total_pesos = ${totalPesos},
+          total_dollars = ${totalDollars},
+          updated_at = NOW()
+      WHERE id = ${st.id}
+    `;
+
+    if (deltaPesos !== 0 || deltaDollars !== 0) {
+      await tx`
+        UPDATE credit_cards
+        SET current_balance_pesos = current_balance_pesos + ${deltaPesos},
+            current_balance_dollars = current_balance_dollars + ${deltaDollars},
+            updated_at = NOW()
+        WHERE id = ${cardId}
+      `;
+    }
 
     return { ok: true as const };
   });

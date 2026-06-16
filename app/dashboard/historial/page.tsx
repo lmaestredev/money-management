@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { fetchClosedPeriodsWithSummary } from '@/app/lib/data/financial-periods';
+import { fetchClosedPeriodsWithSummary } from '@/app/lib/data/period-summaries';
 import { formatUsd, formatArs } from '@/app/lib/utils';
 import { formatShortDate } from '@/app/ui/financial-periods/PeriodBadge';
 import styles from './page.module.css';
@@ -58,11 +58,13 @@ export default async function HistorialPage() {
                   <div className={styles.statBlock}>
                     <span className={styles.statLabel}>Egresos</span>
                     <span className={styles.statValueExpense}>
-                      {formatArs(p.total_expense_pesos)}
+                      {formatUsd(p.total_expense_dollars)}
                     </span>
-                    <span className={styles.statSecondary}>
-                      ≈ {formatUsd(p.total_expense_dollars)}
-                    </span>
+                    {p.total_expense_pesos > 0 && (
+                      <span className={styles.statSecondary}>
+                        {formatArs(p.total_expense_pesos)}
+                      </span>
+                    )}
                   </div>
 
                   <div className={styles.statBlock}>

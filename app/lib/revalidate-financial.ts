@@ -9,4 +9,5 @@ export function revalidateFinancialScreens(): void {
   revalidatePath('/dashboard/cuotas');
   revalidatePath('/dashboard/historial');
   revalidatePath('/dashboard/cuentas');
+  revalidatePath('/dashboard/tarjetas');
 }

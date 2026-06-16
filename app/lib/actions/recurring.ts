@@ -13,12 +13,7 @@ import { fetchAccountById } from '@/app/lib/data/accounts';
 import { revalidateFinancialScreens } from '@/app/lib/revalidate-financial';
 import { normalizeRecurringAmounts } from '@/app/lib/utils/recurring-amounts';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
-
-const optionalNumber = z
-  .string()
-  .optional()
-  .or(z.literal(''))
-  .transform((s) => (s && String(s).trim() ? parseFloat(String(s)) : 0));
+import { optionalNumber, safeDashboardPath } from '@/app/lib/utils/zod-form';
 
 const createRecurringFormSchema = z.object({
   name: z.string().min(1),
@@ -132,7 +127,7 @@ export async function updateRecurringExpenseAction(formData: FormData) {
     redirect(`/dashboard/gastos-fijos/editar/${data.id}?error=notfound`);
   }
 
-  const returnTo = data.return_to || '/dashboard/gastos-fijos';
+  const returnTo = safeDashboardPath(data.return_to, '/dashboard/gastos-fijos');
   revalidateFinancialScreens();
   redirectWithToast(returnTo, 'Gasto fijo actualizado');
 }
@@ -178,7 +173,7 @@ export async function deleteRecurringExpenseAction(formData: FormData) {
     redirect('/dashboard/gastos-fijos?error=validation');
   }
 
-  const redirectTo = parsed.data.redirect_to || '/dashboard/gastos-fijos';
+  const redirectTo = safeDashboardPath(parsed.data.redirect_to, '/dashboard/gastos-fijos');
 
   let deleted = false;
   try {

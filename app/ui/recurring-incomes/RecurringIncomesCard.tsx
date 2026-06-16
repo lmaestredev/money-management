@@ -1,15 +1,20 @@
 import Link from 'next/link';
 import { formatUsd } from '@/app/lib/utils';
+import { amountsToUsd } from '@/app/lib/utils/currency';
 import type { RecurringIncome } from '@/app/lib/definitions';
 import styles from './RecurringIncomesCard.module.css';
 
 type Props = {
   incomes: RecurringIncome[];
+  rate: number | null;
 };
 
-export default function RecurringIncomesCard({ incomes }: Props) {
+export default function RecurringIncomesCard({ incomes, rate }: Props) {
   const active = incomes.filter((i) => i.active);
-  const monthlyTotal = active.reduce((sum, i) => sum + i.amount_dollars, 0);
+  const monthlyTotal = active.reduce(
+    (sum, i) => sum + amountsToUsd(i.amount_pesos, i.amount_dollars, rate),
+    0
+  );
 
   return (
     <section className={styles.card}>
@@ -43,7 +48,9 @@ export default function RecurringIncomesCard({ incomes }: Props) {
                     {i.receive_day ? ` · día ${i.receive_day}` : ''}
                   </span>
                 </div>
-                <span className={styles.itemAmount}>+{formatUsd(i.amount_dollars)}</span>
+                <span className={styles.itemAmount}>
+                  +{formatUsd(amountsToUsd(i.amount_pesos, i.amount_dollars, rate))}
+                </span>
               </div>
             ))}
           </div>

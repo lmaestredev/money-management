@@ -5,6 +5,8 @@ import { getEffectiveRate, refreshExchangeRatesIfStale } from '@/app/lib/data/ex
 import { formatArs, formatUsd } from '@/app/lib/utils';
 import { amountsToUsd } from '@/app/lib/utils/currency';
 import { installmentPaymentLabel } from '@/app/lib/utils/installment-display';
+import ItemActions from '@/app/ui/movements/ItemActions';
+import DeleteInstallmentButton from '@/app/ui/installments/DeleteInstallmentButton';
 import styles from './page.module.css';
 
 export default async function CuotasPage() {
@@ -31,7 +33,7 @@ export default async function CuotasPage() {
       <header className={styles.pageHeader}>
         <div className={styles.pageTitleGroup}>
           <h1 className={styles.pageTitle}>Compras en cuotas</h1>
-          <p className={styles.pageSubtitle}>Artículos financiados y su progreso de pago</p>
+          <p className={styles.pageSubtitle}>Control de financiación — el pago es por tarjeta en Movimientos</p>
         </div>
         <Link href="/dashboard/cuotas/nueva" className={styles.newLink}>
           <PlusIcon className={styles.newLinkIcon} aria-hidden />
@@ -90,11 +92,21 @@ export default async function CuotasPage() {
                   <div className={styles.itemBank}>💳 {installmentPaymentLabel(i)}</div>
                   <div className={styles.itemAmounts}>
                     <span className={styles.itemMonthly}>
-                      {formatArs(i.monthly_amount_pesos)}/mes
+                      {formatUsd(amountsToUsd(i.monthly_amount_pesos, i.monthly_amount_dollars, rate))}/mes
                     </span>
+                    {i.monthly_amount_pesos > 0 && (
+                      <span className={styles.itemRemaining}>
+                        {formatArs(i.monthly_amount_pesos)}/mes
+                      </span>
+                    )}
                     <span className={styles.itemRemaining}>
-                      Faltan {formatArs(i.remaining_amount_pesos)}
+                      Faltan {formatUsd(amountsToUsd(i.remaining_amount_pesos, i.remaining_amount_dollars, rate))}
                     </span>
+                    {i.remaining_amount_pesos > 0 && (
+                      <span className={styles.itemRemaining}>
+                        {formatArs(i.remaining_amount_pesos)}
+                      </span>
+                    )}
                   </div>
                   <div className={styles.progressRow}>
                     <div className={styles.progressBar}>
@@ -103,6 +115,19 @@ export default async function CuotasPage() {
                     <span className={styles.progressLabel}>
                       {i.paid_installments}/{i.total_installments}
                     </span>
+                  </div>
+                  <div className={styles.itemFooter}>
+                    <ItemActions
+                      editHref={`/dashboard/cuotas/editar/${i.id}?return=/dashboard/cuotas`}
+                      editLabel={`Editar ${i.name}`}
+                      deleteSlot={
+                        <DeleteInstallmentButton
+                          id={i.id}
+                          name={i.name}
+                          redirectTo="/dashboard/cuotas"
+                        />
+                      }
+                    />
                   </div>
                 </li>
               );

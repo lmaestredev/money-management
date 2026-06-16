@@ -104,7 +104,7 @@ export default function SettingsForm({ settings }: Props) {
           </span>
         </label>
 
-        {manualEnabled && (
+        {manualEnabled ? (
           <div className={styles.field}>
             <label htmlFor="manual_rate_value" className={styles.label}>
               Tasa manual (pesos por USD)
@@ -120,6 +120,12 @@ export default function SettingsForm({ settings }: Props) {
               placeholder="Ej. 1430"
             />
           </div>
+        ) : (
+          <input
+            type="hidden"
+            name="manual_rate_value"
+            value={settings.manual_rate_value ?? ''}
+          />
         )}
       </fieldset>
 

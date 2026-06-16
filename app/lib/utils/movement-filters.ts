@@ -5,7 +5,7 @@ import type {
   RecurringIncome,
 } from '@/app/lib/definitions';
 import { getMovementStatus } from '@/app/lib/utils/movement-status';
-import { movementPaymentLabel } from '@/app/lib/utils/installment-display';
+import { movementPaymentLabel, recurringExpensePaymentLabel, installmentPaymentLabel } from '@/app/lib/utils/installment-display';
 
 export type TypeFilter = 'all' | 'income' | 'expense';
 export type StatusFilter = 'all' | 'paid' | 'pending' | 'overdue';
@@ -98,8 +98,8 @@ export function filterRecurringExpenses(
     }
     return matchesTextQuery(
       q,
-      [expense.name, expense.category_name, expense.account_name],
-      EXPENSE_TERMS
+      [expense.name, expense.category_name, expense.account_name, expense.credit_card_name, recurringExpensePaymentLabel(expense)],
+      [...EXPENSE_TERMS, ...(expense.is_cash ? ['efectivo', 'cash'] : [])]
     );
   });
 }
@@ -119,7 +119,13 @@ export function filterInstallments(
     }
     return matchesTextQuery(
       q,
-      [installment.name, installment.account_name, installment.category_name],
+      [
+        installment.name,
+        installment.account_name,
+        installment.credit_card_name,
+        installment.category_name,
+        installmentPaymentLabel(installment),
+      ],
       [...EXPENSE_TERMS, ...INSTALLMENT_TERMS]
     );
   });
@@ -181,14 +187,14 @@ export type PageItemCounts = {
   movements: number;
   pendingIncomes: number;
   pendingExpenses: number;
-  pendingInstallments: number;
+  activeCards?: number;
 };
 
 export function countPageItems({
   movements,
   pendingIncomes,
   pendingExpenses,
-  pendingInstallments,
+  activeCards = 0,
 }: PageItemCounts): number {
-  return movements + pendingIncomes + pendingExpenses + pendingInstallments;
+  return movements + pendingIncomes + pendingExpenses + activeCards;
 }

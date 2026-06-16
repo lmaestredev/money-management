@@ -2,6 +2,7 @@ import { fetchAccounts } from '@/app/lib/data/accounts';
 import { fetchActiveCreditCards } from '@/app/lib/data/credit-cards';
 import { fetchCategories } from '@/app/lib/data/categories';
 import MovementForm from '@/app/ui/movements/MovementForm';
+import FormValidationBanner from '@/app/ui/FormValidationBanner';
 import styles from './page.module.css';
 
 function getCurrentPeriod(): string {
@@ -16,11 +17,11 @@ function getTodayISO(): string {
 }
 
 type Props = {
-  searchParams: Promise<{ period?: string }>;
+  searchParams: Promise<{ period?: string; error?: string }>;
 };
 
 export default async function NuevoMovimientoPage({ searchParams }: Props) {
-  const { period: periodParam } = await searchParams;
+  const { period: periodParam, error } = await searchParams;
   const period =
     periodParam && /^\d{4}-\d{2}$/.test(periodParam)
       ? periodParam
@@ -37,6 +38,7 @@ export default async function NuevoMovimientoPage({ searchParams }: Props) {
       <h1 className={styles.title}>
         Nuevo movimiento
       </h1>
+      <FormValidationBanner error={error} />
       <MovementForm
         period={period}
         accounts={accounts}

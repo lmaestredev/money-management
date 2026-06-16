@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { updateMovementAction } from '@/app/lib/actions/movements';
 import SubmitButton from '@/app/ui/SubmitButton';
 import PaymentSourceSelect, { type PaymentSource } from '@/app/ui/credit-cards/PaymentSourceSelect';
-import type { Account, AccountCurrency, Category, CreditCard, Movement } from '@/app/lib/definitions';
+import MovementAmountFields from './MovementAmountFields';
+import type { Account, AccountCurrency, Category, CreditCard, Movement, RecordType } from '@/app/lib/definitions';
 import styles from './MovementForm.module.css';
 
 function toDateInput(v: string | null): string {
@@ -13,6 +14,11 @@ function toDateInput(v: string | null): string {
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return '';
   return d.toISOString().slice(0, 10);
+}
+
+function normalizeRecordType(recordType: Movement['record_type']): RecordType {
+  if (recordType === 'conversion') return 'variable_payment';
+  return recordType;
 }
 
 type Props = {
@@ -44,7 +50,7 @@ export default function EditMovementForm({ movement, accounts, cards, categories
 
   const [source, setSource] = useState<PaymentSource>(initialSource);
   const currency: AccountCurrency | null = source?.currency ?? null;
-  const isDual = currency === 'dual';
+  const showSplitAmounts = currency === 'dual';
 
   const amountLabel =
     currency === 'peso'
@@ -93,12 +99,11 @@ export default function EditMovementForm({ movement, accounts, cards, categories
           name="record_type"
           className={styles.select}
           required
-          defaultValue={movement.record_type}
+          defaultValue={normalizeRecordType(movement.record_type)}
         >
           <option value="income">Ingreso</option>
           <option value="variable_payment">Egreso (pago varios)</option>
           <option value="fixed_payment">Egreso (gasto fijo)</option>
-          <option value="conversion">Conversión (dólar ↔ peso)</option>
         </select>
       </div>
 
@@ -135,59 +140,14 @@ export default function EditMovementForm({ movement, accounts, cards, categories
         />
       </div>
 
-      <div className={styles.field}>
-        {isDual ? (
-          <div className={styles.row}>
-            <div className={styles.field}>
-              <label htmlFor="amount_pesos" className={styles.label}>
-                Monto (pesos)
-              </label>
-              <input
-                id="amount_pesos"
-                name="amount_pesos"
-                type="number"
-                step="0.01"
-                min="0"
-                className={styles.input}
-                disabled={!source}
-                defaultValue={movement.amount_pesos || ''}
-              />
-            </div>
-            <div className={styles.field}>
-              <label htmlFor="amount_dollars" className={styles.label}>
-                Monto (dólares)
-              </label>
-              <input
-                id="amount_dollars"
-                name="amount_dollars"
-                type="number"
-                step="0.01"
-                min="0"
-                className={styles.input}
-                disabled={!source}
-                defaultValue={movement.amount_dollars || ''}
-              />
-            </div>
-          </div>
-        ) : (
-          <>
-            <label htmlFor="amount" className={styles.label}>
-              {amountLabel}
-            </label>
-            <input
-              id="amount"
-              name="amount"
-              type="number"
-              step="0.01"
-              min="0"
-              className={styles.input}
-              required
-              disabled={!source}
-              defaultValue={initialAmount}
-            />
-          </>
-        )}
-      </div>
+      <MovementAmountFields
+        showSplitAmounts={showSplitAmounts}
+        amountLabel={amountLabel}
+        sourceSelected={!!source}
+        defaultPesos={movement.amount_pesos || ''}
+        defaultDollars={movement.amount_dollars || ''}
+        defaultSingle={initialAmount}
+      />
 
       <div className={styles.field}>
         <label htmlFor="payment_date" className={styles.label}>

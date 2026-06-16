@@ -70,7 +70,14 @@ export default async function DashboardPage() {
   ]);
 
   const rate = effectiveRate?.rate ?? null;
-  const summary = computeMovementSummary(movements, rate, { statementPaymentIds });
+  const activeInstallments = installments.filter(
+    (i) => i.status === 'active' && i.paid_installments < i.total_installments
+  );
+  const summary = computeMovementSummary(movements, rate, {
+    statementPaymentIds,
+    cards: creditCards,
+    installments: activeInstallments,
+  });
   // Label del período para las cards (rango de fechas del período financiero).
   const periodLabel = formatPeriodRange(currentFinancialPeriod);
 
@@ -195,17 +202,17 @@ export default async function DashboardPage() {
 
       <div className={styles.grid2}>
         <DashboardAccountList accounts={accounts} />
-        <InstallmentsCard installments={installments} />
+        <InstallmentsCard installments={installments} rate={rate} />
       </div>
 
       <div className={styles.grid2}>
-        <CreditCardsCard cards={creditCards} />
+        <CreditCardsCard cards={creditCards} installments={activeInstallments} rate={rate} />
         <CategoryBreakdownCard items={summary.categoryTotals} />
       </div>
 
       <div className={styles.grid2}>
-        <RecurringIncomesCard incomes={recurringIncomes} />
-        <RecurringExpensesCard expenses={recurringExpenses} />
+        <RecurringIncomesCard incomes={recurringIncomes} rate={rate} />
+        <RecurringExpensesCard expenses={recurringExpenses} rate={rate} />
       </div>
     </div>
   );

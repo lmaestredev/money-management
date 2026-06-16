@@ -65,57 +65,12 @@ export type PeriodWithSummary = FinancialPeriod & {
 };
 
 /**
- * Períodos cerrados con totales calculados en una sola query.
- * Excluye los pagos de resúmenes de tarjeta (paid_movement_id) para evitar
- * doble conteo, igual que el dashboard.
+ * Períodos cerrados con totales (ver fetchClosedPeriodsWithSummary en period-summaries.ts).
+ * @deprecated Usar fetchClosedPeriodsWithSummary desde period-summaries.
  */
 export async function fetchClosedPeriodsWithSummary(): Promise<PeriodWithSummary[]> {
-  const rows = await sql`
-    SELECT
-      fp.id, fp.start_date, fp.end_date, fp.status, fp.closed_at, fp.created_at,
-      COUNT(m.id)::int AS movement_count,
-      COALESCE(SUM(
-        CASE WHEN m.record_type = 'income' THEN m.amount_dollars ELSE 0 END
-      ), 0) AS total_income_dollars,
-      COALESCE(SUM(
-        CASE WHEN m.record_type IN ('variable_payment','fixed_payment')
-              AND m.id NOT IN (
-                SELECT paid_movement_id FROM credit_card_statements
-                WHERE paid_movement_id IS NOT NULL
-              )
-             THEN m.amount_dollars ELSE 0 END
-      ), 0) AS total_expense_dollars,
-      COALESCE(SUM(
-        CASE WHEN m.record_type = 'income' THEN m.amount_pesos ELSE 0 END
-      ), 0) AS total_income_pesos,
-      COALESCE(SUM(
-        CASE WHEN m.record_type IN ('variable_payment','fixed_payment')
-              AND m.id NOT IN (
-                SELECT paid_movement_id FROM credit_card_statements
-                WHERE paid_movement_id IS NOT NULL
-              )
-             THEN m.amount_pesos ELSE 0 END
-      ), 0) AS total_expense_pesos
-    FROM financial_periods fp
-    LEFT JOIN movements m ON m.financial_period_id = fp.id
-    WHERE fp.status = 'closed'
-    GROUP BY fp.id
-    ORDER BY fp.start_date DESC
-  `;
-
-  return rows.map((r) => {
-    const income = Number(r.total_income_dollars);
-    const expense = Number(r.total_expense_dollars);
-    return {
-      ...rowToPeriod(r as Record<string, unknown>),
-      movement_count: Number(r.movement_count),
-      total_income_dollars: income,
-      total_expense_dollars: expense,
-      total_income_pesos: Number(r.total_income_pesos),
-      total_expense_pesos: Number(r.total_expense_pesos),
-      balance_dollars: income - expense,
-    };
-  });
+  const { fetchClosedPeriodsWithSummary: fetchSummaries } = await import('./period-summaries');
+  return fetchSummaries();
 }
 
 export async function fetchPeriodById(id: string): Promise<FinancialPeriod | null> {

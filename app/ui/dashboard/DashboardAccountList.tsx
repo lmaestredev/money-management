@@ -1,5 +1,6 @@
-import type { Account } from '@/app/lib/definitions';
-import { formatUsd } from '@/app/lib/utils';
+import type { Account, AccountCurrency } from '@/app/lib/definitions';
+import { getAccountBalance } from '@/app/lib/data/accounts';
+import { formatUsd, formatArs } from '@/app/lib/utils';
 import styles from './DashboardAccountList.module.css';
 
 function formatPesos(amount: number): string {
@@ -26,6 +27,12 @@ function accountTypeLabel(currency: string, bank: string | null): string {
   return 'Efectivo';
 }
 
+function formatBalance(currency: AccountCurrency, amount: number): string {
+  if (currency === 'peso') return formatArs(amount);
+  if (currency === 'dollar' || currency === 'crypto') return formatUsd(amount);
+  return amount.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 8 });
+}
+
 type Props = {
   accounts: Account[];
 };
@@ -40,7 +47,9 @@ export default function DashboardAccountList({ accounts }: Props) {
         </div>
       </div>
       <div className={styles.list}>
-        {accounts.map((account) => (
+        {accounts.map((account) => {
+          const balance = getAccountBalance(account);
+          return (
           <div key={account.id} className={styles.accountCard}>
             <div className={styles.accountHeader}>
               <span className={styles.accountIcon} aria-hidden>
@@ -59,17 +68,13 @@ export default function DashboardAccountList({ accounts }: Props) {
                 <div className={styles.accountSecondary}>{formatPesos(account.balance_pesos)}</div>
               </>
             ) : (
-              <>
-                <div className={styles.accountAmount}>
-                  {formatPesos(account.balance_pesos)}
-                </div>
-                <div className={styles.accountSecondary}>
-                  {formatUsd(account.balance_dollars)}
-                </div>
-              </>
+              <div className={styles.accountAmount}>
+                {formatBalance(account.currency, balance)}
+              </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

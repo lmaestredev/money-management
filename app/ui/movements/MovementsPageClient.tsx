@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { Account, InstallmentPurchase, Movement, RecurringExpense, RecurringIncome } from '@/app/lib/definitions';
+import type { Account, CreditCard, InstallmentPurchase, Movement, RecurringExpense, RecurringIncome } from '@/app/lib/definitions';
 import {
   countPageItems,
-  filterInstallments,
   filterMovements,
   filterRecurringExpenses,
   filterRecurringIncomes,
@@ -15,7 +14,8 @@ import MovementsFiltersBar from './MovementsFiltersBar';
 import MovementList from './MovementList';
 import MonthlyIncomesSection from '@/app/ui/recurring-incomes/MonthlyIncomesSection';
 import MonthlyFixedExpensesSection from '@/app/ui/recurring/MonthlyFixedExpensesSection';
-import MonthlyInstallmentsSection from '@/app/ui/installments/MonthlyInstallmentsSection';
+import MonthlyCreditCardsSection from '@/app/ui/credit-cards/MonthlyCreditCardsSection';
+import type { CardStatement } from '@/app/lib/definitions';
 
 export type AccountNames = Record<string, string>;
 export type CardNames = Record<string, string>;
@@ -25,8 +25,9 @@ type MonthlyData = {
   receivedIncomeIds: string[];
   expenses: RecurringExpense[];
   paidRecurringIds: string[];
+  cards: CreditCard[];
   installments: InstallmentPurchase[];
-  paidInstallmentIds: string[];
+  unpaidStatements: CardStatement[];
   period: string;
   accounts: Account[];
 };
@@ -40,6 +41,11 @@ type Props = {
   readOnly?: boolean;
 };
 
+/** Movimientos visibles: sin cargos a tarjeta ni pagos legacy de cuotas (van agregados por tarjeta). */
+function listMovements(movements: Movement[]): Movement[] {
+  return movements.filter((m) => !m.credit_card_id && !m.installment_id);
+}
+
 export default function MovementsPageClient({
   movements,
   accountNames,
@@ -52,6 +58,8 @@ export default function MovementsPageClient({
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
+  const visibleMovements = useMemo(() => listMovements(movements), [movements]);
+
   const receivedIncomeIds = useMemo(
     () => new Set(monthly?.receivedIncomeIds ?? []),
     [monthly?.receivedIncomeIds]
@@ -59,10 +67,6 @@ export default function MovementsPageClient({
   const paidRecurringIds = useMemo(
     () => new Set(monthly?.paidRecurringIds ?? []),
     [monthly?.paidRecurringIds]
-  );
-  const paidInstallmentIds = useMemo(
-    () => new Set(monthly?.paidInstallmentIds ?? []),
-    [monthly?.paidInstallmentIds]
   );
 
   const pendingIncomes = useMemo(
@@ -73,14 +77,18 @@ export default function MovementsPageClient({
     () => (monthly?.expenses ?? []).filter((e) => !paidRecurringIds.has(e.id)),
     [monthly?.expenses, paidRecurringIds]
   );
-  const pendingInstallments = useMemo(
-    () => (monthly?.installments ?? []).filter((i) => !paidInstallmentIds.has(i.id)),
-    [monthly?.installments, paidInstallmentIds]
-  );
 
   const filteredMovements = useMemo(
-    () => filterMovements(movements, accountNames, cardNames, searchQuery, typeFilter, statusFilter),
-    [movements, accountNames, cardNames, searchQuery, typeFilter, statusFilter]
+    () =>
+      filterMovements(
+        visibleMovements,
+        accountNames,
+        cardNames,
+        searchQuery,
+        typeFilter,
+        statusFilter
+      ),
+    [visibleMovements, accountNames, cardNames, searchQuery, typeFilter, statusFilter]
   );
 
   const filteredIncomes = useMemo(
@@ -93,20 +101,15 @@ export default function MovementsPageClient({
     [pendingExpenses, searchQuery, typeFilter, statusFilter]
   );
 
-  const filteredInstallments = useMemo(
-    () => filterInstallments(pendingInstallments, searchQuery, typeFilter, statusFilter),
-    [pendingInstallments, searchQuery, typeFilter, statusFilter]
-  );
-
   const totalCount = useMemo(
     () =>
       countPageItems({
-        movements: movements.length,
+        movements: visibleMovements.length,
         pendingIncomes: pendingIncomes.length,
         pendingExpenses: pendingExpenses.length,
-        pendingInstallments: pendingInstallments.length,
+        activeCards: monthly?.cards.filter((c) => c.active).length ?? 0,
       }),
-    [movements.length, pendingIncomes.length, pendingExpenses.length, pendingInstallments.length]
+    [visibleMovements.length, pendingIncomes.length, pendingExpenses.length, monthly?.cards]
   );
 
   const resultCount = useMemo(
@@ -115,13 +118,13 @@ export default function MovementsPageClient({
         movements: filteredMovements.length,
         pendingIncomes: filteredIncomes.length,
         pendingExpenses: filteredExpenses.length,
-        pendingInstallments: filteredInstallments.length,
+        activeCards: monthly?.cards.filter((c) => c.active).length ?? 0,
       }),
     [
       filteredMovements.length,
       filteredIncomes.length,
       filteredExpenses.length,
-      filteredInstallments.length,
+      monthly?.cards,
     ]
   );
 
@@ -148,6 +151,15 @@ export default function MovementsPageClient({
 
       {!showGlobalFilterEmpty && monthly && (
         <>
+          <MonthlyCreditCardsSection
+            cards={monthly.cards}
+            installments={monthly.installments}
+            unpaidStatements={monthly.unpaidStatements}
+            accounts={monthly.accounts}
+            period={monthly.period}
+            rate={rate}
+          />
+
           <MonthlyIncomesSection
             incomes={monthly.incomes}
             pendingIncomes={filteredIncomes}
@@ -163,14 +175,6 @@ export default function MovementsPageClient({
             paidIds={paidRecurringIds}
             period={monthly.period}
             accounts={monthly.accounts}
-            rate={rate}
-          />
-
-          <MonthlyInstallmentsSection
-            installments={monthly.installments}
-            pendingInstallments={filteredInstallments}
-            paidIds={paidInstallmentIds}
-            period={monthly.period}
             rate={rate}
           />
         </>

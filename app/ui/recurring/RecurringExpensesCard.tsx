@@ -1,15 +1,21 @@
 import Link from 'next/link';
 import { formatUsd } from '@/app/lib/utils';
+import { amountsToUsd } from '@/app/lib/utils/currency';
+import { recurringExpensePaymentLabel } from '@/app/lib/utils/installment-display';
 import type { RecurringExpense } from '@/app/lib/definitions';
 import styles from './RecurringExpensesCard.module.css';
 
 type Props = {
   expenses: RecurringExpense[];
+  rate: number | null;
 };
 
-export default function RecurringExpensesCard({ expenses }: Props) {
+export default function RecurringExpensesCard({ expenses, rate }: Props) {
   const active = expenses.filter((e) => e.active);
-  const monthlyTotal = active.reduce((sum, e) => sum + e.amount_dollars, 0);
+  const monthlyTotal = active.reduce(
+    (sum, e) => sum + amountsToUsd(e.amount_pesos, e.amount_dollars, rate),
+    0
+  );
 
   return (
     <section className={styles.card}>
@@ -41,9 +47,13 @@ export default function RecurringExpensesCard({ expenses }: Props) {
                   <span className={styles.itemMeta}>
                     {e.category_name ?? 'Sin categoría'}
                     {e.pay_before_day ? ` · vence día ${e.pay_before_day}` : ''}
+                    {' · '}
+                    {recurringExpensePaymentLabel(e)}
                   </span>
                 </div>
-                <span className={styles.itemAmount}>{formatUsd(e.amount_dollars)}</span>
+                <span className={styles.itemAmount}>
+                  {formatUsd(amountsToUsd(e.amount_pesos, e.amount_dollars, rate))}
+                </span>
               </div>
             ))}
           </div>

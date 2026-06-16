@@ -10,7 +10,6 @@ import type { FinancialPeriod } from '@/app/lib/definitions';
 import styles from './ClosePeriodButton.module.css';
 
 type Preview = {
-  installmentsPending: number;
   fixedExpensesPending: number;
   fixedExpensesManual: number;
   incomesPending: number;
@@ -55,7 +54,7 @@ export default function ClosePeriodButton() {
       const res = await closePeriodAction();
       if (res.ok) {
         setResult(res.summary);
-        const totalAuto = res.summary.installmentsPaid + res.summary.fixedExpensesPaid + res.summary.incomeReceived;
+        const totalAuto = res.summary.fixedExpensesPaid + res.summary.incomeReceived;
         const totalManual = res.summary.fixedExpensesManual.length + res.summary.incomeManual.length;
         let msg = `Período cerrado. ${totalAuto} ítem${totalAuto !== 1 ? 's' : ''} registrado${totalAuto !== 1 ? 's' : ''} automáticamente.`;
         if (totalManual > 0) msg += ` ${totalManual} requieren acción manual.`;
@@ -119,7 +118,6 @@ export default function ClosePeriodButton() {
                 </p>
 
                 <div className={styles.summary}>
-                  <SummaryRow label="Cuotas a pagar" count={preview.installmentsPending} />
                   <SummaryRow label="Gastos fijos a registrar" count={preview.fixedExpensesPending} />
                   {preview.fixedExpensesManual > 0 && (
                     <SummaryRow
@@ -170,11 +168,6 @@ export default function ClosePeriodButton() {
             {result && (
               <>
                 <div className={styles.resultGrid}>
-                  <ResultRow
-                    label="Cuotas registradas"
-                    ok={result.installmentsPaid}
-                    skipped={result.installmentsSkipped.length}
-                  />
                   <ResultRow
                     label="Gastos fijos registrados"
                     ok={result.fixedExpensesPaid}

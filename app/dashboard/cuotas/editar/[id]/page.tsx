@@ -6,16 +6,17 @@ import { fetchActiveCreditCards } from '@/app/lib/data/credit-cards';
 import { fetchCategories } from '@/app/lib/data/categories';
 import { fetchInstallmentById } from '@/app/lib/data/installments';
 import InstallmentForm from '@/app/ui/installments/InstallmentForm';
+import FormValidationBanner from '@/app/ui/FormValidationBanner';
 import styles from '../../nueva/page.module.css';
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ return?: string }>;
+  searchParams: Promise<{ return?: string; error?: string }>;
 };
 
 export default async function EditarCuotaPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { return: returnTo } = await searchParams;
+  const { return: returnTo, error } = await searchParams;
   const [installment, accounts, cards, categories] = await Promise.all([
     fetchInstallmentById(id),
     fetchAccounts(),
@@ -34,6 +35,7 @@ export default async function EditarCuotaPage({ params, searchParams }: Props) {
         Volver
       </Link>
       <h1 className={styles.title}>Editar compra en cuotas</h1>
+      <FormValidationBanner error={error} />
       <InstallmentForm
         accounts={accounts}
         cards={cards}

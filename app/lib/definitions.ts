@@ -148,11 +148,10 @@ export type CategoryInsert = {
 };
 
 // Movimientos
-export type RecordType =
-  | 'income'
-  | 'conversion'
-  | 'variable_payment'
-  | 'fixed_payment';
+export type RecordType = 'income' | 'variable_payment' | 'fixed_payment';
+
+/** Valor legado en BD; ya no se puede crear desde la app. */
+export type LegacyRecordType = RecordType | 'conversion';
 
 export type MovementSource = 'app' | 'telegram' | 'import';
 
@@ -160,7 +159,7 @@ export type Movement = {
   id: string;
   period: string;
   financial_period_id: string;
-  record_type: RecordType;
+  record_type: LegacyRecordType;
   account_id: string | null;
   credit_card_id?: string | null;
   statement_id?: string | null;

@@ -1,7 +1,6 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { fetchAccountById } from '@/app/lib/data/accounts';
 import { fetchCreditCardById } from '@/app/lib/data/credit-cards';
@@ -33,6 +32,7 @@ async function resolveSourceCurrency(
 
 async function parseMovementAmounts(
   data: {
+    record_type: 'income' | 'variable_payment' | 'fixed_payment';
     amount?: string;
     amount_pesos?: string;
     amount_dollars?: string;
@@ -73,12 +73,7 @@ async function parseMovementAmounts(
   onError();
 }
 
-const recordTypeSchema = z.enum([
-  'income',
-  'conversion',
-  'variable_payment',
-  'fixed_payment',
-]);
+const recordTypeSchema = z.enum(['income', 'variable_payment', 'fixed_payment']);
 
 const createMovementFormSchema = z.object({
   period: z.string().regex(/^\d{4}-\d{2}$/, 'period must be YYYY-MM'),
@@ -155,8 +150,7 @@ export async function createMovementAction(formData: FormData) {
     'app'
   );
 
-  revalidatePath('/dashboard/movimientos');
-  revalidatePath('/dashboard');
+  revalidateFinancialScreens();
   redirectWithToast(`/dashboard/movimientos?period=${data.period}`, 'Movimiento guardado');
 }
 
@@ -246,9 +240,6 @@ export async function deleteMovementAction(formData: FormData) {
   const { id, period } = parsed.data;
   await deleteMovement(id);
 
-  revalidatePath('/dashboard/movimientos');
-  revalidatePath('/dashboard');
-  revalidatePath('/dashboard/cuotas');
-  revalidatePath('/dashboard/gastos-fijos');
+  revalidateFinancialScreens();
   redirectWithToast(`/dashboard/movimientos?period=${period}`, 'Movimiento eliminado');
 }

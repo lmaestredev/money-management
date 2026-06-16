@@ -197,10 +197,8 @@ export type PayInstallmentResult =
   | { ok: false; reason: 'not_found' | 'completed' | 'already_paid' | 'no_account' };
 
 /**
- * Registra el pago de la cuota del mes: crea un movement enlazado e incrementa
- * paid_installments. Si la compra está asociada a una tarjeta, carga la cuota a
- * su resumen (suma a la deuda); si está asociada a una cuenta, debita el saldo.
- * Atómico.
+ * @deprecated Las cuotas ya no generan movimientos. Actualizá paid_installments en el formulario de edición.
+ * Se conserva por compatibilidad con datos legacy.
  */
 export async function payInstallment(
   installmentId: string,

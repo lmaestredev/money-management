@@ -5,9 +5,12 @@ import {
   reverseCardCharge,
 } from './credit-cards';
 import { fetchCurrentPeriod } from './financial-periods';
+import { getEffectiveRate } from './exchange-rates';
 import { amountsToUsd } from '../utils/currency';
+import type postgres from 'postgres';
 import type {
   AccountCurrency,
+  LegacyRecordType,
   Movement,
   MovementInsert,
   MovementSource,
@@ -19,7 +22,7 @@ function rowToMovement(row: Record<string, unknown>): Movement {
     id: row.id as string,
     period: row.period as string,
     financial_period_id: row.financial_period_id as string,
-    record_type: row.record_type as RecordType,
+    record_type: row.record_type as LegacyRecordType,
     account_id: (row.account_id as string) ?? null,
     credit_card_id: (row.credit_card_id as string) ?? null,
     statement_id: (row.statement_id as string) ?? null,
@@ -113,7 +116,7 @@ export async function fetchMovementById(id: string): Promise<Movement | null> {
 }
 
 export function getBalanceDeltas(
-  recordType: RecordType,
+  recordType: LegacyRecordType,
   status: boolean | null,
   amountPesos: number,
   amountDollars: number
@@ -128,6 +131,7 @@ export function getBalanceDeltas(
       }
       return { deltaPesos: 0, deltaDollars: 0 };
     case 'conversion':
+      // Legado: suma pesos y resta dólares en la misma cuenta.
       return { deltaPesos: amountPesos, deltaDollars: -amountDollars };
     default:
       return { deltaPesos: 0, deltaDollars: 0 };
@@ -140,7 +144,7 @@ export function getBalanceDeltas(
  * el resumen es lo que luego se paga). Solo aplica a egresos.
  */
 export function getCardDeltas(
-  recordType: RecordType,
+  recordType: LegacyRecordType,
   amountPesos: number,
   amountDollars: number
 ): { deltaPesos: number; deltaDollars: number } {
@@ -157,7 +161,7 @@ function totalPesos(amountPesos: number, amountDollars: number, rate: number | n
 /** Aplica el movimiento al saldo de una cuenta según su moneda nativa. */
 export function getAccountBalanceDeltas(
   accountCurrency: AccountCurrency | null | undefined,
-  recordType: RecordType,
+  recordType: LegacyRecordType,
   status: boolean | null,
   amountPesos: number,
   amountDollars: number,
@@ -221,11 +225,110 @@ export function getCardChargeDeltas(
   return getCardDeltas(recordType, amountPesos, amountDollars);
 }
 
+type Tx = postgres.TransactionSql<Record<string, never>>;
+
+async function fetchAccountCurrencyTx(tx: Tx, accountId: string): Promise<AccountCurrency | null> {
+  const [row] = await tx`SELECT currency FROM accounts WHERE id = ${accountId}`;
+  return row ? (row.currency as AccountCurrency) : null;
+}
+
+async function fetchCardCurrencyTx(tx: Tx, cardId: string): Promise<AccountCurrency | null> {
+  const [row] = await tx`SELECT currency FROM credit_cards WHERE id = ${cardId}`;
+  return row ? (row.currency as AccountCurrency) : null;
+}
+
+async function applyAccountMovementDelta(
+  tx: Tx,
+  accountId: string,
+  recordType: RecordType,
+  status: boolean | null,
+  amountPesos: number,
+  amountDollars: number,
+  rate: number | null
+): Promise<void> {
+  const currency = await fetchAccountCurrencyTx(tx, accountId);
+  const { deltaPesos, deltaDollars } = getAccountBalanceDeltas(
+    currency,
+    recordType,
+    status,
+    amountPesos,
+    amountDollars,
+    rate
+  );
+  if (deltaPesos === 0 && deltaDollars === 0) return;
+  await tx`
+    UPDATE accounts
+    SET
+      balance_pesos = balance_pesos + ${deltaPesos},
+      balance_dollars = balance_dollars + ${deltaDollars},
+      updated_at = NOW()
+    WHERE id = ${accountId}
+  `;
+}
+
+async function revertAccountMovementDelta(
+  tx: Tx,
+  accountId: string,
+  recordType: RecordType,
+  status: boolean | null,
+  amountPesos: number,
+  amountDollars: number,
+  rate: number | null
+): Promise<void> {
+  const currency = await fetchAccountCurrencyTx(tx, accountId);
+  const { deltaPesos, deltaDollars } = getAccountBalanceDeltas(
+    currency,
+    recordType,
+    status,
+    amountPesos,
+    amountDollars,
+    rate
+  );
+  if (deltaPesos === 0 && deltaDollars === 0) return;
+  await tx`
+    UPDATE accounts
+    SET
+      balance_pesos = balance_pesos - ${deltaPesos},
+      balance_dollars = balance_dollars - ${deltaDollars},
+      updated_at = NOW()
+    WHERE id = ${accountId}
+  `;
+}
+
+async function applyCardMovementCharge(
+  tx: Tx,
+  cardId: string,
+  statementId: string,
+  recordType: RecordType,
+  amountPesos: number,
+  amountDollars: number,
+  rate: number | null
+): Promise<void> {
+  const currency = await fetchCardCurrencyTx(tx, cardId);
+  const cardDelta = getCardChargeDeltas(currency, recordType, amountPesos, amountDollars, rate);
+  await applyCardCharge(tx, cardId, statementId, cardDelta.deltaPesos, cardDelta.deltaDollars);
+}
+
+async function revertCardMovementCharge(
+  tx: Tx,
+  cardId: string,
+  statementId: string | null,
+  recordType: RecordType,
+  amountPesos: number,
+  amountDollars: number,
+  rate: number | null
+): Promise<void> {
+  const currency = await fetchCardCurrencyTx(tx, cardId);
+  const cardDelta = getCardChargeDeltas(currency, recordType, amountPesos, amountDollars, rate);
+  await reverseCardCharge(tx, cardId, statementId, cardDelta.deltaPesos, cardDelta.deltaDollars);
+}
+
 export async function createMovement(
   data: MovementInsert,
   source: MovementSource = 'app'
 ): Promise<Movement> {
   const sourceValue = data.source ?? source;
+  const rate = (await getEffectiveRate())?.rate ?? null;
 
   // Resuelve el financial_period_id: usa el del data si viene (cierre automático),
   // si no, toma el período abierto activo.
@@ -275,29 +378,25 @@ export async function createMovement(
     `;
 
     if (data.credit_card_id) {
-      const { deltaPesos, deltaDollars } = getCardDeltas(
+      await applyCardMovementCharge(
+        tx,
+        data.credit_card_id,
+        statementId!,
         data.record_type,
         data.amount_pesos,
-        data.amount_dollars
+        data.amount_dollars,
+        rate
       );
-      await applyCardCharge(tx, data.credit_card_id, statementId!, deltaPesos, deltaDollars);
-    } else {
-      const { deltaPesos, deltaDollars } = getBalanceDeltas(
+    } else if (data.account_id) {
+      await applyAccountMovementDelta(
+        tx,
+        data.account_id,
         data.record_type,
         data.status ?? null,
         data.amount_pesos,
-        data.amount_dollars
+        data.amount_dollars,
+        rate
       );
-      if ((deltaPesos !== 0 || deltaDollars !== 0) && data.account_id) {
-        await tx`
-          UPDATE accounts
-          SET
-            balance_pesos = balance_pesos + ${deltaPesos},
-            balance_dollars = balance_dollars + ${deltaDollars},
-            updated_at = NOW()
-          WHERE id = ${data.account_id}
-        `;
-      }
     }
 
     return [inserted];
@@ -316,6 +415,8 @@ export async function updateMovement(
   id: string,
   data: MovementInsert
 ): Promise<Movement | null> {
+  const rate = (await getEffectiveRate())?.rate ?? null;
+
   return sql.begin(async (tx) => {
     const [old] = await tx`
       SELECT account_id, credit_card_id, statement_id, record_type, status,
@@ -329,34 +430,25 @@ export async function updateMovement(
 
     // Revertir efecto del movimiento anterior (tarjeta o cuenta).
     if (old.credit_card_id) {
-      const oldCard = getCardDeltas(
-        old.record_type as RecordType,
-        Number(old.amount_pesos),
-        Number(old.amount_dollars)
-      );
-      await reverseCardCharge(
+      await revertCardMovementCharge(
         tx,
         old.credit_card_id as string,
         (old.statement_id as string) ?? null,
-        oldCard.deltaPesos,
-        oldCard.deltaDollars
+        old.record_type as RecordType,
+        Number(old.amount_pesos),
+        Number(old.amount_dollars),
+        rate
       );
     } else if (old.account_id) {
-      const oldDelta = getBalanceDeltas(
+      await revertAccountMovementDelta(
+        tx,
+        old.account_id as string,
         old.record_type as RecordType,
         old.status as boolean | null,
         Number(old.amount_pesos),
-        Number(old.amount_dollars)
+        Number(old.amount_dollars),
+        rate
       );
-      if (oldDelta.deltaPesos !== 0 || oldDelta.deltaDollars !== 0) {
-        await tx`
-          UPDATE accounts
-          SET balance_pesos = balance_pesos - ${oldDelta.deltaPesos},
-              balance_dollars = balance_dollars - ${oldDelta.deltaDollars},
-              updated_at = NOW()
-          WHERE id = ${old.account_id}
-        `;
-      }
     }
 
     // Aplicar efecto del movimiento nuevo (tarjeta o cuenta).
@@ -365,24 +457,25 @@ export async function updateMovement(
       const chargeDate = data.payment_date ? new Date(data.payment_date) : new Date();
       const st = await resolveOrCreateStatement(tx, data.credit_card_id, chargeDate);
       statementId = st.id;
-      const newCard = getCardDeltas(data.record_type, data.amount_pesos, data.amount_dollars);
-      await applyCardCharge(tx, data.credit_card_id, statementId, newCard.deltaPesos, newCard.deltaDollars);
+      await applyCardMovementCharge(
+        tx,
+        data.credit_card_id,
+        statementId,
+        data.record_type,
+        data.amount_pesos,
+        data.amount_dollars,
+        rate
+      );
     } else if (data.account_id) {
-      const newDelta = getBalanceDeltas(
+      await applyAccountMovementDelta(
+        tx,
+        data.account_id,
         data.record_type,
         data.status ?? null,
         data.amount_pesos,
-        data.amount_dollars
+        data.amount_dollars,
+        rate
       );
-      if (newDelta.deltaPesos !== 0 || newDelta.deltaDollars !== 0) {
-        await tx`
-          UPDATE accounts
-          SET balance_pesos = balance_pesos + ${newDelta.deltaPesos},
-              balance_dollars = balance_dollars + ${newDelta.deltaDollars},
-              updated_at = NOW()
-          WHERE id = ${data.account_id}
-        `;
-      }
     }
 
     const [row] = await tx`
@@ -450,6 +543,8 @@ export async function updateMovement(
  * periodo, así que al borrarlo vuelven a quedar "pendientes" automáticamente.)
  */
 export async function deleteMovement(id: string): Promise<boolean> {
+  const rate = (await getEffectiveRate())?.rate ?? null;
+
   return sql.begin(async (tx) => {
     const [mov] = await tx`
       SELECT id, account_id, credit_card_id, statement_id, record_type, status,
@@ -461,35 +556,25 @@ export async function deleteMovement(id: string): Promise<boolean> {
     if (!mov) return false;
 
     if (mov.credit_card_id) {
-      // Revertir el cargo de la deuda de la tarjeta y del total de su resumen.
-      const card = getCardDeltas(
-        mov.record_type as RecordType,
-        Number(mov.amount_pesos),
-        Number(mov.amount_dollars)
-      );
-      await reverseCardCharge(
+      await revertCardMovementCharge(
         tx,
         mov.credit_card_id as string,
         (mov.statement_id as string) ?? null,
-        card.deltaPesos,
-        card.deltaDollars
+        mov.record_type as RecordType,
+        Number(mov.amount_pesos),
+        Number(mov.amount_dollars),
+        rate
       );
-    } else {
-      const { deltaPesos, deltaDollars } = getBalanceDeltas(
+    } else if (mov.account_id) {
+      await revertAccountMovementDelta(
+        tx,
+        mov.account_id as string,
         mov.record_type as RecordType,
         mov.status as boolean | null,
         Number(mov.amount_pesos),
-        Number(mov.amount_dollars)
+        Number(mov.amount_dollars),
+        rate
       );
-      if ((deltaPesos !== 0 || deltaDollars !== 0) && mov.account_id) {
-        await tx`
-          UPDATE accounts
-          SET balance_pesos = balance_pesos - ${deltaPesos},
-              balance_dollars = balance_dollars - ${deltaDollars},
-              updated_at = NOW()
-          WHERE id = ${mov.account_id}
-        `;
-      }
     }
 
     if (mov.installment_id) {

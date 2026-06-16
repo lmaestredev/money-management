@@ -1,16 +1,30 @@
 import Link from 'next/link';
-import { formatArs } from '@/app/lib/utils';
+import { formatUsd } from '@/app/lib/utils';
+import { amountsToUsd } from '@/app/lib/utils/currency';
 import { installmentPaymentLabel } from '@/app/lib/utils/installment-display';
 import type { InstallmentPurchase } from '@/app/lib/definitions';
 import styles from './InstallmentsCard.module.css';
 
+function formatPesos(amount: number): string {
+  return amount.toLocaleString('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+}
+
 type Props = {
   installments: InstallmentPurchase[];
+  rate: number | null;
 };
 
-export default function InstallmentsCard({ installments }: Props) {
+export default function InstallmentsCard({ installments, rate }: Props) {
   const active = installments.filter((i) => i.status === 'active');
-  const monthlyCommitted = active.reduce((sum, i) => sum + i.monthly_amount_pesos, 0);
+  const monthlyCommitted = active.reduce(
+    (sum, i) => sum + amountsToUsd(i.monthly_amount_pesos, i.monthly_amount_dollars, rate),
+    0
+  );
 
   return (
     <section className={styles.card}>
@@ -45,13 +59,16 @@ export default function InstallmentsCard({ installments }: Props) {
                   <div className={styles.itemHeader}>
                     <span className={styles.itemName}>{i.name}</span>
                     <span className={styles.itemMonthly}>
-                      {formatArs(i.monthly_amount_pesos)}/mes
+                      {formatUsd(amountsToUsd(i.monthly_amount_pesos, i.monthly_amount_dollars, rate))}/mes
                     </span>
                   </div>
                   <div className={styles.itemMeta}>
                     <span className={styles.itemBank}>💳 {installmentPaymentLabel(i)}</span>
+                    {i.monthly_amount_pesos > 0 && (
+                      <span className={styles.itemRemaining}>{formatPesos(i.monthly_amount_pesos)}/mes</span>
+                    )}
                     <span className={styles.itemRemaining}>
-                      Faltan {formatArs(i.remaining_amount_pesos)}
+                      Faltan {formatUsd(amountsToUsd(i.remaining_amount_pesos, i.remaining_amount_dollars, rate))}
                     </span>
                   </div>
                   <div className={styles.progressRow}>
@@ -68,7 +85,7 @@ export default function InstallmentsCard({ installments }: Props) {
           </div>
           <div className={styles.totalBlock}>
             <div className={styles.totalLabel}>Cuota mensual comprometida</div>
-            <div className={styles.totalAmount}>{formatArs(monthlyCommitted)}</div>
+            <div className={styles.totalAmount}>{formatUsd(monthlyCommitted)}</div>
           </div>
         </>
       )}

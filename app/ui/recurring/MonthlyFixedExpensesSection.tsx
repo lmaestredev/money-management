@@ -58,7 +58,7 @@ export default function MonthlyFixedExpensesSection({
 
       <div className={styles.list}>
         {pending.map((e) => {
-          const hasPresetAccount = !!e.account_id;
+          const hasPresetPayment = !!(e.account_id || e.credit_card_id);
           return (
             <div key={e.id} className={styles.row}>
               <div className={styles.icon} aria-hidden>
@@ -78,10 +78,12 @@ export default function MonthlyFixedExpensesSection({
                 <div className={styles.amountPrimary}>
                   −{formatUsd(amountsToUsd(e.amount_pesos, e.amount_dollars, rate))}
                 </div>
-                <div className={styles.amountSecondary}>{formatPesos(e.amount_pesos)}</div>
+                {e.amount_pesos > 0 && (
+                  <div className={styles.amountSecondary}>{formatPesos(e.amount_pesos)}</div>
+                )}
               </div>
               <div className={styles.action}>
-                {hasPresetAccount ? (
+                {hasPresetPayment ? (
                   <form action={payRecurringExpenseAction}>
                     <input type="hidden" name="recurring_expense_id" value={e.id} />
                     <input type="hidden" name="period" value={period} />

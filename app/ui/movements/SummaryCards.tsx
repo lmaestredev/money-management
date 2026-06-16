@@ -47,12 +47,7 @@ export default function SummaryCards({
   const displayIncomePct = incomePercent ?? 100;
 
   // Todas las cards: primario USD, secundario ARS.
-  const balanceArs =
-    totalIncomePesos > 0 || totalExpensePesos > 0
-      ? totalIncomePesos - totalExpensePesos
-      : rate
-        ? balance * rate
-        : null;
+  const balanceArs = rate != null ? balance * rate : null;
   const incomeArs =
     totalIncomePesos > 0 ? totalIncomePesos : rate ? totalIncome * rate : null;
   const expenseArs =

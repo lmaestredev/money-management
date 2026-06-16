@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { createMovementAction } from '@/app/lib/actions/movements';
 import SubmitButton from '@/app/ui/SubmitButton';
 import PaymentSourceSelect, { type PaymentSource } from '@/app/ui/credit-cards/PaymentSourceSelect';
+import MovementAmountFields from './MovementAmountFields';
 import type { Account, AccountCurrency, Category, CreditCard } from '@/app/lib/definitions';
 import styles from './MovementForm.module.css';
 
@@ -29,7 +30,7 @@ export default function MovementForm({
 }: Props) {
   const [source, setSource] = useState<PaymentSource>(null);
   const currency: AccountCurrency | null = source?.currency ?? null;
-  const isDual = currency === 'dual';
+  const showSplitAmounts = currency === 'dual';
 
   const amountLabel =
     currency === 'peso'
@@ -58,16 +59,10 @@ export default function MovementForm({
         <label htmlFor="record_type" className={styles.label}>
           Tipo
         </label>
-        <select
-          id="record_type"
-          name="record_type"
-          className={styles.select}
-          required
-        >
+        <select id="record_type" name="record_type" className={styles.select} required>
           <option value="income">Ingreso</option>
           <option value="variable_payment">Egreso (pago varios)</option>
           <option value="fixed_payment">Egreso (gasto fijo)</option>
-          <option value="conversion">Conversión (dólar ↔ peso)</option>
         </select>
       </div>
       <div className={styles.field}>
@@ -95,59 +90,11 @@ export default function MovementForm({
           placeholder="Ej. Sueldo, Alquiler..."
         />
       </div>
-      <div className={styles.field}>
-        {isDual ? (
-          <div className={styles.row}>
-            <div className={styles.field}>
-              <label htmlFor="amount_pesos" className={styles.label}>
-                Monto (pesos)
-              </label>
-              <input
-                id="amount_pesos"
-                name="amount_pesos"
-                type="number"
-                step="0.01"
-                min="0"
-                className={styles.input}
-                disabled={!source}
-                placeholder={source ? '0' : 'Selecciona una cuenta'}
-              />
-            </div>
-            <div className={styles.field}>
-              <label htmlFor="amount_dollars" className={styles.label}>
-                Monto (dólares)
-              </label>
-              <input
-                id="amount_dollars"
-                name="amount_dollars"
-                type="number"
-                step="0.01"
-                min="0"
-                className={styles.input}
-                disabled={!source}
-                placeholder={source ? '0' : 'Selecciona una cuenta'}
-              />
-            </div>
-          </div>
-        ) : (
-          <>
-            <label htmlFor="amount" className={styles.label}>
-              {amountLabel}
-            </label>
-            <input
-              id="amount"
-              name="amount"
-              type="number"
-              step="0.01"
-              min="0"
-              className={styles.input}
-              required
-              disabled={!source}
-              placeholder={source ? '0' : 'Selecciona una cuenta o tarjeta'}
-            />
-          </>
-        )}
-      </div>
+      <MovementAmountFields
+        showSplitAmounts={showSplitAmounts}
+        amountLabel={amountLabel}
+        sourceSelected={!!source}
+      />
       <div className={styles.field}>
         <label htmlFor="payment_date" className={styles.label}>
           Fecha de pago

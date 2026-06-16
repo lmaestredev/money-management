@@ -14,12 +14,7 @@ import { fetchAccountById } from '@/app/lib/data/accounts';
 import { revalidateFinancialScreens } from '@/app/lib/revalidate-financial';
 import { normalizeRecurringAmounts } from '@/app/lib/utils/recurring-amounts';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
-
-const optionalNumber = z
-  .string()
-  .optional()
-  .or(z.literal(''))
-  .transform((s) => (s && String(s).trim() ? parseFloat(String(s)) : 0));
+import { optionalNumber, safeDashboardPath } from '@/app/lib/utils/zod-form';
 
 const createIncomeFormSchema = z.object({
   name: z.string().min(1),
@@ -127,7 +122,7 @@ export async function updateRecurringIncomeAction(formData: FormData) {
     redirect(`/dashboard/ingresos/editar/${data.id}?error=notfound`);
   }
 
-  const returnTo = data.return_to || '/dashboard/ingresos';
+  const returnTo = safeDashboardPath(data.return_to, '/dashboard/ingresos');
   revalidateFinancialScreens();
   redirectWithToast(returnTo, 'Ingreso actualizado');
 }
@@ -175,7 +170,7 @@ export async function deleteRecurringIncomeAction(formData: FormData) {
     redirect('/dashboard/ingresos?error=validation');
   }
 
-  const redirectTo = parsed.data.redirect_to || '/dashboard/ingresos';
+  const redirectTo = safeDashboardPath(parsed.data.redirect_to, '/dashboard/ingresos');
 
   let deleted = false;
   try {

@@ -6,16 +6,17 @@ import { fetchActiveCreditCards } from '@/app/lib/data/credit-cards';
 import { fetchCategories } from '@/app/lib/data/categories';
 import { fetchRecurringExpenseById } from '@/app/lib/data/recurring';
 import RecurringExpenseForm from '@/app/ui/recurring/RecurringExpenseForm';
+import FormValidationBanner from '@/app/ui/FormValidationBanner';
 import styles from '../../nuevo/page.module.css';
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ return?: string }>;
+  searchParams: Promise<{ return?: string; error?: string }>;
 };
 
 export default async function EditarGastoFijoPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { return: returnTo } = await searchParams;
+  const { return: returnTo, error } = await searchParams;
   const [expense, accounts, cards, categories] = await Promise.all([
     fetchRecurringExpenseById(id),
     fetchAccounts(),
@@ -34,6 +35,7 @@ export default async function EditarGastoFijoPage({ params, searchParams }: Prop
         Volver
       </Link>
       <h1 className={styles.title}>Editar gasto fijo</h1>
+      <FormValidationBanner error={error} />
       <RecurringExpenseForm
         accounts={accounts}
         cards={cards}

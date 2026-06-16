@@ -6,16 +6,17 @@ import { fetchActiveCreditCards } from '@/app/lib/data/credit-cards';
 import { fetchCategories } from '@/app/lib/data/categories';
 import { fetchMovementById } from '@/app/lib/data/movements';
 import EditMovementForm from '@/app/ui/movements/EditMovementForm';
+import FormValidationBanner from '@/app/ui/FormValidationBanner';
 import styles from './page.module.css';
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ period?: string }>;
+  searchParams: Promise<{ period?: string; error?: string }>;
 };
 
 export default async function EditarMovimientoPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { period: periodParam } = await searchParams;
+  const { period: periodParam, error } = await searchParams;
   const [movement, accounts, cards, categories] = await Promise.all([
     fetchMovementById(id),
     fetchAccounts(),
@@ -40,6 +41,7 @@ export default async function EditarMovimientoPage({ params, searchParams }: Pro
           <p className={styles.subtitle}>{movement.description}</p>
         )}
       </header>
+      <FormValidationBanner error={error} />
       <EditMovementForm
         movement={movement}
         accounts={accounts}
