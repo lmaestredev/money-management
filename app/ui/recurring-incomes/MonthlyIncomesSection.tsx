@@ -1,6 +1,9 @@
 import type { Account, RecurringIncome } from '@/app/lib/definitions';
+import { amountsToUsd } from '@/app/lib/utils/currency';
 import { formatUsd } from '@/app/lib/utils';
 import { receiveRecurringIncomeAction } from '@/app/lib/actions/recurring-incomes';
+import DeleteRecurringIncomeButton from '@/app/ui/recurring-incomes/DeleteRecurringIncomeButton';
+import ItemActions from '@/app/ui/movements/ItemActions';
 import styles from './MonthlyIncomesSection.module.css';
 
 function formatPesos(amount: number): string {
@@ -14,18 +17,32 @@ function formatPesos(amount: number): string {
 
 type Props = {
   incomes: RecurringIncome[];
+  pendingIncomes: RecurringIncome[];
   receivedIds: Set<string>;
   period: string;
   accounts: Account[];
+  rate: number | null;
 };
 
-export default function MonthlyIncomesSection({ incomes, receivedIds, period, accounts }: Props) {
-  if (incomes.length === 0) return null;
+export default function MonthlyIncomesSection({
+  incomes,
+  pendingIncomes,
+  receivedIds,
+  period,
+  accounts,
+  rate,
+}: Props) {
+  if (pendingIncomes.length === 0) return null;
 
-  const pendingTotal = incomes
-    .filter((i) => !receivedIds.has(i.id))
-    .reduce((sum, i) => sum + i.amount_dollars, 0);
+  const pending = pendingIncomes;
   const receivedCount = incomes.filter((i) => receivedIds.has(i.id)).length;
+  const pendingCount = incomes.length - receivedCount;
+  const totalCount = incomes.length;
+
+  const pendingTotal = pending.reduce(
+    (sum, i) => sum + amountsToUsd(i.amount_pesos, i.amount_dollars, rate),
+    0
+  );
 
   return (
     <section className={styles.section} aria-labelledby="ingresos-mes">
@@ -33,15 +50,14 @@ export default function MonthlyIncomesSection({ incomes, receivedIds, period, ac
         <h2 id="ingresos-mes" className={styles.sectionTitle}>
           Ingresos del mes
           <span className={styles.countBadge}>
-            {receivedCount}/{incomes.length} cobrados
+            {pendingCount}/{totalCount} pendiente
           </span>
         </h2>
         <span className={styles.pendingTotal}>Por cobrar: {formatUsd(pendingTotal)}</span>
       </div>
 
       <div className={styles.list}>
-        {incomes.map((i) => {
-          const isReceived = receivedIds.has(i.id);
+        {pending.map((i) => {
           const hasPresetAccount = !!i.account_id;
           return (
             <div key={i.id} className={styles.row}>
@@ -56,16 +72,13 @@ export default function MonthlyIncomesSection({ incomes, receivedIds, period, ac
                 </div>
               </div>
               <div className={styles.amounts}>
-                <div className={styles.amountPrimary}>+{formatUsd(i.amount_dollars)}</div>
+                <div className={styles.amountPrimary}>
+                  +{formatUsd(amountsToUsd(i.amount_pesos, i.amount_dollars, rate))}
+                </div>
                 <div className={styles.amountSecondary}>{formatPesos(i.amount_pesos)}</div>
               </div>
               <div className={styles.action}>
-                {isReceived ? (
-                  <span className={styles.statusReceived}>
-                    <span className={styles.statusDot} />
-                    Cobrado
-                  </span>
-                ) : hasPresetAccount ? (
+                {hasPresetAccount ? (
                   <form action={receiveRecurringIncomeAction}>
                     <input type="hidden" name="recurring_income_id" value={i.id} />
                     <input type="hidden" name="period" value={period} />
@@ -100,6 +113,17 @@ export default function MonthlyIncomesSection({ incomes, receivedIds, period, ac
                   </form>
                 )}
               </div>
+              <ItemActions
+                editHref={`/dashboard/ingresos/editar/${i.id}?return=/dashboard/movimientos`}
+                editLabel={`Editar ${i.name}`}
+                deleteSlot={
+                  <DeleteRecurringIncomeButton
+                    id={i.id}
+                    name={i.name}
+                    redirectTo="/dashboard/movimientos"
+                  />
+                }
+              />
             </div>
           );
         })}

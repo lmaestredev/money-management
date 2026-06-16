@@ -1,1 +1,16 @@
 .title { margin-bottom: 1.5rem; font-size: 1.5rem; font-weight: 700; color: var(--color-on-surface); }
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-bottom: 1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-on-surface-variant);
+  text-decoration: none;
+}
+
+.backLink:hover { color: var(--color-primary); }
+
+.backIcon { width: 1rem; height: 1rem; }

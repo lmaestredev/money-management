@@ -13,8 +13,17 @@ function formatPesos(amount: number): string {
 
 function getAccountIcon(currency: string): string {
   if (currency === 'dollar') return '💵';
+  if (currency === 'dual') return '💱';
   if (currency === 'crypto') return '₿';
   return '🏦';
+}
+
+function accountTypeLabel(currency: string, bank: string | null): string {
+  if (bank) return bank;
+  if (currency === 'peso') return 'Pesos';
+  if (currency === 'dollar') return 'Dólares';
+  if (currency === 'dual') return 'Pesos y dólares';
+  return 'Efectivo';
 }
 
 type Props = {
@@ -40,16 +49,25 @@ export default function DashboardAccountList({ accounts }: Props) {
               <div className={styles.accountInfo}>
                 <span className={styles.accountName}>{account.name}</span>
                 <span className={styles.accountType}>
-                  {account.bank ?? (account.currency === 'peso' ? 'Pesos' : account.currency === 'dollar' ? 'Dólares' : 'Efectivo')}
+                  {accountTypeLabel(account.currency, account.bank)}
                 </span>
               </div>
             </div>
-            <div className={styles.accountAmount}>
-              {formatPesos(account.balance_pesos)}
-            </div>
-            <div className={styles.accountSecondary}>
-              {formatUsd(account.balance_dollars)}
-            </div>
+            {account.currency === 'dual' ? (
+              <>
+                <div className={styles.accountAmount}>{formatUsd(account.balance_dollars)}</div>
+                <div className={styles.accountSecondary}>{formatPesos(account.balance_pesos)}</div>
+              </>
+            ) : (
+              <>
+                <div className={styles.accountAmount}>
+                  {formatPesos(account.balance_pesos)}
+                </div>
+                <div className={styles.accountSecondary}>
+                  {formatUsd(account.balance_dollars)}
+                </div>
+              </>
+            )}
           </div>
         ))}
       </div>

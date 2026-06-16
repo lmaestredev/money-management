@@ -44,6 +44,7 @@ export default function EditMovementForm({ movement, accounts, cards, categories
 
   const [source, setSource] = useState<PaymentSource>(initialSource);
   const currency: AccountCurrency | null = source?.currency ?? null;
+  const isDual = currency === 'dual';
 
   const amountLabel =
     currency === 'peso'
@@ -56,7 +57,9 @@ export default function EditMovementForm({ movement, accounts, cards, categories
   const initialAmount =
     initialCurrency === 'peso'
       ? movement.amount_pesos
-      : movement.amount_dollars || movement.amount_pesos;
+      : initialCurrency === 'dual'
+        ? 0
+        : movement.amount_dollars || movement.amount_pesos;
 
   const statusValue =
     movement.status === true ? 'true' : movement.status === false ? 'false' : '';
@@ -133,20 +136,57 @@ export default function EditMovementForm({ movement, accounts, cards, categories
       </div>
 
       <div className={styles.field}>
-        <label htmlFor="amount" className={styles.label}>
-          {amountLabel}
-        </label>
-        <input
-          id="amount"
-          name="amount"
-          type="number"
-          step="0.01"
-          min="0"
-          className={styles.input}
-          required
-          disabled={!source}
-          defaultValue={initialAmount}
-        />
+        {isDual ? (
+          <div className={styles.row}>
+            <div className={styles.field}>
+              <label htmlFor="amount_pesos" className={styles.label}>
+                Monto (pesos)
+              </label>
+              <input
+                id="amount_pesos"
+                name="amount_pesos"
+                type="number"
+                step="0.01"
+                min="0"
+                className={styles.input}
+                disabled={!source}
+                defaultValue={movement.amount_pesos || ''}
+              />
+            </div>
+            <div className={styles.field}>
+              <label htmlFor="amount_dollars" className={styles.label}>
+                Monto (dólares)
+              </label>
+              <input
+                id="amount_dollars"
+                name="amount_dollars"
+                type="number"
+                step="0.01"
+                min="0"
+                className={styles.input}
+                disabled={!source}
+                defaultValue={movement.amount_dollars || ''}
+              />
+            </div>
+          </div>
+        ) : (
+          <>
+            <label htmlFor="amount" className={styles.label}>
+              {amountLabel}
+            </label>
+            <input
+              id="amount"
+              name="amount"
+              type="number"
+              step="0.01"
+              min="0"
+              className={styles.input}
+              required
+              disabled={!source}
+              defaultValue={initialAmount}
+            />
+          </>
+        )}
       </div>
 
       <div className={styles.field}>

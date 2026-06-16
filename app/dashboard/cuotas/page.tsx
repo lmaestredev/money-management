@@ -1,14 +1,30 @@
 import Link from 'next/link';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { fetchInstallments } from '@/app/lib/data/installments';
-import { formatUsd } from '@/app/lib/utils';
+import { getEffectiveRate, refreshExchangeRatesIfStale } from '@/app/lib/data/exchange-rates';
+import { formatArs, formatUsd } from '@/app/lib/utils';
+import { amountsToUsd } from '@/app/lib/utils/currency';
+import { installmentPaymentLabel } from '@/app/lib/utils/installment-display';
 import styles from './page.module.css';
 
 export default async function CuotasPage() {
-  const installments = await fetchInstallments();
+  await refreshExchangeRatesIfStale();
+  const [installments, effectiveRate] = await Promise.all([
+    fetchInstallments(),
+    getEffectiveRate(),
+  ]);
+  const rate = effectiveRate?.rate ?? null;
   const active = installments.filter((i) => i.status === 'active');
-  const monthlyCommitted = active.reduce((sum, i) => sum + i.monthly_amount_dollars, 0);
-  const remainingTotal = active.reduce((sum, i) => sum + i.remaining_amount_dollars, 0);
+  const monthlyCommittedPesos = active.reduce((sum, i) => sum + i.monthly_amount_pesos, 0);
+  const remainingTotalPesos = active.reduce((sum, i) => sum + i.remaining_amount_pesos, 0);
+  const monthlyCommittedUsd = active.reduce(
+    (sum, i) => sum + amountsToUsd(i.monthly_amount_pesos, i.monthly_amount_dollars, rate),
+    0
+  );
+  const remainingTotalUsd = active.reduce(
+    (sum, i) => sum + amountsToUsd(i.remaining_amount_pesos, i.remaining_amount_dollars, rate),
+    0
+  );
 
   return (
     <div className={styles.page}>
@@ -31,11 +47,13 @@ export default async function CuotasPage() {
           </div>
           <div className={styles.summaryCard}>
             <span className={styles.summaryLabel}>Cuota mensual comprometida</span>
-            <span className={styles.summaryValueExpense}>{formatUsd(monthlyCommitted)}</span>
+            <span className={styles.summaryValueExpense}>{formatUsd(monthlyCommittedUsd)}</span>
+            <span className={styles.summaryValueSecondary}>{formatArs(monthlyCommittedPesos)}</span>
           </div>
           <div className={styles.summaryCard}>
             <span className={styles.summaryLabel}>Saldo total faltante</span>
-            <span className={styles.summaryValueExpense}>{formatUsd(remainingTotal)}</span>
+            <span className={styles.summaryValueExpense}>{formatUsd(remainingTotalUsd)}</span>
+            <span className={styles.summaryValueSecondary}>{formatArs(remainingTotalPesos)}</span>
           </div>
         </div>
       )}
@@ -69,13 +87,13 @@ export default async function CuotasPage() {
                       {finished ? 'Finalizada' : 'Activa'}
                     </span>
                   </div>
-                  <div className={styles.itemBank}>💳 {i.account_name ?? 'Sin tarjeta'}</div>
+                  <div className={styles.itemBank}>💳 {installmentPaymentLabel(i)}</div>
                   <div className={styles.itemAmounts}>
                     <span className={styles.itemMonthly}>
-                      {formatUsd(i.monthly_amount_dollars)}/mes
+                      {formatArs(i.monthly_amount_pesos)}/mes
                     </span>
                     <span className={styles.itemRemaining}>
-                      Faltan {formatUsd(i.remaining_amount_dollars)}
+                      Faltan {formatArs(i.remaining_amount_pesos)}
                     </span>
                   </div>
                   <div className={styles.progressRow}>

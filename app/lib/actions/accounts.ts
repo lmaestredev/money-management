@@ -8,13 +8,27 @@ import { redirectWithToast } from '@/app/lib/toast-redirect';
 import type { AccountCurrency } from '@/app/lib/definitions';
 
 function buildAccountName(bank: string, currency: AccountCurrency): string {
-  const label = currency === 'peso' ? 'Pesos' : currency === 'dollar' ? 'Dólares' : 'Cripto';
+  const label =
+    currency === 'peso'
+      ? 'Pesos'
+      : currency === 'dollar'
+        ? 'Dólares'
+        : currency === 'dual'
+          ? 'Pesos y dólares'
+          : 'Cripto';
   return `${bank} - ${label}`;
 }
 
-const currencySchema = z.enum(['peso', 'dollar', 'crypto']);
+const currencySchema = z.enum(['peso', 'dollar', 'crypto', 'dual']);
 
-// El select de dueño envía un UUID o '' (compartida / sin asignar) -> null.
+const optionalNumber = z.preprocess(
+  (v) => (v == null || v === '' ? undefined : String(v)),
+  z
+    .string()
+    .optional()
+    .transform((s) => (s && String(s).trim() ? parseFloat(String(s)) : 0))
+);
+
 const ownerSchema = z
   .union([z.string().uuid(), z.literal('')])
   .optional()
@@ -23,7 +37,9 @@ const ownerSchema = z
 const createAccountFormSchema = z.object({
   bank: z.string().min(1, 'Indica el banco o institución'),
   currency: currencySchema,
-  balance: z.string().transform((s) => parseFloat(s) || 0),
+  balance: optionalNumber,
+  balance_pesos: optionalNumber,
+  balance_dollars: optionalNumber,
   owner_id: ownerSchema,
 });
 
@@ -32,6 +48,8 @@ export async function createAccountAction(formData: FormData) {
     bank: formData.get('bank'),
     currency: formData.get('currency'),
     balance: formData.get('balance'),
+    balance_pesos: formData.get('balance_pesos'),
+    balance_dollars: formData.get('balance_dollars'),
     owner_id: formData.get('owner_id'),
   };
 
@@ -40,14 +58,16 @@ export async function createAccountAction(formData: FormData) {
     redirect('/dashboard/cuentas/nueva?error=validation');
   }
 
-  const { bank, currency, balance, owner_id } = parsed.data;
-  const name = buildAccountName(bank.trim(), currency as AccountCurrency);
+  const { bank, currency, balance, balance_pesos, balance_dollars, owner_id } = parsed.data;
+  const cur = currency as AccountCurrency;
+  const name = buildAccountName(bank.trim(), cur);
+
   await createAccount({
     name,
     bank: bank.trim(),
-    currency: currency as AccountCurrency,
-    balance_pesos: currency === 'peso' ? balance : 0,
-    balance_dollars: currency !== 'peso' ? balance : 0,
+    currency: cur,
+    balance_pesos: cur === 'dual' ? balance_pesos : cur === 'peso' ? balance : 0,
+    balance_dollars: cur === 'dual' ? balance_dollars : cur !== 'peso' ? balance : 0,
     owner_id,
   });
 
@@ -89,7 +109,9 @@ const updateAccountFormSchema = z.object({
   id: z.string().uuid(),
   bank: z.string().min(1, 'Indica el banco o institución'),
   currency: currencySchema,
-  balance: z.string().transform((s) => parseFloat(s) || 0),
+  balance: optionalNumber,
+  balance_pesos: optionalNumber,
+  balance_dollars: optionalNumber,
   owner_id: ownerSchema,
 });
 
@@ -100,6 +122,8 @@ export async function updateAccountAction(formData: FormData) {
     bank: formData.get('bank'),
     currency: formData.get('currency'),
     balance: formData.get('balance'),
+    balance_pesos: formData.get('balance_pesos'),
+    balance_dollars: formData.get('balance_dollars'),
     owner_id: formData.get('owner_id'),
   });
   if (!parsed.success) {
@@ -107,14 +131,14 @@ export async function updateAccountAction(formData: FormData) {
     redirect(id ? `/dashboard/cuentas/editar/${id}?error=validation` : '/dashboard/cuentas');
   }
 
-  const { id, bank, currency, balance, owner_id } = parsed.data;
+  const { id, bank, currency, balance, balance_pesos, balance_dollars, owner_id } = parsed.data;
   const cur = currency as AccountCurrency;
   const updated = await updateAccount(id, {
     name: buildAccountName(bank.trim(), cur),
     bank: bank.trim(),
     currency: cur,
-    balance_pesos: cur === 'peso' ? balance : 0,
-    balance_dollars: cur !== 'peso' ? balance : 0,
+    balance_pesos: cur === 'dual' ? balance_pesos : cur === 'peso' ? balance : 0,
+    balance_dollars: cur === 'dual' ? balance_dollars : cur !== 'peso' ? balance : 0,
     owner_id,
   });
   if (!updated) {

@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { fetchAccounts, getAccountBalance } from '@/app/lib/data/accounts';
-import type { AccountCurrency } from '@/app/lib/definitions';
 import CuentasPageInfoBox from '@/app/ui/accounts/CuentasPageInfoBox';
 import CuentasSummaryCards from '@/app/ui/accounts/CuentasSummaryCards';
 import AccountCard from '@/app/ui/accounts/AccountCard';
@@ -24,14 +23,20 @@ export default async function CuentasPage({ searchParams }: Props) {
   const errorMessage = error ? ERROR_MESSAGES[error] ?? null : null;
   const accounts = await fetchAccounts();
 
-  const totalPesos = accounts
-    .filter((a) => a.currency === 'peso')
-    .reduce((sum, a) => sum + getAccountBalance(a), 0);
-  const totalDollars = accounts
-    .filter((a) => a.currency === 'dollar' || a.currency === 'crypto')
-    .reduce((sum, a) => sum + getAccountBalance(a), 0);
-  const countPesos = accounts.filter((a) => a.currency === 'peso').length;
-  const countDollars = accounts.filter((a) => a.currency === 'dollar' || a.currency === 'crypto').length;
+  const totalPesos = accounts.reduce((sum, a) => {
+    if (a.currency === 'peso') return sum + getAccountBalance(a);
+    if (a.currency === 'dual') return sum + a.balance_pesos;
+    return sum;
+  }, 0);
+  const totalDollars = accounts.reduce((sum, a) => {
+    if (a.currency === 'dollar' || a.currency === 'crypto') return sum + getAccountBalance(a);
+    if (a.currency === 'dual') return sum + a.balance_dollars;
+    return sum;
+  }, 0);
+  const countPesos = accounts.filter((a) => a.currency === 'peso' || a.currency === 'dual').length;
+  const countDollars = accounts.filter(
+    (a) => a.currency === 'dollar' || a.currency === 'crypto' || a.currency === 'dual'
+  ).length;
 
   return (
     <div className={styles.page}>

@@ -71,6 +71,12 @@
   height: 1.25rem;
 }
 
+.alertLink {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
 @media (max-width: 767px) {
   .pageHeader    { flex-direction: column; align-items: flex-start; }
   .headerActions { width: 100%; flex-wrap: wrap; }

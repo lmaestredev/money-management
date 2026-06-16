@@ -21,7 +21,7 @@ export type Person = {
 };
 
 // Cuentas bancarias
-export type AccountCurrency = 'peso' | 'dollar' | 'crypto';
+export type AccountCurrency = 'peso' | 'dollar' | 'crypto' | 'dual';
 
 export type Account = {
   id: string;

@@ -16,6 +16,11 @@ export type SummaryCardsProps = {
   expenseCount: number;
   balancePercent?: number;
   expensePercent?: number;
+  /** % cobrado vs ingresos programados (sueldos). Si no se pasa, la barra queda al 100%. */
+  incomePercent?: number;
+  /** Sueldos cobrados / total programado (muestra barra y leyenda en Movimientos). */
+  recurringIncomeReceived?: number;
+  recurringIncomeTotal?: number;
   balanceLabel?: string;
   balanceMeta?: React.ReactNode;
 };
@@ -31,19 +36,27 @@ export default function SummaryCards({
   expenseCount,
   balancePercent = 0,
   expensePercent = 0,
+  incomePercent,
+  recurringIncomeReceived = 0,
+  recurringIncomeTotal = 0,
   balanceLabel = 'Balance del mes',
   balanceMeta,
 }: SummaryCardsProps) {
   const incomePct = totalIncome > 0 ? Math.min(100, (balance / totalIncome) * 100) : 0;
   const displayBalancePct = balancePercent ?? incomePct;
+  const displayIncomePct = incomePercent ?? 100;
 
-  // Valores secundarios (referencia, menos prominentes).
-  // Balance y Ingresos: referencia en ARS = valor USD * tasa.
-  // Egresos: referencia en USD ya viene calculada; el primario es ARS crudo.
-  const balanceArs = rate ? balance * rate : null;
-  // Para ingresos: si hay pesos registrados, los mostramos directo;
-  // si el ingreso es mayormente en USD, mostramos el equivalente ARS.
-  const incomeArs = totalIncomePesos > 0 ? totalIncomePesos : rate ? totalIncome * rate : null;
+  // Todas las cards: primario USD, secundario ARS.
+  const balanceArs =
+    totalIncomePesos > 0 || totalExpensePesos > 0
+      ? totalIncomePesos - totalExpensePesos
+      : rate
+        ? balance * rate
+        : null;
+  const incomeArs =
+    totalIncomePesos > 0 ? totalIncomePesos : rate ? totalIncome * rate : null;
+  const expenseArs =
+    totalExpensePesos > 0 ? totalExpensePesos : rate ? totalExpense * rate : null;
 
   return (
     <div className={styles.summaryGrid}>
@@ -100,26 +113,38 @@ export default function SummaryCards({
           <div className={styles.summaryCardProgressTrack}>
             <div
               className={`${styles.summaryCardProgressFill} ${styles.summaryCardProgressFillIncome}`}
-              style={{ width: '100%' }}
+              style={{ width: `${Math.min(100, Math.max(0, displayIncomePct))}%` }}
             />
           </div>
         </div>
         <div className={styles.summaryCardMeta}>
-          <span className={styles.summaryCardTag}>{incomeCount} movimientos</span>
-          {' '}este mes
+          {recurringIncomeTotal > 0 ? (
+            <>
+              <span className={styles.summaryCardTag}>
+                {recurringIncomeReceived}/{recurringIncomeTotal} sueldos cobrados
+              </span>
+            </>
+          ) : (
+            <>
+              <span className={styles.summaryCardTag}>{incomeCount} movimientos</span>
+              {' '}este mes
+            </>
+          )}
         </div>
       </div>
 
-      {/* ── EGRESOS ── primario ARS crudo, secundario USD convertido */}
+      {/* ── EGRESOS ── primario USD, secundario ARS */}
       <div className={`${styles.summaryCard} ${styles.summaryCardExpense}`}>
         <div className={styles.summaryCardHeader}>
           <span className={styles.summaryCardLabel}>Egresos</span>
           <div className={`${styles.summaryCardIcon} ${styles.summaryCardIconExpense}`}>📉</div>
         </div>
         <div className={`${styles.summaryCardAmount} ${styles.summaryCardAmountExpense}`}>
-          {formatArs(totalExpensePesos)}
+          {formatUsd(totalExpense)}
         </div>
-        <div className={styles.summaryCardSecondary}>≈ {formatUsd(totalExpense)}</div>
+        {expenseArs !== null && (
+          <div className={styles.summaryCardSecondary}>≈ {formatArs(expenseArs)}</div>
+        )}
         <div className={styles.summaryCardProgress}>
           <div className={styles.summaryCardProgressTrack}>
             <div

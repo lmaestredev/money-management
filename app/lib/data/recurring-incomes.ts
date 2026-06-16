@@ -1,5 +1,9 @@
 import { sql } from '../db';
-import { getBalanceDeltas } from './movements';
+import { fetchCurrentPeriod } from './financial-periods';
+import { getEffectiveRate } from './exchange-rates';
+import { syncRecurringIncomeLinkedMovements } from './sync-template-movements';
+import type { AccountCurrency } from '../definitions';
+import { getAccountBalanceDeltas } from './movements';
 import type { RecurringIncome, RecurringIncomeInsert } from '../definitions';
 
 function rowToRecurringIncome(row: Record<string, unknown>): RecurringIncome {
@@ -96,6 +100,44 @@ export async function createRecurringIncome(
   return created!;
 }
 
+export async function updateRecurringIncome(
+  id: string,
+  data: RecurringIncomeInsert
+): Promise<RecurringIncome | null> {
+  const [currentPeriod, effectiveRate] = await Promise.all([
+    fetchCurrentPeriod(),
+    getEffectiveRate(),
+  ]);
+  const rate = effectiveRate?.rate ?? null;
+
+  const updated = await sql.begin(async (tx) => {
+    const [row] = await tx`
+      UPDATE recurring_incomes
+      SET
+        name = ${data.name},
+        category_id = ${data.category_id ?? null},
+        account_id = ${data.account_id ?? null},
+        amount_pesos = ${data.amount_pesos ?? 0},
+        amount_dollars = ${data.amount_dollars ?? 0},
+        receive_day = ${data.receive_day ?? null},
+        active = ${data.active ?? true},
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING id
+    `;
+    if (!row) return false;
+
+    await syncRecurringIncomeLinkedMovements(tx, id, data, {
+      financialPeriodId: currentPeriod?.id ?? null,
+      rate,
+    });
+    return true;
+  });
+
+  if (!updated) return null;
+  return fetchRecurringIncomeById(id);
+}
+
 /**
  * Elimina un ingreso recurrente. Preserva el historial: desvincula los cobros
  * ya registrados (quedan como movimientos normales) antes de borrar la plantilla.
@@ -129,6 +171,9 @@ export async function receiveRecurringIncome(
   financialPeriodId: string,
   overrideAccountId?: string | null
 ): Promise<ReceiveIncomeResult> {
+  const effectiveRate = await getEffectiveRate();
+  const rate = effectiveRate?.rate ?? null;
+
   return sql.begin(async (tx) => {
     const [rec] = await tx`
       SELECT id, name, account_id, category_id, amount_pesos, amount_dollars, active
@@ -152,6 +197,10 @@ export async function receiveRecurringIncome(
     const amountPesos = Number(rec.amount_pesos);
     const amountDollars = Number(rec.amount_dollars);
 
+    const [account] = await tx`
+      SELECT currency FROM accounts WHERE id = ${accountId}
+    `;
+
     await tx`
       INSERT INTO movements (
         period, financial_period_id, record_type, account_id, category_id, description, status,
@@ -164,11 +213,13 @@ export async function receiveRecurringIncome(
       )
     `;
 
-    const { deltaPesos, deltaDollars } = getBalanceDeltas(
+    const { deltaPesos, deltaDollars } = getAccountBalanceDeltas(
+      (account?.currency as AccountCurrency) ?? null,
       'income',
       true,
       amountPesos,
-      amountDollars
+      amountDollars,
+      rate
     );
     if (deltaPesos !== 0 || deltaDollars !== 0) {
       await tx`

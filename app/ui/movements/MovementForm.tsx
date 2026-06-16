@@ -29,6 +29,7 @@ export default function MovementForm({
 }: Props) {
   const [source, setSource] = useState<PaymentSource>(null);
   const currency: AccountCurrency | null = source?.currency ?? null;
+  const isDual = currency === 'dual';
 
   const amountLabel =
     currency === 'peso'
@@ -95,20 +96,57 @@ export default function MovementForm({
         />
       </div>
       <div className={styles.field}>
-        <label htmlFor="amount" className={styles.label}>
-          {amountLabel}
-        </label>
-        <input
-          id="amount"
-          name="amount"
-          type="number"
-          step="0.01"
-          min="0"
-          className={styles.input}
-          required
-          disabled={!source}
-          placeholder={source ? '0' : 'Selecciona una cuenta o tarjeta'}
-        />
+        {isDual ? (
+          <div className={styles.row}>
+            <div className={styles.field}>
+              <label htmlFor="amount_pesos" className={styles.label}>
+                Monto (pesos)
+              </label>
+              <input
+                id="amount_pesos"
+                name="amount_pesos"
+                type="number"
+                step="0.01"
+                min="0"
+                className={styles.input}
+                disabled={!source}
+                placeholder={source ? '0' : 'Selecciona una cuenta'}
+              />
+            </div>
+            <div className={styles.field}>
+              <label htmlFor="amount_dollars" className={styles.label}>
+                Monto (dólares)
+              </label>
+              <input
+                id="amount_dollars"
+                name="amount_dollars"
+                type="number"
+                step="0.01"
+                min="0"
+                className={styles.input}
+                disabled={!source}
+                placeholder={source ? '0' : 'Selecciona una cuenta'}
+              />
+            </div>
+          </div>
+        ) : (
+          <>
+            <label htmlFor="amount" className={styles.label}>
+              {amountLabel}
+            </label>
+            <input
+              id="amount"
+              name="amount"
+              type="number"
+              step="0.01"
+              min="0"
+              className={styles.input}
+              required
+              disabled={!source}
+              placeholder={source ? '0' : 'Selecciona una cuenta o tarjeta'}
+            />
+          </>
+        )}
       </div>
       <div className={styles.field}>
         <label htmlFor="payment_date" className={styles.label}>

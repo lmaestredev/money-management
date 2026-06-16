@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { fetchAccountById } from '@/app/lib/data/accounts';
 import { fetchCreditCardById } from '@/app/lib/data/credit-cards';
 import { createMovement, deleteMovement, updateMovement } from '@/app/lib/data/movements';
+import { revalidateFinancialScreens } from '@/app/lib/revalidate-financial';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
 import type { AccountCurrency } from '@/app/lib/definitions';
 
@@ -28,6 +29,48 @@ async function resolveSourceCurrency(
     return card ? card.currency : null;
   }
   return null;
+}
+
+async function parseMovementAmounts(
+  data: {
+    amount?: string;
+    amount_pesos?: string;
+    amount_dollars?: string;
+    account_id: string | null;
+    credit_card_id: string | null;
+  },
+  onError: () => never
+): Promise<{ amountPesos: number; amountDollars: number }> {
+  const currency = await resolveSourceCurrency(data.account_id, data.credit_card_id);
+  if (!currency) onError();
+
+  if (currency === 'dual') {
+    const pesosStr = data.amount_pesos ?? '';
+    const dollarsStr = data.amount_dollars ?? '';
+    const amountPesos = pesosStr !== '' ? parseFloat(pesosStr) : 0;
+    const amountDollars = dollarsStr !== '' ? parseFloat(dollarsStr) : 0;
+    if (
+      Number.isNaN(amountPesos) ||
+      Number.isNaN(amountDollars) ||
+      amountPesos < 0 ||
+      amountDollars < 0 ||
+      (amountPesos <= 0 && amountDollars <= 0)
+    ) {
+      onError();
+    }
+    return { amountPesos, amountDollars };
+  }
+
+  if (data.amount != null && data.amount !== '') {
+    const amount = parseFloat(data.amount);
+    if (Number.isNaN(amount) || amount < 0) onError();
+    if (currency === 'peso') {
+      return { amountPesos: amount, amountDollars: 0 };
+    }
+    return { amountPesos: 0, amountDollars: amount };
+  }
+
+  onError();
 }
 
 const recordTypeSchema = z.enum([
@@ -89,43 +132,10 @@ export async function createMovementAction(formData: FormData) {
   if (!data.account_id && !data.credit_card_id) {
     redirect(`/dashboard/movimientos/nuevo?period=${data.period}&error=validation`);
   }
-  let amountPesos: number;
-  let amountDollars: number;
 
-  if (data.amount != null && data.amount !== '') {
-    const amount = parseFloat(data.amount);
-    if (Number.isNaN(amount) || amount < 0) {
-      const period = data.period;
-      redirect(`/dashboard/movimientos/nuevo?period=${period}&error=validation`);
-    }
-    const currency = await resolveSourceCurrency(data.account_id, data.credit_card_id);
-    if (!currency) {
-      const period = data.period;
-      redirect(`/dashboard/movimientos/nuevo?period=${period}&error=validation`);
-    }
-    if (currency === 'peso') {
-      amountPesos = amount;
-      amountDollars = 0;
-    } else {
-      amountPesos = 0;
-      amountDollars = amount;
-    }
-  } else if (
-    data.amount_pesos != null &&
-    data.amount_pesos !== '' &&
-    data.amount_dollars != null &&
-    data.amount_dollars !== ''
-  ) {
-    amountPesos = parseFloat(data.amount_pesos);
-    amountDollars = parseFloat(data.amount_dollars);
-    if (Number.isNaN(amountPesos) || Number.isNaN(amountDollars)) {
-      const period = data.period;
-      redirect(`/dashboard/movimientos/nuevo?period=${period}&error=validation`);
-    }
-  } else {
-    const period = data.period;
-    redirect(`/dashboard/movimientos/nuevo?period=${period}&error=validation`);
-  }
+  const { amountPesos, amountDollars } = await parseMovementAmounts(data, () => {
+    redirect(`/dashboard/movimientos/nuevo?period=${data.period}&error=validation`);
+  });
 
   await createMovement(
     {
@@ -191,41 +201,13 @@ export async function updateMovementAction(formData: FormData) {
   if (!data.account_id && !data.credit_card_id) {
     redirect(errorTarget);
   }
-  let amountPesos: number;
-  let amountDollars: number;
 
-  if (data.amount != null && data.amount !== '') {
-    const amount = parseFloat(data.amount);
-    if (Number.isNaN(amount) || amount < 0) {
-      redirect(errorTarget);
-    }
-    const currency = await resolveSourceCurrency(data.account_id, data.credit_card_id);
-    if (!currency) {
-      redirect(errorTarget);
-    }
-    if (currency === 'peso') {
-      amountPesos = amount;
-      amountDollars = 0;
-    } else {
-      amountPesos = 0;
-      amountDollars = amount;
-    }
-  } else if (
-    data.amount_pesos != null &&
-    data.amount_pesos !== '' &&
-    data.amount_dollars != null &&
-    data.amount_dollars !== ''
-  ) {
-    amountPesos = parseFloat(data.amount_pesos);
-    amountDollars = parseFloat(data.amount_dollars);
-    if (Number.isNaN(amountPesos) || Number.isNaN(amountDollars)) {
-      redirect(errorTarget);
-    }
-  } else {
+  const { amountPesos, amountDollars } = await parseMovementAmounts(data, () => {
     redirect(errorTarget);
-  }
+  });
 
-  await updateMovement(data.id, {
+  try {
+    await updateMovement(data.id, {
     period: data.period,
     record_type: data.record_type,
     account_id: data.account_id,
@@ -238,10 +220,12 @@ export async function updateMovementAction(formData: FormData) {
     payment_date: data.payment_date && data.payment_date !== '' ? data.payment_date : null,
     dollar_rate: data.dollar_rate && data.dollar_rate !== '' ? parseFloat(data.dollar_rate) : null,
     comment: data.comment || null,
-  });
+    });
+  } catch {
+    redirect(`${errorTarget}&error=save`);
+  }
 
-  revalidatePath('/dashboard/movimientos');
-  revalidatePath('/dashboard');
+  revalidateFinancialScreens();
   redirectWithToast(`/dashboard/movimientos?period=${data.period}`, 'Movimiento actualizado');
 }
 

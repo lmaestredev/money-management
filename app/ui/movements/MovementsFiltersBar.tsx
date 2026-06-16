@@ -1,15 +1,21 @@
 'use client';
 
 import { useCallback } from 'react';
+import type { StatusFilter, TypeFilter } from '@/app/lib/utils/movement-filters';
 import styles from './MovementsFiltersBar.module.css';
 
-export type TypeFilter = 'all' | 'income' | 'expense';
+export type { TypeFilter, StatusFilter } from '@/app/lib/utils/movement-filters';
 
 type Props = {
   searchQuery: string;
   onSearchChange: (value: string) => void;
   typeFilter: TypeFilter;
   onTypeChange: (value: TypeFilter) => void;
+  statusFilter: StatusFilter;
+  onStatusChange: (value: StatusFilter) => void;
+  resultCount: number;
+  totalCount: number;
+  isFiltering: boolean;
 };
 
 export default function MovementsFiltersBar({
@@ -17,6 +23,11 @@ export default function MovementsFiltersBar({
   onSearchChange,
   typeFilter,
   onTypeChange,
+  statusFilter,
+  onStatusChange,
+  resultCount,
+  totalCount,
+  isFiltering,
 }: Props) {
   const handleSearch = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -26,7 +37,8 @@ export default function MovementsFiltersBar({
   );
 
   return (
-    <div className={styles.filtersBar}>
+    <div className={styles.wrapper}>
+      <div className={styles.filtersBar}>
       <div className={styles.searchBox}>
         <span className={styles.searchIcon} aria-hidden>
           🔍
@@ -35,9 +47,9 @@ export default function MovementsFiltersBar({
           type="search"
           value={searchQuery}
           onChange={handleSearch}
-          placeholder="Buscar movimiento, categoría, cuenta…"
+          placeholder="Buscar en todas las listas…"
           className={styles.searchInput}
-          aria-label="Buscar movimientos"
+          aria-label="Buscar en ingresos, gastos, cuotas y listado"
         />
       </div>
 
@@ -75,17 +87,33 @@ export default function MovementsFiltersBar({
         </button>
       </div>
 
-      <div className={styles.chips}>
-        <button type="button" className={styles.filterChip} aria-label="Filtrar por cuenta">
-          🏦 Todas las cuentas ▾
-        </button>
-        <button type="button" className={styles.filterChip} aria-label="Filtrar por categoría">
-          🏷️ Categoría ▾
-        </button>
-        <button type="button" className={styles.filterChip} aria-label="Filtrar por estado">
-          ⚡ Estado ▾
-        </button>
+      <div className={styles.statusTabs} role="tablist" aria-label="Filtrar por estado">
+        {(
+          [
+            ['all', 'Todos'],
+            ['paid', 'Pagado'],
+            ['pending', 'Pendiente'],
+            ['overdue', 'Vencido'],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={statusFilter === value}
+            className={`${styles.statusTab} ${statusFilter === value ? styles.statusTabActive : ''}`}
+            onClick={() => onStatusChange(value)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
+      </div>
+      {isFiltering && (
+        <p className={styles.resultHint} aria-live="polite">
+          Mostrando {resultCount} de {totalCount} ítems
+        </p>
+      )}
     </div>
   );
 }

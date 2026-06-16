@@ -1,5 +1,12 @@
 import { sql } from '../db';
-import { getBalanceDeltas, getCardDeltas } from './movements';
+import { fetchCurrentPeriod } from './financial-periods';
+import { getEffectiveRate } from './exchange-rates';
+import { syncRecurringExpenseLinkedMovements } from './sync-template-movements';
+import type { AccountCurrency } from '../definitions';
+import {
+  getAccountBalanceDeltas,
+  getCardChargeDeltas,
+} from './movements';
 import { applyCardCharge, resolveOrCreateStatement } from './credit-cards';
 import type { RecurringExpense, RecurringExpenseInsert } from '../definitions';
 
@@ -106,6 +113,46 @@ export async function createRecurringExpense(
   return created!;
 }
 
+export async function updateRecurringExpense(
+  id: string,
+  data: RecurringExpenseInsert
+): Promise<RecurringExpense | null> {
+  const [currentPeriod, effectiveRate] = await Promise.all([
+    fetchCurrentPeriod(),
+    getEffectiveRate(),
+  ]);
+  const rate = effectiveRate?.rate ?? null;
+
+  const updated = await sql.begin(async (tx) => {
+    const [row] = await tx`
+      UPDATE recurring_expenses
+      SET
+        name = ${data.name},
+        category_id = ${data.category_id ?? null},
+        account_id = ${data.account_id ?? null},
+        credit_card_id = ${data.credit_card_id ?? null},
+        amount_pesos = ${data.amount_pesos ?? 0},
+        amount_dollars = ${data.amount_dollars ?? 0},
+        pay_before_day = ${data.pay_before_day ?? null},
+        is_cash = ${data.is_cash ?? false},
+        active = ${data.active ?? true},
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING id
+    `;
+    if (!row) return false;
+
+    await syncRecurringExpenseLinkedMovements(tx, id, data, {
+      financialPeriodId: currentPeriod?.id ?? null,
+      rate,
+    });
+    return true;
+  });
+
+  if (!updated) return null;
+  return fetchRecurringExpenseById(id);
+}
+
 /**
  * Elimina un gasto fijo. Preserva el historial: desvincula los pagos ya
  * registrados (quedan como movimientos normales) antes de borrar la plantilla.
@@ -146,6 +193,9 @@ export async function payRecurringExpense(
   financialPeriodId: string,
   overrideAccountId?: string | null
 ): Promise<PayRecurringResult> {
+  const effectiveRate = await getEffectiveRate();
+  const rate = effectiveRate?.rate ?? null;
+
   return sql.begin(async (tx) => {
     const [rec] = await tx`
       SELECT id, name, account_id, credit_card_id, category_id,
@@ -185,9 +235,28 @@ export async function payRecurringExpense(
           ${recurringId}
         )
       `;
-      const card = getCardDeltas('fixed_payment', amountPesos, amountDollars);
-      await applyCardCharge(tx, rec.credit_card_id as string, st.id, card.deltaPesos, card.deltaDollars);
+      const [card] = await tx`
+        SELECT currency FROM credit_cards WHERE id = ${rec.credit_card_id}
+      `;
+      const cardDelta = getCardChargeDeltas(
+        (card?.currency as AccountCurrency) ?? null,
+        'fixed_payment',
+        amountPesos,
+        amountDollars,
+        rate
+      );
+      await applyCardCharge(
+        tx,
+        rec.credit_card_id as string,
+        st.id,
+        cardDelta.deltaPesos,
+        cardDelta.deltaDollars
+      );
     } else {
+      const [account] = await tx`
+        SELECT currency FROM accounts WHERE id = ${accountId}
+      `;
+
       await tx`
         INSERT INTO movements (
           period, financial_period_id, record_type, account_id, category_id, description, status,
@@ -200,11 +269,13 @@ export async function payRecurringExpense(
         )
       `;
 
-      const { deltaPesos, deltaDollars } = getBalanceDeltas(
+      const { deltaPesos, deltaDollars } = getAccountBalanceDeltas(
+        (account?.currency as AccountCurrency) ?? null,
         'fixed_payment',
         true,
         amountPesos,
-        amountDollars
+        amountDollars,
+        rate
       );
       if (deltaPesos !== 0 || deltaDollars !== 0) {
         await tx`

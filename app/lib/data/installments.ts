@@ -1,7 +1,10 @@
 import { sql } from '../db';
-import { getBalanceDeltas, getCardDeltas } from './movements';
+import { fetchCurrentPeriod } from './financial-periods';
+import { getEffectiveRate } from './exchange-rates';
+import { syncInstallmentLinkedMovements } from './sync-template-movements';
+import type { AccountCurrency, InstallmentInsert, InstallmentPurchase, InstallmentStatus } from '../definitions';
 import { applyCardCharge, resolveOrCreateStatement } from './credit-cards';
-import type { InstallmentInsert, InstallmentPurchase, InstallmentStatus } from '../definitions';
+import { getAccountBalanceDeltas, getCardChargeDeltas } from './movements';
 
 function rowToInstallment(row: Record<string, unknown>): InstallmentPurchase {
   const total = Number(row.total_installments);
@@ -128,6 +131,67 @@ export async function createInstallment(
   return created!;
 }
 
+export async function updateInstallment(
+  id: string,
+  data: InstallmentInsert
+): Promise<InstallmentPurchase | null> {
+  const [currentPeriod, effectiveRate] = await Promise.all([
+    fetchCurrentPeriod(),
+    getEffectiveRate(),
+  ]);
+  const rate = effectiveRate?.rate ?? null;
+
+  const updated = await sql.begin(async (tx) => {
+    const [row] = await tx`
+      UPDATE installment_purchases
+      SET
+        name = ${data.name},
+        account_id = ${data.account_id ?? null},
+        credit_card_id = ${data.credit_card_id ?? null},
+        category_id = ${data.category_id ?? null},
+        total_installments = ${data.total_installments},
+        paid_installments = ${data.paid_installments ?? 0},
+        monthly_amount_pesos = ${data.monthly_amount_pesos ?? 0},
+        monthly_amount_dollars = ${data.monthly_amount_dollars ?? 0},
+        total_amount_pesos = ${data.total_amount_pesos ?? 0},
+        total_amount_dollars = ${data.total_amount_dollars ?? 0},
+        pay_before_day = ${data.pay_before_day ?? null},
+        start_period = ${data.start_period ?? null},
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING id
+    `;
+    if (!row) return false;
+
+    await syncInstallmentLinkedMovements(tx, id, data, {
+      financialPeriodId: currentPeriod?.id ?? null,
+      rate,
+    });
+    return true;
+  });
+
+  if (!updated) return null;
+  return fetchInstallmentById(id);
+}
+
+/**
+ * Elimina una compra en cuotas. Preserva el historial: desvincula los pagos ya
+ * registrados (quedan como movimientos normales) antes de borrar la plantilla.
+ */
+export async function deleteInstallment(id: string): Promise<boolean> {
+  return sql.begin(async (tx) => {
+    await tx`
+      UPDATE movements SET installment_id = NULL
+      WHERE installment_id = ${id}
+    `;
+    const rows = await tx`
+      DELETE FROM installment_purchases WHERE id = ${id}
+      RETURNING id
+    `;
+    return rows.length > 0;
+  });
+}
+
 export type PayInstallmentResult =
   | { ok: true }
   | { ok: false; reason: 'not_found' | 'completed' | 'already_paid' | 'no_account' };
@@ -143,6 +207,9 @@ export async function payInstallment(
   period: string,
   financialPeriodId: string
 ): Promise<PayInstallmentResult> {
+  const effectiveRate = await getEffectiveRate();
+  const rate = effectiveRate?.rate ?? null;
+
   return sql.begin(async (tx) => {
     const [inst] = await tx`
       SELECT id, name, account_id, credit_card_id, category_id,
@@ -189,8 +256,23 @@ export async function payInstallment(
           ${installmentId}
         )
       `;
-      const card = getCardDeltas('fixed_payment', amountPesos, amountDollars);
-      await applyCardCharge(tx, inst.credit_card_id as string, st.id, card.deltaPesos, card.deltaDollars);
+      const [card] = await tx`
+        SELECT currency FROM credit_cards WHERE id = ${inst.credit_card_id}
+      `;
+      const cardDelta = getCardChargeDeltas(
+        (card?.currency as AccountCurrency) ?? null,
+        'fixed_payment',
+        amountPesos,
+        amountDollars,
+        rate
+      );
+      await applyCardCharge(
+        tx,
+        inst.credit_card_id as string,
+        st.id,
+        cardDelta.deltaPesos,
+        cardDelta.deltaDollars
+      );
     } else {
       await tx`
         INSERT INTO movements (
@@ -204,11 +286,16 @@ export async function payInstallment(
         )
       `;
 
-      const { deltaPesos, deltaDollars } = getBalanceDeltas(
+      const [account] = await tx`
+        SELECT currency FROM accounts WHERE id = ${inst.account_id}
+      `;
+      const { deltaPesos, deltaDollars } = getAccountBalanceDeltas(
+        (account?.currency as AccountCurrency) ?? null,
         'fixed_payment',
         true,
         amountPesos,
-        amountDollars
+        amountDollars,
+        rate
       );
       if (deltaPesos !== 0 || deltaDollars !== 0) {
         await tx`

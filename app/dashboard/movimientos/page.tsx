@@ -9,12 +9,17 @@ import {
   fetchActiveRecurringIncomes,
   fetchRecurringIncomeReceivedIds,
 } from '@/app/lib/data/recurring-incomes';
-import type { Movement } from '@/app/lib/definitions';
+import { fetchCreditCards, fetchStatementPaymentIds } from '@/app/lib/data/credit-cards';
+import { computeMovementSummary, computeRecurringIncomeProgress } from '@/app/lib/data/movement-summary';
+import {
+  getEffectiveRate,
+  refreshExchangeRatesIfStale,
+} from '@/app/lib/data/exchange-rates';
 import PeriodBadge from '@/app/ui/financial-periods/PeriodBadge';
-import MovementsPageClient, { type MovementSummary } from '@/app/ui/movements/MovementsPageClient';
-import MonthlyInstallmentsSection from '@/app/ui/installments/MonthlyInstallmentsSection';
-import MonthlyFixedExpensesSection from '@/app/ui/recurring/MonthlyFixedExpensesSection';
-import MonthlyIncomesSection from '@/app/ui/recurring-incomes/MonthlyIncomesSection';
+import DashboardAlert from '@/app/ui/dashboard/DashboardAlert';
+import SummaryCards from '@/app/ui/movements/SummaryCards';
+import DollarRateBar from '@/app/ui/movements/DollarRateBar';
+import MovementsPageClient from '@/app/ui/movements/MovementsPageClient';
 import styles from './page.module.css';
 
 function getCurrentPeriod(): string {
@@ -24,48 +29,17 @@ function getCurrentPeriod(): string {
   return `${year}-${month}`;
 }
 
-function computeSummary(movements: Movement[]): MovementSummary {
-  let totalIncome = 0;
-  let totalExpense = 0;
-  let incomeCount = 0;
-  let expenseCount = 0;
-
-  for (const m of movements) {
-    if (m.record_type === 'income') {
-      totalIncome += m.amount_dollars;
-      incomeCount += 1;
-    } else if (
-      m.record_type === 'variable_payment' ||
-      m.record_type === 'fixed_payment'
-    ) {
-      if (m.status === true) {
-        totalExpense += m.amount_dollars;
-      }
-      expenseCount += 1;
-    }
-  }
-
-  const balance = totalIncome - totalExpense;
-
-  return {
-    balance,
-    totalIncome,
-    totalExpense,
-    incomeCount,
-    expenseCount,
-  };
-}
-
 export default async function MovimientosPage() {
-  // Período YYYY-MM de hoy — usado como campo secundario en los forms
-  // (el filtro principal es financial_period_id del período activo).
   const period = getCurrentPeriod();
+
+  await refreshExchangeRatesIfStale();
 
   const currentFinancialPeriod = await fetchCurrentPeriod();
   const financialPeriodId = currentFinancialPeriod?.id ?? '';
 
   const [
     accounts,
+    cards,
     movements,
     activeInstallments,
     paidInstallmentIds,
@@ -73,8 +47,11 @@ export default async function MovimientosPage() {
     paidRecurringIds,
     activeIncomes,
     receivedIncomeIds,
+    statementPaymentIds,
+    effectiveRate,
   ] = await Promise.all([
     fetchAccounts(),
+    fetchCreditCards(),
     fetchMovementsByFinancialPeriod(financialPeriodId),
     fetchActiveInstallments(),
     fetchInstallmentPaidIds(financialPeriodId),
@@ -82,10 +59,21 @@ export default async function MovimientosPage() {
     fetchRecurringPaidIds(financialPeriodId),
     fetchActiveRecurringIncomes(),
     fetchRecurringIncomeReceivedIds(financialPeriodId),
+    fetchStatementPaymentIds(),
+    getEffectiveRate(),
   ]);
 
-  const accountNames = new Map(accounts.map((a) => [a.id, a.name]));
-  const summary = computeSummary(movements);
+  const accountNames = Object.fromEntries(accounts.map((a) => [a.id, a.name]));
+  const cardNames = Object.fromEntries(cards.map((c) => [c.id, c.name]));
+  const rate = effectiveRate?.rate ?? null;
+  const summary = computeMovementSummary(movements, rate, { statementPaymentIds });
+  const incomeProgress = computeRecurringIncomeProgress(
+    activeIncomes,
+    receivedIncomeIds,
+    summary.totalIncome,
+    rate
+  );
+  const noRate = rate == null;
 
   return (
     <div className={styles.page}>
@@ -106,30 +94,53 @@ export default async function MovimientosPage() {
         </div>
       </header>
 
-      <MonthlyIncomesSection
-        incomes={activeIncomes}
-        receivedIds={receivedIncomeIds}
-        period={period}
-        accounts={accounts}
-      />
+      <DollarRateBar effective={effectiveRate} />
 
-      <MonthlyFixedExpensesSection
-        expenses={activeRecurring}
-        paidIds={paidRecurringIds}
-        period={period}
-        accounts={accounts}
-      />
+      {noRate && (
+        <DashboardAlert
+          message={
+            <>
+              <strong>Sin cotización del dólar:</strong> los gastos en pesos no se están
+              convirtiendo a USD. Usá el botón Actualizar o revisá{' '}
+              <Link href="/dashboard/configuracion" className={styles.alertLink}>
+                Configuración
+              </Link>
+              .
+            </>
+          }
+        />
+      )}
 
-      <MonthlyInstallmentsSection
-        installments={activeInstallments}
-        paidIds={paidInstallmentIds}
-        period={period}
+      <SummaryCards
+        balance={summary.balance}
+        totalIncome={summary.totalIncome}
+        totalExpense={summary.totalExpense}
+        totalExpensePesos={summary.totalExpensePesos}
+        totalIncomePesos={summary.totalIncomePesos}
+        rate={rate}
+        incomeCount={summary.incomeCount}
+        expenseCount={summary.expenseCount}
+        incomePercent={incomeProgress.percent}
+        recurringIncomeReceived={incomeProgress.receivedCount}
+        recurringIncomeTotal={incomeProgress.totalCount}
+        balanceLabel="Balance del mes"
       />
 
       <MovementsPageClient
         movements={movements}
         accountNames={accountNames}
-        summary={summary}
+        cardNames={cardNames}
+        rate={rate}
+        monthly={{
+          incomes: activeIncomes,
+          receivedIncomeIds: [...receivedIncomeIds],
+          expenses: activeRecurring,
+          paidRecurringIds: [...paidRecurringIds],
+          installments: activeInstallments,
+          paidInstallmentIds: [...paidInstallmentIds],
+          period,
+          accounts,
+        }}
       />
     </div>
   );

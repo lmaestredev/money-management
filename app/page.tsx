@@ -5,12 +5,10 @@ import styles from './page.module.css';
 export default function Page() {
   return (
     <main className={styles.main}>
-      <div className={styles.hero}>
-        <h1 className={styles.heroTitle}>
-          Money Management
-        </h1>
-      </div>
-      <div className={styles.content}>
+      <div className={styles.welcome}>
+        <div className={styles.hero}>
+          <h1 className={styles.heroTitle}>Money Management</h1>
+        </div>
         <div className={styles.card}>
           <p className={styles.text}>
             <strong>Bienvenido.</strong> Gestiona tus ingresos, egresos y

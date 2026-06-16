@@ -1,7 +1,7 @@
 import { sql } from '../db';
 import type { Account, AccountCurrency, AccountInsert } from '../definitions';
 
-const CURRENCIES: AccountCurrency[] = ['peso', 'dollar', 'crypto'];
+const CURRENCIES: AccountCurrency[] = ['peso', 'dollar', 'crypto', 'dual'];
 
 function rowToAccount(row: Record<string, unknown>): Account {
   const currency = row.currency as string;
@@ -47,6 +47,8 @@ export function getAccountBalance(account: Account): number {
   switch (account.currency) {
     case 'peso':
       return account.balance_pesos;
+    case 'dual':
+      return account.balance_dollars;
     case 'dollar':
     case 'crypto':
       return account.balance_dollars;
@@ -57,8 +59,16 @@ export function getAccountBalance(account: Account): number {
 
 export async function createAccount(data: AccountInsert): Promise<Account> {
   const currency = data.currency ?? 'peso';
-  const balancePesos = currency === 'peso' ? (data.balance_pesos ?? data.balance_dollars ?? 0) : 0;
-  const balanceDollars = currency !== 'peso' ? (data.balance_dollars ?? data.balance_pesos ?? 0) : 0;
+  let balancePesos = 0;
+  let balanceDollars = 0;
+  if (currency === 'dual') {
+    balancePesos = data.balance_pesos ?? 0;
+    balanceDollars = data.balance_dollars ?? 0;
+  } else if (currency === 'peso') {
+    balancePesos = data.balance_pesos ?? data.balance_dollars ?? 0;
+  } else {
+    balanceDollars = data.balance_dollars ?? data.balance_pesos ?? 0;
+  }
   const name = data.name.trim() || (data.bank ? `${data.bank} - ${currency}` : currency);
 
   const [row] = await sql`

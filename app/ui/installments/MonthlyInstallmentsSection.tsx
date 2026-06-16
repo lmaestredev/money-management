@@ -1,6 +1,8 @@
 import type { InstallmentPurchase } from '@/app/lib/definitions';
-import { formatUsd } from '@/app/lib/utils';
-import { payInstallmentAction } from '@/app/lib/actions/installments';
+import { installmentPaymentLabel } from '@/app/lib/utils/installment-display';
+import { payAllInstallmentsAction, payInstallmentAction } from '@/app/lib/actions/installments';
+import DeleteInstallmentButton from '@/app/ui/installments/DeleteInstallmentButton';
+import ItemActions from '@/app/ui/movements/ItemActions';
 import styles from './MonthlyInstallmentsSection.module.css';
 
 function formatPesos(amount: number): string {
@@ -14,33 +16,53 @@ function formatPesos(amount: number): string {
 
 type Props = {
   installments: InstallmentPurchase[];
+  pendingInstallments: InstallmentPurchase[];
   paidIds: Set<string>;
   period: string;
+  rate: number | null;
 };
 
-export default function MonthlyInstallmentsSection({ installments, paidIds, period }: Props) {
-  if (installments.length === 0) return null;
+export default function MonthlyInstallmentsSection({
+  installments,
+  pendingInstallments,
+  paidIds,
+  period,
+  rate,
+}: Props) {
+  if (pendingInstallments.length === 0) return null;
 
-  const pendingTotal = installments
-    .filter((i) => !paidIds.has(i.id))
-    .reduce((sum, i) => sum + i.monthly_amount_dollars, 0);
+  const pending = pendingInstallments;
+  const allPendingCount = installments.filter((i) => !paidIds.has(i.id)).length;
+  const doneCount = installments.filter((i) => paidIds.has(i.id)).length;
+  const totalCount = installments.length;
+
+  const pendingTotal = pending.reduce((sum, i) => sum + i.monthly_amount_pesos, 0);
 
   return (
     <section className={styles.section} aria-labelledby="cuotas-mes">
       <div className={styles.sectionHeader}>
         <h2 id="cuotas-mes" className={styles.sectionTitle}>
           Cuotas del mes
-          <span className={styles.countBadge}>{installments.length}</span>
+          <span className={styles.countBadge}>
+            {doneCount}/{totalCount} pendiente
+          </span>
         </h2>
-        <span className={styles.pendingTotal}>
-          Pendiente: {formatUsd(pendingTotal)}
-        </span>
+        <div className={styles.headerActions}>
+          <span className={styles.pendingTotal}>Pendiente: {formatPesos(pendingTotal)}</span>
+          {allPendingCount > 0 && (
+            <form action={payAllInstallmentsAction}>
+              <input type="hidden" name="period" value={period} />
+              <button type="submit" className={styles.payAllBtn}>
+                Registrar todos
+              </button>
+            </form>
+          )}
+        </div>
       </div>
 
       <div className={styles.list}>
-        {installments.map((i) => {
-          const isPaid = paidIds.has(i.id);
-          const currentNumber = Math.min(i.paid_installments + (isPaid ? 0 : 1), i.total_installments);
+        {pending.map((i) => {
+          const currentNumber = Math.min(i.paid_installments + 1, i.total_installments);
           return (
             <div key={i.id} className={styles.row}>
               <div className={styles.icon} aria-hidden>
@@ -49,7 +71,7 @@ export default function MonthlyInstallmentsSection({ installments, paidIds, peri
               <div className={styles.info}>
                 <div className={styles.name}>{i.name}</div>
                 <div className={styles.meta}>
-                  <span>🏦 {i.account_name ?? 'Sin tarjeta'}</span>
+                  <span>🏦 {installmentPaymentLabel(i)}</span>
                   <span className={styles.cuotaNum}>
                     Cuota {currentNumber}/{i.total_installments}
                   </span>
@@ -57,28 +79,29 @@ export default function MonthlyInstallmentsSection({ installments, paidIds, peri
               </div>
               <div className={styles.amounts}>
                 <div className={styles.amountPrimary}>
-                  −{formatUsd(i.monthly_amount_dollars)}
-                </div>
-                <div className={styles.amountSecondary}>
-                  {formatPesos(i.monthly_amount_pesos)}
+                  −{formatPesos(i.monthly_amount_pesos)}
                 </div>
               </div>
               <div className={styles.action}>
-                {isPaid ? (
-                  <span className={styles.statusPaid}>
-                    <span className={styles.statusDot} />
-                    Pagada
-                  </span>
-                ) : (
-                  <form action={payInstallmentAction}>
-                    <input type="hidden" name="installment_id" value={i.id} />
-                    <input type="hidden" name="period" value={period} />
-                    <button type="submit" className={styles.payBtn}>
-                      Registrar pago
-                    </button>
-                  </form>
-                )}
+                <form action={payInstallmentAction}>
+                  <input type="hidden" name="installment_id" value={i.id} />
+                  <input type="hidden" name="period" value={period} />
+                  <button type="submit" className={styles.payBtn}>
+                    Registrar pago
+                  </button>
+                </form>
               </div>
+              <ItemActions
+                editHref={`/dashboard/cuotas/editar/${i.id}?return=/dashboard/movimientos`}
+                editLabel={`Editar ${i.name}`}
+                deleteSlot={
+                  <DeleteInstallmentButton
+                    id={i.id}
+                    name={i.name}
+                    redirectTo="/dashboard/movimientos"
+                  />
+                }
+              />
             </div>
           );
         })}

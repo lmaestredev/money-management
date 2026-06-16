@@ -2,23 +2,47 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { createRecurringExpenseAction } from '@/app/lib/actions/recurring';
+import {
+  createRecurringExpenseAction,
+  updateRecurringExpenseAction,
+} from '@/app/lib/actions/recurring';
 import SubmitButton from '@/app/ui/SubmitButton';
 import PaymentSourceSelect from '@/app/ui/credit-cards/PaymentSourceSelect';
-import type { Account, Category, CreditCard } from '@/app/lib/definitions';
+import type { Account, Category, CreditCard, RecurringExpense } from '@/app/lib/definitions';
 import styles from './RecurringExpenseForm.module.css';
 
 type Props = {
   accounts: Account[];
   cards: CreditCard[];
   categories: Category[];
+  expense?: RecurringExpense;
+  returnTo?: string;
 };
 
-export default function RecurringExpenseForm({ accounts, cards, categories }: Props) {
-  const [isCash, setIsCash] = useState(false);
+export default function RecurringExpenseForm({
+  accounts,
+  cards,
+  categories,
+  expense,
+  returnTo,
+}: Props) {
+  const isEdit = !!expense;
+  const cancelHref = returnTo || '/dashboard/gastos-fijos';
+  const [isCash, setIsCash] = useState(expense?.is_cash ?? false);
+
+  const initialEncoded = expense?.credit_card_id
+    ? `card:${expense.credit_card_id}`
+    : expense?.account_id
+      ? `acc:${expense.account_id}`
+      : '';
 
   return (
-    <form action={createRecurringExpenseAction} className={styles.form}>
+    <form
+      action={isEdit ? updateRecurringExpenseAction : createRecurringExpenseAction}
+      className={styles.form}
+    >
+      {isEdit && <input type="hidden" name="id" value={expense.id} />}
+      {returnTo && <input type="hidden" name="return_to" value={returnTo} />}
       <input type="hidden" name="is_cash" value={isCash ? 'true' : 'false'} />
 
       <div className={styles.field}>
@@ -31,6 +55,7 @@ export default function RecurringExpenseForm({ accounts, cards, categories }: Pr
           type="text"
           className={styles.input}
           required
+          defaultValue={expense?.name ?? ''}
           placeholder="Ej. Alquiler, Internet, Medicina prepaga..."
         />
       </div>
@@ -39,7 +64,12 @@ export default function RecurringExpenseForm({ accounts, cards, categories }: Pr
         <label htmlFor="category_id" className={styles.label}>
           Categoría
         </label>
-        <select id="category_id" name="category_id" className={styles.select}>
+        <select
+          id="category_id"
+          name="category_id"
+          className={styles.select}
+          defaultValue={expense?.category_id ?? ''}
+        >
           <option value="">Sin categoría</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
@@ -74,6 +104,7 @@ export default function RecurringExpenseForm({ accounts, cards, categories }: Pr
             cards={cards}
             className={styles.select}
             noneLabel="Sin asignar"
+            defaultValue={initialEncoded}
           />
           <span className={styles.hint}>
             Si la asignas, el pago mensual se registra con un clic. Con tarjeta, el gasto suma a
@@ -94,6 +125,7 @@ export default function RecurringExpenseForm({ accounts, cards, categories }: Pr
             min="0"
             step="0.01"
             className={styles.input}
+            defaultValue={expense?.amount_pesos ?? ''}
             placeholder="0"
           />
         </div>
@@ -108,6 +140,7 @@ export default function RecurringExpenseForm({ accounts, cards, categories }: Pr
             min="0"
             step="0.01"
             className={styles.input}
+            defaultValue={expense?.amount_dollars ?? ''}
             placeholder="0"
           />
         </div>
@@ -125,16 +158,14 @@ export default function RecurringExpenseForm({ accounts, cards, categories }: Pr
           max="31"
           step="1"
           className={styles.input}
+          defaultValue={expense?.pay_before_day ?? ''}
           placeholder="10"
         />
       </div>
 
       <div className={styles.actions}>
-        <SubmitButton>Guardar</SubmitButton>
-        <Link
-          href="/dashboard/gastos-fijos"
-          className={`${styles.button} ${styles.buttonSecondary}`}
-        >
+        <SubmitButton>{isEdit ? 'Guardar cambios' : 'Guardar'}</SubmitButton>
+        <Link href={cancelHref} className={`${styles.button} ${styles.buttonSecondary}`}>
           Cancelar
         </Link>
       </div>

@@ -5,7 +5,9 @@ import {
   reverseCardCharge,
 } from './credit-cards';
 import { fetchCurrentPeriod } from './financial-periods';
+import { amountsToUsd } from '../utils/currency';
 import type {
+  AccountCurrency,
   Movement,
   MovementInsert,
   MovementSource,
@@ -35,6 +37,8 @@ function rowToMovement(row: Record<string, unknown>): Movement {
     user_id: (row.user_id as string) ?? null,
     source: (row.source as MovementSource) ?? null,
     installment_id: (row.installment_id as string) ?? null,
+    recurring_expense_id: (row.recurring_expense_id as string) ?? null,
+    recurring_income_id: (row.recurring_income_id as string) ?? null,
   };
 }
 
@@ -62,7 +66,8 @@ export async function fetchMovementsByFinancialPeriod(financialPeriodId: string)
            c.name AS category_name,
            m.description, m.status, m.amount_pesos, m.amount_dollars,
            m.payment_date, m.dollar_rate, m.exchange_rate, m.comment,
-           m.created_at, m.user_id, m.source
+           m.created_at, m.user_id, m.source,
+           m.installment_id, m.recurring_expense_id, m.recurring_income_id
     FROM movements m
     LEFT JOIN categories c ON m.category_id = c.id
     WHERE m.financial_period_id = ${financialPeriodId}
@@ -97,7 +102,8 @@ export async function fetchMovementById(id: string): Promise<Movement | null> {
            c.name AS category_name,
            m.description, m.status, m.amount_pesos, m.amount_dollars,
            m.payment_date, m.dollar_rate, m.exchange_rate, m.comment,
-           m.created_at, m.user_id, m.source, m.installment_id
+           m.created_at, m.user_id, m.source, m.installment_id,
+           m.recurring_expense_id, m.recurring_income_id
     FROM movements m
     LEFT JOIN categories c ON m.category_id = c.id
     WHERE m.id = ${id}
@@ -142,6 +148,77 @@ export function getCardDeltas(
     return { deltaPesos: amountPesos, deltaDollars: amountDollars };
   }
   return { deltaPesos: 0, deltaDollars: 0 };
+}
+
+function totalPesos(amountPesos: number, amountDollars: number, rate: number | null): number {
+  return amountPesos + (rate && rate > 0 ? amountDollars * rate : 0);
+}
+
+/** Aplica el movimiento al saldo de una cuenta según su moneda nativa. */
+export function getAccountBalanceDeltas(
+  accountCurrency: AccountCurrency | null | undefined,
+  recordType: RecordType,
+  status: boolean | null,
+  amountPesos: number,
+  amountDollars: number,
+  rate: number | null
+): { deltaPesos: number; deltaDollars: number } {
+  if (recordType === 'conversion') {
+    return getBalanceDeltas(recordType, status, amountPesos, amountDollars);
+  }
+
+  const isIncome = recordType === 'income';
+  const isExpense = recordType === 'variable_payment' || recordType === 'fixed_payment';
+  if (!isIncome && !isExpense) {
+    return { deltaPesos: 0, deltaDollars: 0 };
+  }
+  if (isExpense && status !== true) {
+    return { deltaPesos: 0, deltaDollars: 0 };
+  }
+
+  const sign = isIncome ? 1 : -1;
+  const usdTotal = amountsToUsd(amountPesos, amountDollars, rate);
+  const pesoTotal = totalPesos(amountPesos, amountDollars, rate);
+
+  if (accountCurrency === 'peso') {
+    return { deltaPesos: sign * pesoTotal, deltaDollars: 0 };
+  }
+  if (accountCurrency === 'dual') {
+    return getBalanceDeltas(recordType, status, amountPesos, amountDollars);
+  }
+  if (accountCurrency === 'dollar' || accountCurrency === 'crypto') {
+    return { deltaPesos: 0, deltaDollars: sign * usdTotal };
+  }
+
+  return getBalanceDeltas(recordType, status, amountPesos, amountDollars);
+}
+
+/** Carga a la tarjeta en la moneda nativa de la tarjeta. */
+export function getCardChargeDeltas(
+  cardCurrency: AccountCurrency | null | undefined,
+  recordType: RecordType,
+  amountPesos: number,
+  amountDollars: number,
+  rate: number | null
+): { deltaPesos: number; deltaDollars: number } {
+  if (recordType !== 'variable_payment' && recordType !== 'fixed_payment') {
+    return { deltaPesos: 0, deltaDollars: 0 };
+  }
+
+  const usdTotal = amountsToUsd(amountPesos, amountDollars, rate);
+  const pesoTotal = totalPesos(amountPesos, amountDollars, rate);
+
+  if (cardCurrency === 'peso') {
+    return { deltaPesos: pesoTotal, deltaDollars: 0 };
+  }
+  if (cardCurrency === 'dual') {
+    return getCardDeltas(recordType, amountPesos, amountDollars);
+  }
+  if (cardCurrency === 'dollar' || cardCurrency === 'crypto') {
+    return { deltaPesos: 0, deltaDollars: usdTotal };
+  }
+
+  return getCardDeltas(recordType, amountPesos, amountDollars);
 }
 
 export async function createMovement(
@@ -242,7 +319,8 @@ export async function updateMovement(
   return sql.begin(async (tx) => {
     const [old] = await tx`
       SELECT account_id, credit_card_id, statement_id, record_type, status,
-             amount_pesos, amount_dollars
+             amount_pesos, amount_dollars, recurring_income_id, recurring_expense_id,
+             installment_id
       FROM movements
       WHERE id = ${id}
       FOR UPDATE
@@ -324,8 +402,42 @@ export async function updateMovement(
       RETURNING id, period, record_type, account_id, credit_card_id, statement_id,
                 category_id, description, status,
                 amount_pesos, amount_dollars, payment_date, dollar_rate, exchange_rate,
-                comment, created_at, user_id, source, installment_id
+                comment, created_at, user_id, source, installment_id,
+                recurring_expense_id, recurring_income_id
     `;
+
+    if (old.recurring_income_id) {
+      await tx`
+        UPDATE recurring_incomes
+        SET name = ${data.description ?? ''},
+            category_id = ${data.category_id ?? null},
+            amount_pesos = ${data.amount_pesos},
+            amount_dollars = ${data.amount_dollars},
+            updated_at = NOW()
+        WHERE id = ${old.recurring_income_id}
+      `;
+    } else if (old.recurring_expense_id) {
+      await tx`
+        UPDATE recurring_expenses
+        SET name = ${data.description ?? ''},
+            category_id = ${data.category_id ?? null},
+            amount_pesos = ${data.amount_pesos},
+            amount_dollars = ${data.amount_dollars},
+            updated_at = NOW()
+        WHERE id = ${old.recurring_expense_id}
+      `;
+    } else if (old.installment_id) {
+      await tx`
+        UPDATE installment_purchases
+        SET name = ${data.description?.replace(/\s*\(cuota\s+\d+\/\d+\)\s*$/i, '') ?? ''},
+            category_id = ${data.category_id ?? null},
+            monthly_amount_pesos = ${data.amount_pesos},
+            monthly_amount_dollars = ${data.amount_dollars},
+            updated_at = NOW()
+        WHERE id = ${old.installment_id}
+      `;
+    }
+
     return rowToMovement((row ?? {}) as Record<string, unknown>);
   });
 }

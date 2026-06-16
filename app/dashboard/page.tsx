@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import type { Movement } from '@/app/lib/definitions';
 import { fetchAccounts } from '@/app/lib/data/accounts';
+import { computeMovementSummary } from '@/app/lib/data/movement-summary';
 import { fetchMovementsByFinancialPeriod } from '@/app/lib/data/movements';
 import { fetchInstallments } from '@/app/lib/data/installments';
 import { fetchRecurringExpenses } from '@/app/lib/data/recurring';
@@ -23,7 +23,6 @@ import InstallmentsCard from '@/app/ui/installments/InstallmentsCard';
 import RecurringExpensesCard from '@/app/ui/recurring/RecurringExpensesCard';
 import RecurringIncomesCard from '@/app/ui/recurring-incomes/RecurringIncomesCard';
 import CategoryBreakdownCard from '@/app/ui/dashboard/CategoryBreakdownCard';
-import type { CategoryTotal } from '@/app/ui/dashboard/CategoryBreakdownCard';
 import CreditCardsCard from '@/app/ui/dashboard/CreditCardsCard';
 import RateInfoCard from '@/app/ui/dashboard/RateInfoCard';
 import ClosePeriodButton from '@/app/ui/financial-periods/ClosePeriodButton';
@@ -33,75 +32,6 @@ function getCurrentPeriod(): string {
   const now = new Date();
   const mm = String(now.getMonth() + 1).padStart(2, '0');
   return `${now.getFullYear()}-${mm}`;
-}
-
-/**
- * Valor del movimiento en USD. Los importes en dólares se toman directo; los de
- * pesos se convierten con la tasa efectiva. Si no hay tasa, el monto en pesos no
- * puede convertirse y aporta 0 (se avisa en el dashboard).
- */
-function toUsd(m: Movement, rate: number | null): number {
-  const pesosUsd = rate && rate > 0 ? m.amount_pesos / rate : 0;
-  return m.amount_dollars + pesosUsd;
-}
-
-function computeSummary(
-  movements: Movement[],
-  statementPaymentIds: Set<string>,
-  rate: number | null
-) {
-  let totalIncome = 0;       // USD (convertido)
-  let totalExpense = 0;      // USD (convertido)
-  let totalIncomePesos = 0;  // ARS crudo
-  let totalExpensePesos = 0; // ARS crudo
-  let incomeCount = 0;
-  let expenseCount = 0;
-  let fixedTotal = 0;
-  let variableTotal = 0;
-  const categoryMap = new Map<string, number>();
-
-  for (const m of movements) {
-    if (m.record_type === 'income') {
-      totalIncome += toUsd(m, rate);
-      totalIncomePesos += m.amount_pesos;
-      incomeCount += 1;
-    } else if (
-      m.record_type === 'variable_payment' ||
-      m.record_type === 'fixed_payment'
-    ) {
-      if (statementPaymentIds.has(m.id)) continue;
-
-      const counts = m.credit_card_id ? true : m.status === true;
-      if (counts) {
-        const usd = toUsd(m, rate);
-        totalExpense += usd;
-        totalExpensePesos += m.amount_pesos;
-        if (m.record_type === 'fixed_payment') fixedTotal += usd;
-        else variableTotal += usd;
-        const cat = m.category_name?.trim() || 'Sin categoría';
-        categoryMap.set(cat, (categoryMap.get(cat) ?? 0) + usd);
-      }
-      expenseCount += 1;
-    }
-  }
-
-  const balance = totalIncome - totalExpense;
-  const categoryTotals: CategoryTotal[] = Array.from(categoryMap.entries())
-    .map(([name, amount]) => ({ name, amount }))
-    .sort((a, b) => b.amount - a.amount);
-
-  return {
-    balance,
-    totalIncome,
-    totalExpense,
-    totalIncomePesos,
-    totalExpensePesos,
-    incomeCount,
-    expenseCount,
-    fixedTotal,
-    variableTotal,
-    categoryTotals,
-  };
 }
 
 export default async function DashboardPage() {
@@ -140,7 +70,7 @@ export default async function DashboardPage() {
   ]);
 
   const rate = effectiveRate?.rate ?? null;
-  const summary = computeSummary(movements, statementPaymentIds, rate);
+  const summary = computeMovementSummary(movements, rate, { statementPaymentIds });
   // Label del período para las cards (rango de fechas del período financiero).
   const periodLabel = formatPeriodRange(currentFinancialPeriod);
 

@@ -11,6 +11,7 @@ export async function refreshRatesAction() {
   await refreshExchangeRates();
   revalidatePath('/dashboard/configuracion');
   revalidatePath('/dashboard');
+  revalidatePath('/dashboard/movimientos');
 }
 
 const nonNegativeNumber = z

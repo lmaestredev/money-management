@@ -1,14 +1,17 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import {
   createRecurringExpense,
   deleteRecurringExpense,
   payRecurringExpense,
+  updateRecurringExpense,
 } from '@/app/lib/data/recurring';
 import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
+import { fetchAccountById } from '@/app/lib/data/accounts';
+import { revalidateFinancialScreens } from '@/app/lib/revalidate-financial';
+import { normalizeRecurringAmounts } from '@/app/lib/utils/recurring-amounts';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
 
 const optionalNumber = z
@@ -68,9 +71,70 @@ export async function createRecurringExpenseAction(formData: FormData) {
     is_cash: isCash,
   });
 
-  revalidatePath('/dashboard/gastos-fijos');
-  revalidatePath('/dashboard');
+  revalidateFinancialScreens();
   redirectWithToast('/dashboard/gastos-fijos', 'Gasto fijo creado');
+}
+
+const updateRecurringFormSchema = createRecurringFormSchema.extend({
+  id: z.string().uuid(),
+  return_to: z.string().optional(),
+});
+
+export async function updateRecurringExpenseAction(formData: FormData) {
+  const raw = {
+    id: formData.get('id'),
+    name: formData.get('name') ?? '',
+    category_id: formData.get('category_id') ?? undefined,
+    account_id: formData.get('account_id') ?? undefined,
+    credit_card_id: formData.get('credit_card_id') ?? undefined,
+    amount_pesos: formData.get('amount_pesos') ?? undefined,
+    amount_dollars: formData.get('amount_dollars') ?? undefined,
+    pay_before_day: formData.get('pay_before_day') ?? undefined,
+    return_to: formData.get('return_to') ?? undefined,
+  };
+  const parsed = updateRecurringFormSchema.safeParse(raw);
+  if (!parsed.success) {
+    const id = String(formData.get('id') ?? '');
+    redirect(id ? `/dashboard/gastos-fijos/editar/${id}?error=validation` : '/dashboard/gastos-fijos');
+  }
+
+  const data = parsed.data;
+  const payBeforeDay = data.pay_before_day ? parseInt(data.pay_before_day, 10) : null;
+  const isCash = formData.get('is_cash') === 'true';
+
+  let amounts = { amount_pesos: data.amount_pesos, amount_dollars: data.amount_dollars };
+  const accountId = isCash ? null : data.account_id;
+  if (accountId) {
+    const account = await fetchAccountById(accountId);
+    amounts = normalizeRecurringAmounts(
+      account?.currency,
+      data.amount_pesos,
+      data.amount_dollars
+    );
+  }
+
+  let updated;
+  try {
+    updated = await updateRecurringExpense(data.id, {
+      name: data.name.trim(),
+      category_id: data.category_id,
+      account_id: accountId,
+      credit_card_id: isCash ? null : data.credit_card_id,
+      amount_pesos: amounts.amount_pesos,
+      amount_dollars: amounts.amount_dollars,
+      pay_before_day: payBeforeDay != null && !Number.isNaN(payBeforeDay) ? payBeforeDay : null,
+      is_cash: isCash,
+    });
+  } catch {
+    redirect(`/dashboard/gastos-fijos/editar/${data.id}?error=save`);
+  }
+  if (!updated) {
+    redirect(`/dashboard/gastos-fijos/editar/${data.id}?error=notfound`);
+  }
+
+  const returnTo = data.return_to || '/dashboard/gastos-fijos';
+  revalidateFinancialScreens();
+  redirectWithToast(returnTo, 'Gasto fijo actualizado');
 }
 
 const payRecurringFormSchema = z.object({
@@ -96,32 +160,36 @@ export async function payRecurringExpenseAction(formData: FormData) {
   const currentPeriod = await fetchCurrentPeriod();
   if (!currentPeriod) redirect('/dashboard/movimientos');
   await payRecurringExpense(recurring_expense_id, period, currentPeriod.id, account_id);
-  revalidatePath('/dashboard/movimientos');
-  revalidatePath('/dashboard/gastos-fijos');
-  revalidatePath('/dashboard');
+  revalidateFinancialScreens();
   redirectWithToast(`/dashboard/movimientos?period=${period}`, 'Gasto fijo pagado');
 }
 
-const deleteRecurringFormSchema = z.object({ id: z.string().uuid() });
+const deleteRecurringFormSchema = z.object({
+  id: z.string().uuid(),
+  redirect_to: z.string().optional(),
+});
 
 export async function deleteRecurringExpenseAction(formData: FormData) {
-  const parsed = deleteRecurringFormSchema.safeParse({ id: formData.get('id') });
+  const parsed = deleteRecurringFormSchema.safeParse({
+    id: formData.get('id'),
+    redirect_to: formData.get('redirect_to') ?? undefined,
+  });
   if (!parsed.success) {
     redirect('/dashboard/gastos-fijos?error=validation');
   }
+
+  const redirectTo = parsed.data.redirect_to || '/dashboard/gastos-fijos';
 
   let deleted = false;
   try {
     deleted = await deleteRecurringExpense(parsed.data.id);
   } catch {
-    redirect('/dashboard/gastos-fijos?error=delete');
+    redirect(`${redirectTo}?error=delete`);
   }
   if (!deleted) {
-    redirect('/dashboard/gastos-fijos?error=notfound');
+    redirect(`${redirectTo}?error=notfound`);
   }
 
-  revalidatePath('/dashboard/gastos-fijos');
-  revalidatePath('/dashboard');
-  revalidatePath('/dashboard/movimientos');
-  redirectWithToast('/dashboard/gastos-fijos', 'Gasto fijo eliminado');
+  revalidateFinancialScreens();
+  redirectWithToast(redirectTo, 'Gasto fijo eliminado');
 }

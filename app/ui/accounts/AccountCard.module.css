@@ -21,6 +21,7 @@
 
 .card_peso::before   { background: linear-gradient(90deg, var(--color-primary), var(--color-secondary)); }
 .card_dollar::before { background: linear-gradient(90deg, var(--color-income), var(--color-tertiary-fixed-dim)); }
+.card_dual::before   { background: linear-gradient(90deg, var(--color-primary), var(--color-income)); }
 .card_crypto::before { background: linear-gradient(90deg, var(--color-secondary), var(--color-primary)); }
 
 .card:hover {
@@ -57,6 +58,7 @@
 
 .card_peso .accountIcon   { background: var(--color-primary-dim); }
 .card_dollar .accountIcon { background: var(--color-income-dim); }
+.card_dual .accountIcon   { background: var(--color-primary-dim); }
 .card_crypto .accountIcon { background: var(--color-secondary-dim); }
 
 .accountDetails {
@@ -138,6 +140,12 @@
   color: var(--color-on-surface);
 }
 
+.accountAmountSecondary {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-on-surface-variant);
+}
+
 .accountCurrency {
   font-size: 0.75rem;
   color: var(--color-on-surface-variant);
@@ -164,6 +172,7 @@
 
 .card_peso .badge   { background: var(--color-primary-dim);   color: var(--color-primary); }
 .card_dollar .badge { background: var(--color-income-dim);    color: var(--color-income); }
+.card_dual .badge   { background: var(--color-primary-dim);   color: var(--color-primary); }
 .card_crypto .badge { background: var(--color-secondary-dim); color: var(--color-secondary); }
 
 .ownerBadge {
