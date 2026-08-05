@@ -11,6 +11,7 @@
 .summaryLabel { font-size: 0.75rem; color: var(--color-on-surface-variant); }
 .summaryValue { font-size: 1.375rem; font-weight: 700; color: var(--color-on-surface); }
 .summaryValueExpense { font-size: 1.375rem; font-weight: 700; color: var(--color-expense); }
+.summaryValueSecondary { font-size: 0.75rem; color: var(--color-on-surface-variant); }
 .section { display: flex; flex-direction: column; gap: 1rem; }
 .sectionTitle { margin: 0; font-size: 1.125rem; font-weight: 600; color: var(--color-on-surface); }
 .grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr; gap: 1rem; }
@@ -19,8 +20,13 @@
 .itemTop { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .itemName { font-size: 0.9375rem; font-weight: 700; color: var(--color-on-surface); }
 .cashBadge { margin-left: 0.5rem; font-size: 0.625rem; font-weight: 600; color: var(--color-income); background: var(--color-income-dim); border-radius: var(--radius-full); padding: 0.0625rem 0.5rem; vertical-align: middle; }
+.itemTopActions { display: flex; align-items: center; gap: 0.5rem; }
 .badgeActive { font-size: 0.6875rem; font-weight: 600; color: var(--color-primary); background: var(--color-primary-dim); border-radius: var(--radius-full); padding: 0.125rem 0.625rem; }
 .badgeInactive { font-size: 0.6875rem; font-weight: 600; color: var(--color-on-surface-variant); background: var(--color-surface-container-high); border-radius: var(--radius-full); padding: 0.125rem 0.625rem; }
+.editBtn { display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border: 1px solid var(--color-outline-variant); border-radius: var(--radius-default); background: var(--color-surface-container-high); color: var(--color-on-surface-variant); transition: background 0.15s, border-color 0.15s, color 0.15s; }
+.editBtn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.editBtn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.editIcon { width: 0.9375rem; height: 0.9375rem; }
 .itemMeta { font-size: 0.75rem; color: var(--color-on-surface-variant); }
 .itemFooter { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .itemAmounts { display: flex; align-items: baseline; gap: 0.625rem; }

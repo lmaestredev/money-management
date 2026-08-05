@@ -295,6 +295,17 @@ export type RecurringExpenseInsert = {
   user_id?: string | null;
 };
 
+export type RecurringExpenseUpdate = {
+  name: string;
+  category_id?: string | null;
+  account_id?: string | null;
+  credit_card_id?: string | null;
+  amount_pesos?: number;
+  amount_dollars?: number;
+  pay_before_day?: number | null;
+  is_cash?: boolean;
+};
+
 // Ingresos recurrentes (sueldos / honorarios)
 export type RecurringIncome = {
   id: string;

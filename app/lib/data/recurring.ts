@@ -1,7 +1,7 @@
 import { sql, withAuthenticatedTx } from '../db';
 import { getBalanceDeltas, getCardDeltas } from './movements';
 import { applyCardCharge, resolveOrCreateStatement } from './credit-cards';
-import type { RecurringExpense, RecurringExpenseInsert } from '../definitions';
+import type { RecurringExpense, RecurringExpenseInsert, RecurringExpenseUpdate } from '../definitions';
 
 function rowToRecurring(row: Record<string, unknown>): RecurringExpense {
   return {
@@ -116,6 +116,32 @@ export async function createRecurringExpense(
   });
   const created = await fetchRecurringExpenseById(insertedId, userId);
   return created!;
+}
+
+export async function updateRecurringExpense(
+  id: string,
+  data: RecurringExpenseUpdate,
+  userId: string
+): Promise<RecurringExpense | null> {
+  const updated = await withAuthenticatedTx(userId, async (tx) => {
+    const rows = await tx`
+      UPDATE recurring_expenses SET
+        name = ${data.name},
+        category_id = ${data.category_id ?? null},
+        account_id = ${data.account_id ?? null},
+        credit_card_id = ${data.credit_card_id ?? null},
+        amount_pesos = ${data.amount_pesos ?? 0},
+        amount_dollars = ${data.amount_dollars ?? 0},
+        pay_before_day = ${data.pay_before_day ?? null},
+        is_cash = ${data.is_cash ?? false},
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING id
+    `;
+    return rows.length > 0;
+  });
+  if (!updated) return null;
+  return fetchRecurringExpenseById(id, userId);
 }
 
 export async function deleteRecurringExpense(id: string, userId: string): Promise<boolean> {

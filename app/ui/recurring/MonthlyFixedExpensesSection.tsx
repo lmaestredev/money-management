@@ -27,9 +27,9 @@ export default function MonthlyFixedExpensesSection({
 }: Props) {
   if (expenses.length === 0) return null;
 
-  const pendingTotal = expenses
-    .filter((e) => !paidIds.has(e.id))
-    .reduce((sum, e) => sum + e.amount_dollars, 0);
+  const pendingExpenses = expenses.filter((e) => !paidIds.has(e.id));
+  const pendingTotalPesos = pendingExpenses.reduce((sum, e) => sum + e.amount_pesos, 0);
+  const pendingTotalDollars = pendingExpenses.reduce((sum, e) => sum + e.amount_dollars, 0);
   const paidCount = expenses.filter((e) => paidIds.has(e.id)).length;
 
   return (
@@ -41,7 +41,10 @@ export default function MonthlyFixedExpensesSection({
             {paidCount}/{expenses.length} pagados
           </span>
         </h2>
-        <span className={styles.pendingTotal}>Pendiente: {formatUsd(pendingTotal)}</span>
+        <span className={styles.pendingTotal}>
+          Pendiente: {formatPesos(pendingTotalPesos)}
+          {pendingTotalDollars > 0 && ` (${formatUsd(pendingTotalDollars)})`}
+        </span>
       </div>
 
       <div className={styles.list}>
@@ -64,8 +67,10 @@ export default function MonthlyFixedExpensesSection({
                 </div>
               </div>
               <div className={styles.amounts}>
-                <div className={styles.amountPrimary}>−{formatUsd(e.amount_dollars)}</div>
-                <div className={styles.amountSecondary}>{formatPesos(e.amount_pesos)}</div>
+                <div className={styles.amountPrimary}>−{formatPesos(e.amount_pesos)}</div>
+                {e.amount_dollars > 0 && (
+                  <div className={styles.amountSecondary}>{formatUsd(e.amount_dollars)}</div>
+                )}
               </div>
               <div className={styles.action}>
                 {isPaid ? (

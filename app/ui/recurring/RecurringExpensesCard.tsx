@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { formatUsd } from '@/app/lib/utils';
+import { formatArs, formatUsd } from '@/app/lib/utils';
 import type { RecurringExpense } from '@/app/lib/definitions';
 import styles from './RecurringExpensesCard.module.css';
 
@@ -9,7 +9,8 @@ type Props = {
 
 export default function RecurringExpensesCard({ expenses }: Props) {
   const active = expenses.filter((e) => e.active);
-  const monthlyTotal = active.reduce((sum, e) => sum + e.amount_dollars, 0);
+  const monthlyTotalPesos = active.reduce((sum, e) => sum + e.amount_pesos, 0);
+  const monthlyTotalDollars = active.reduce((sum, e) => sum + e.amount_dollars, 0);
 
   return (
     <section className={styles.card}>
@@ -43,13 +44,21 @@ export default function RecurringExpensesCard({ expenses }: Props) {
                     {e.pay_before_day ? ` · vence día ${e.pay_before_day}` : ''}
                   </span>
                 </div>
-                <span className={styles.itemAmount}>{formatUsd(e.amount_dollars)}</span>
+                <div className={styles.itemAmountGroup}>
+                  <span className={styles.itemAmount}>{formatArs(e.amount_pesos)}</span>
+                  {e.amount_dollars > 0 && (
+                    <span className={styles.itemAmountSecondary}>{formatUsd(e.amount_dollars)}</span>
+                  )}
+                </div>
               </div>
             ))}
           </div>
           <div className={styles.totalBlock}>
             <div className={styles.totalLabel}>Total fijo mensual</div>
-            <div className={styles.totalAmount}>{formatUsd(monthlyTotal)}</div>
+            <div className={styles.totalAmount}>{formatArs(monthlyTotalPesos)}</div>
+            {monthlyTotalDollars > 0 && (
+              <div className={styles.totalAmountSecondary}>{formatUsd(monthlyTotalDollars)}</div>
+            )}
           </div>
         </>
       )}
