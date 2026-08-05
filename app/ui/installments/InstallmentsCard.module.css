@@ -10,7 +10,9 @@
 .item:hover { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary-dim); }
 .itemHeader { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .itemName { font-size: 0.8125rem; font-weight: 600; color: var(--color-on-surface); }
+.itemMonthlyGroup { display: flex; flex-direction: column; align-items: flex-end; gap: 0.0625rem; }
 .itemMonthly { font-size: 0.8125rem; font-weight: 700; color: var(--color-expense); white-space: nowrap; }
+.itemMonthlySecondary { font-size: 0.625rem; color: var(--color-on-surface-variant); white-space: nowrap; }
 .itemMeta { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.6875rem; color: var(--color-on-surface-variant); }
 .itemRemaining { white-space: nowrap; }
 .progressRow { display: flex; align-items: center; gap: 0.5rem; }
@@ -20,6 +22,7 @@
 .totalBlock { background: var(--color-expense-dim); border-radius: 0.625rem; padding: 0.625rem 0.75rem; text-align: center; margin-top: 0.25rem; }
 .totalLabel { font-size: 0.6875rem; color: var(--color-on-surface-variant); }
 .totalAmount { font-size: 1.125rem; font-weight: 700; color: var(--color-expense); margin-top: 0.125rem; }
+.totalAmountSecondary { font-size: 0.6875rem; color: var(--color-on-surface-variant); }
 .placeholder { margin: 0; font-size: 0.8125rem; color: var(--color-on-surface-variant); }
 .inlineLink { color: var(--color-primary); font-weight: 600; text-decoration: none; }
 .inlineLink:hover { text-decoration: underline; }

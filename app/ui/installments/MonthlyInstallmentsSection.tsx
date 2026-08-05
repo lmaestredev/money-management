@@ -21,9 +21,9 @@ type Props = {
 export default function MonthlyInstallmentsSection({ installments, paidIds, period }: Props) {
   if (installments.length === 0) return null;
 
-  const pendingTotal = installments
-    .filter((i) => !paidIds.has(i.id))
-    .reduce((sum, i) => sum + i.monthly_amount_dollars, 0);
+  const pendingInstallments = installments.filter((i) => !paidIds.has(i.id));
+  const pendingTotalPesos = pendingInstallments.reduce((sum, i) => sum + i.monthly_amount_pesos, 0);
+  const pendingTotalDollars = pendingInstallments.reduce((sum, i) => sum + i.monthly_amount_dollars, 0);
 
   return (
     <section className={styles.section} aria-labelledby="cuotas-mes">
@@ -33,7 +33,8 @@ export default function MonthlyInstallmentsSection({ installments, paidIds, peri
           <span className={styles.countBadge}>{installments.length}</span>
         </h2>
         <span className={styles.pendingTotal}>
-          Pendiente: {formatUsd(pendingTotal)}
+          Pendiente: {formatPesos(pendingTotalPesos)}
+          {pendingTotalDollars > 0 && ` (${formatUsd(pendingTotalDollars)})`}
         </span>
       </div>
 
@@ -57,11 +58,13 @@ export default function MonthlyInstallmentsSection({ installments, paidIds, peri
               </div>
               <div className={styles.amounts}>
                 <div className={styles.amountPrimary}>
-                  −{formatUsd(i.monthly_amount_dollars)}
+                  −{formatPesos(i.monthly_amount_pesos)}
                 </div>
-                <div className={styles.amountSecondary}>
-                  {formatPesos(i.monthly_amount_pesos)}
-                </div>
+                {i.monthly_amount_dollars > 0 && (
+                  <div className={styles.amountSecondary}>
+                    {formatUsd(i.monthly_amount_dollars)}
+                  </div>
+                )}
               </div>
               <div className={styles.action}>
                 {isPaid ? (
