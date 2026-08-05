@@ -17,6 +17,7 @@
 .action { flex-shrink: 0; }
 .payBtn { padding: 0.4rem 0.75rem; font-size: 0.75rem; font-weight: 600; color: var(--color-on-gradient); background: var(--gradient-primary); border: none; border-radius: var(--radius-full); cursor: pointer; transition: box-shadow 0.2s; }
 .payBtn:hover { box-shadow: 0 2px 12px var(--glow-primary); }
+.payBtn:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
 .statusPaid { display: inline-flex; align-items: center; gap: 0.375rem; font-size: 0.75rem; font-weight: 600; color: var(--color-income); }
 .statusDot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: currentColor; }
 @media (max-width: 600px) { .meta { flex-direction: column; align-items: flex-start; gap: 0.125rem; } }

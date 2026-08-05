@@ -173,6 +173,20 @@ export async function updateInstallment(
   return fetchInstallmentById(id, userId);
 }
 
+export async function deleteInstallment(id: string, userId: string): Promise<boolean> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    await tx`
+      UPDATE movements SET installment_id = NULL
+      WHERE installment_id = ${id}
+    `;
+    const rows = await tx`
+      DELETE FROM installment_purchases WHERE id = ${id}
+      RETURNING id
+    `;
+    return rows.length > 0;
+  });
+}
+
 export type CompleteInstallmentResult =
   | { ok: true }
   | { ok: false; reason: 'not_found' | 'already_finished' };

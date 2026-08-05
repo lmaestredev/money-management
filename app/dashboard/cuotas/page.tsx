@@ -5,11 +5,13 @@ import { fetchInstallments } from '@/app/lib/data/installments';
 import { createClient } from '@/app/lib/supabase/server';
 import { formatArs, formatUsd } from '@/app/lib/utils';
 import CompleteInstallmentButton from '@/app/ui/installments/CompleteInstallmentButton';
+import DeleteInstallmentButton from '@/app/ui/installments/DeleteInstallmentButton';
 import styles from './page.module.css';
 
 const ERROR_MESSAGES: Record<string, string> = {
   notfound: 'La compra en cuotas no existe o ya fue eliminada.',
   already_finished: 'Esa compra ya estaba marcada como pagada.',
+  delete: 'No se pudo eliminar la compra. Intenta de nuevo.',
   validation: 'Solicitud inválida.',
 };
 
@@ -112,6 +114,7 @@ export default async function CuotasPage({ searchParams }: Props) {
                       >
                         <PencilIcon className={styles.editIcon} aria-hidden />
                       </Link>
+                      <DeleteInstallmentButton id={i.id} name={i.name} />
                     </div>
                   </div>
                   <div className={styles.itemBank}>💳 {i.account_name ?? 'Sin tarjeta'}</div>

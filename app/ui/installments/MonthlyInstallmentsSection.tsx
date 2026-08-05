@@ -1,6 +1,7 @@
 import type { InstallmentPurchase } from '@/app/lib/definitions';
 import { formatUsd } from '@/app/lib/utils';
 import { payInstallmentAction } from '@/app/lib/actions/installments';
+import PayInstallmentButton from './PayInstallmentButton';
 import styles from './MonthlyInstallmentsSection.module.css';
 
 function formatPesos(amount: number): string {
@@ -76,9 +77,7 @@ export default function MonthlyInstallmentsSection({ installments, paidIds, peri
                   <form action={payInstallmentAction}>
                     <input type="hidden" name="installment_id" value={i.id} />
                     <input type="hidden" name="period" value={period} />
-                    <button type="submit" className={styles.payBtn}>
-                      Registrar pago
-                    </button>
+                    <PayInstallmentButton />
                   </form>
                 )}
               </div>

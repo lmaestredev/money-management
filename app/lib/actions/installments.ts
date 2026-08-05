@@ -6,8 +6,10 @@ import { z } from 'zod';
 import {
   completeInstallment,
   createInstallment,
+  deleteInstallment,
   payInstallment,
   updateInstallment,
+  type PayInstallmentResult,
 } from '@/app/lib/data/installments';
 import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
@@ -206,11 +208,29 @@ export async function payInstallmentAction(formData: FormData) {
   const { installment_id, period } = parsed.data;
   const currentPeriod = await fetchCurrentPeriod(user.id);
   if (!currentPeriod) redirect('/dashboard/movimientos');
-  await payInstallment(installment_id, period, currentPeriod.id, user.id);
+
+  // Idempotente: si la cuota de este período ya estaba registrada (p. ej. un
+  // doble click mandó dos submits), no se crea un segundo movimiento; se
+  // informa el estado real en vez de fingir un nuevo registro.
+  const result = await payInstallment(installment_id, period, currentPeriod.id, user.id);
   revalidatePath('/dashboard/movimientos');
   revalidatePath('/dashboard/cuotas');
   revalidatePath('/dashboard');
-  redirectWithToast(`/dashboard/movimientos?period=${period}`, 'Cuota registrada');
+
+  const redirectPath = `/dashboard/movimientos?period=${period}`;
+  if (result.ok) {
+    redirectWithToast(redirectPath, 'Cuota registrada');
+  }
+
+  type FailureReason = Extract<PayInstallmentResult, { ok: false }>['reason'];
+  const messages: Record<FailureReason, string> = {
+    already_paid: 'Esa cuota ya estaba registrada',
+    completed: 'Esta compra ya está pagada por completo',
+    no_account: 'Asigná una cuenta o tarjeta a la compra antes de registrar el pago',
+    not_found: 'La compra en cuotas no existe o ya fue eliminada',
+  };
+  const isError = result.reason === 'no_account' || result.reason === 'not_found';
+  redirectWithToast(redirectPath, messages[result.reason], isError ? 'error' : 'success');
 }
 
 const completeInstallmentFormSchema = z.object({
@@ -236,4 +256,29 @@ export async function completeInstallmentAction(formData: FormData) {
   revalidatePath('/dashboard/cuotas');
   revalidatePath('/dashboard');
   redirectWithToast('/dashboard/cuotas', 'Compra marcada como pagada por completo');
+}
+
+const deleteInstallmentFormSchema = z.object({ id: z.string().uuid() });
+
+export async function deleteInstallmentAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = deleteInstallmentFormSchema.safeParse({ id: formData.get('id') });
+  if (!parsed.success) {
+    redirect('/dashboard/cuotas?error=validation');
+  }
+
+  let deleted = false;
+  try {
+    deleted = await deleteInstallment(parsed.data.id, user.id);
+  } catch {
+    redirect('/dashboard/cuotas?error=delete');
+  }
+  if (!deleted) {
+    redirect('/dashboard/cuotas?error=notfound');
+  }
+
+  revalidatePath('/dashboard/cuotas');
+  revalidatePath('/dashboard');
+  revalidatePath('/dashboard/movimientos');
+  redirectWithToast('/dashboard/cuotas', 'Compra en cuotas eliminada');
 }
