@@ -1,4 +1,4 @@
-import { formatUsd, formatArs } from '@/app/lib/utils';
+import { formatUsd, formatArs, arsEquivalent } from '@/app/lib/utils';
 import styles from './SummaryCards.module.css';
 
 
@@ -39,11 +39,13 @@ export default function SummaryCards({
 
   // Valores secundarios (referencia, menos prominentes).
   // Balance y Ingresos: referencia en ARS = valor USD * tasa.
-  // Egresos: referencia en USD ya viene calculada; el primario es ARS crudo.
   const balanceArs = rate ? balance * rate : null;
-  // Para ingresos: si hay pesos registrados, los mostramos directo;
-  // si el ingreso es mayormente en USD, mostramos el equivalente ARS.
-  const incomeArs = totalIncomePesos > 0 ? totalIncomePesos : rate ? totalIncome * rate : null;
+  // Preferimos el equivalente ARS de todo lo convertido a USD (incluye montos
+  // cargados directo en dólares, ej. un alquiler en USD) en vez del crudo en
+  // pesos solo: si no, esos montos en USD quedan invisibles ("$0") en la
+  // vista primaria en pesos de Egresos.
+  const incomeArs = rate ? totalIncome * rate : totalIncomePesos > 0 ? totalIncomePesos : null;
+  const expenseArs = arsEquivalent(totalExpense, totalExpensePesos, rate);
 
   return (
     <div className={styles.summaryGrid}>
@@ -110,14 +112,14 @@ export default function SummaryCards({
         </div>
       </div>
 
-      {/* ── EGRESOS ── primario ARS crudo, secundario USD convertido */}
+      {/* ── EGRESOS ── primario ARS (equivalente), secundario USD convertido */}
       <div className={`${styles.summaryCard} ${styles.summaryCardExpense}`}>
         <div className={styles.summaryCardHeader}>
           <span className={styles.summaryCardLabel}>Egresos</span>
           <div className={`${styles.summaryCardIcon} ${styles.summaryCardIconExpense}`}>📉</div>
         </div>
         <div className={`${styles.summaryCardAmount} ${styles.summaryCardAmountExpense}`}>
-          {formatArs(totalExpensePesos)}
+          {formatArs(expenseArs)}
         </div>
         <div className={styles.summaryCardSecondary}>≈ {formatUsd(totalExpense)}</div>
         <div className={styles.summaryCardProgress}>

@@ -10,6 +10,9 @@ export type MovementSummary = {
   balance: number;
   totalIncome: number;
   totalExpense: number;
+  /** ARS crudo (suma de amount_pesos). */
+  totalIncomePesos?: number;
+  totalExpensePesos?: number;
   incomeCount: number;
   expenseCount: number;
 };
@@ -18,6 +21,8 @@ type Props = {
   movements: Movement[];
   accountNames: Map<string, string>;
   summary: MovementSummary;
+  /** Tasa efectiva (pesos/USD), para la referencia de conversión en las cards. */
+  rate?: number | null;
   /** En true oculta los botones de edición/eliminación (períodos cerrados). */
   readOnly?: boolean;
 };
@@ -55,6 +60,7 @@ export default function MovementsPageClient({
   movements,
   accountNames,
   summary,
+  rate = null,
   readOnly = false,
 }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,6 +78,9 @@ export default function MovementsPageClient({
           balance={summary.balance}
           totalIncome={summary.totalIncome}
           totalExpense={summary.totalExpense}
+          totalIncomePesos={summary.totalIncomePesos}
+          totalExpensePesos={summary.totalExpensePesos}
+          rate={rate}
           incomeCount={summary.incomeCount}
           expenseCount={summary.expenseCount}
         />

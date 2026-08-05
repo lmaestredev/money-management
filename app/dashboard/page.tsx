@@ -15,6 +15,7 @@ import {
   refreshExchangeRatesIfStale,
 } from '@/app/lib/data/exchange-rates';
 import { createClient } from '@/app/lib/supabase/server';
+import { arsEquivalent } from '@/app/lib/utils';
 import DashboardSummaryCards from '@/app/ui/dashboard/DashboardSummaryCards';
 import ExchangeRateBadge from '@/app/ui/dashboard/ExchangeRateBadge';
 import DashboardAlert from '@/app/ui/dashboard/DashboardAlert';
@@ -180,8 +181,11 @@ export default async function DashboardPage() {
   const showVarWarning = varPercentUsed >= 80;
 
   const budgetVarLimitArs = rate ? budgetVarLimit * rate : null;
+  // Preferimos el equivalente ARS de lo convertido a USD (incluye montos
+  // cargados directo en dólares) en vez del crudo en pesos solo.
+  const varSpentArs = arsEquivalent(varSpent, summary.variableTotalPesos, rate);
   const varAvailableArs =
-    budgetVarLimitArs != null ? Math.max(0, budgetVarLimitArs - summary.variableTotalPesos) : null;
+    budgetVarLimitArs != null ? Math.max(0, budgetVarLimitArs - varSpentArs) : null;
 
   const noRate = rate == null;
 
@@ -266,7 +270,7 @@ export default async function DashboardPage() {
           primaryCurrency="ars"
           available={varAvailableArs ?? 0}
           total={budgetVarLimitArs ?? 0}
-          spent={summary.variableTotalPesos}
+          spent={varSpentArs}
           secondaryAvailable={varAvailable}
           secondaryTotal={budgetVarLimit}
           secondarySpent={varSpent}

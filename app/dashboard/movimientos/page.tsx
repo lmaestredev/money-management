@@ -10,6 +10,7 @@ import {
   fetchActiveRecurringIncomes,
   fetchRecurringIncomeReceivedIds,
 } from '@/app/lib/data/recurring-incomes';
+import { getEffectiveRate } from '@/app/lib/data/exchange-rates';
 import { createClient } from '@/app/lib/supabase/server';
 import type { Movement } from '@/app/lib/definitions';
 import PeriodBadge from '@/app/ui/financial-periods/PeriodBadge';
@@ -26,22 +27,36 @@ function getCurrentPeriod(): string {
   return `${year}-${month}`;
 }
 
-function computeSummary(movements: Movement[]): MovementSummary {
-  let totalIncome = 0;
-  let totalExpense = 0;
+/**
+ * Valor del movimiento en USD. Los importes en dólares se toman directo; los de
+ * pesos se convierten con la tasa efectiva. Si no hay tasa, el monto en pesos no
+ * puede convertirse y aporta 0.
+ */
+function toUsd(m: Movement, rate: number | null): number {
+  const pesosUsd = rate && rate > 0 ? m.amount_pesos / rate : 0;
+  return m.amount_dollars + pesosUsd;
+}
+
+function computeSummary(movements: Movement[], rate: number | null): MovementSummary {
+  let totalIncome = 0;       // USD (convertido)
+  let totalExpense = 0;      // USD (convertido)
+  let totalIncomePesos = 0;  // ARS crudo
+  let totalExpensePesos = 0; // ARS crudo
   let incomeCount = 0;
   let expenseCount = 0;
 
   for (const m of movements) {
     if (m.record_type === 'income') {
-      totalIncome += m.amount_dollars;
+      totalIncome += toUsd(m, rate);
+      totalIncomePesos += m.amount_pesos;
       incomeCount += 1;
     } else if (
       m.record_type === 'variable_payment' ||
       m.record_type === 'fixed_payment'
     ) {
       if (m.status === true) {
-        totalExpense += m.amount_dollars;
+        totalExpense += toUsd(m, rate);
+        totalExpensePesos += m.amount_pesos;
       }
       expenseCount += 1;
     }
@@ -53,6 +68,8 @@ function computeSummary(movements: Movement[]): MovementSummary {
     balance,
     totalIncome,
     totalExpense,
+    totalIncomePesos,
+    totalExpensePesos,
     incomeCount,
     expenseCount,
   };
@@ -78,6 +95,7 @@ export default async function MovimientosPage() {
     paidRecurringIds,
     activeIncomes,
     receivedIncomeIds,
+    effectiveRate,
   ] = await Promise.all([
     fetchAccounts(userId),
     fetchMovementsByFinancialPeriod(financialPeriodId, userId),
@@ -87,10 +105,12 @@ export default async function MovimientosPage() {
     fetchRecurringPaidIds(financialPeriodId, userId),
     fetchActiveRecurringIncomes(userId),
     fetchRecurringIncomeReceivedIds(financialPeriodId, userId),
+    getEffectiveRate(userId),
   ]);
 
+  const rate = effectiveRate?.rate ?? null;
   const accountNames = new Map(accounts.map((a) => [a.id, a.name]));
-  const summary = computeSummary(movements);
+  const summary = computeSummary(movements, rate);
 
   return (
     <div className={styles.page}>
@@ -135,6 +155,7 @@ export default async function MovimientosPage() {
         movements={movements}
         accountNames={accountNames}
         summary={summary}
+        rate={rate}
       />
     </div>
   );

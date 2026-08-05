@@ -1,4 +1,4 @@
-import { formatUsd, formatArs } from '@/app/lib/utils';
+import { formatUsd, formatArs, arsEquivalent } from '@/app/lib/utils';
 import styles from './DashboardSummaryCards.module.css';
 
 export type DashboardSummaryCardsProps = {
@@ -26,7 +26,12 @@ export default function DashboardSummaryCards({
   rate,
 }: DashboardSummaryCardsProps) {
   const balanceArs = rate ? balanceUsd * rate : null;
-  const incomeArs = totalIncomePesos > 0 ? totalIncomePesos : rate ? totalIncomeUsd * rate : null;
+  // Preferimos el equivalente ARS de lo convertido a USD (incluye montos
+  // cargados directo en dólares, ej. un alquiler en USD) en vez del crudo en
+  // pesos solo: si no, esos montos quedan invisibles ("$0") acá.
+  const incomeArs = rate ? totalIncomeUsd * rate : totalIncomePesos > 0 ? totalIncomePesos : null;
+  const variableExpenseArs = arsEquivalent(variableExpenseUsd, variableExpensePesos, rate);
+  const totalExpenseArs = arsEquivalent(totalExpenseUsd, totalExpensePesos, rate);
   const balancePositive = balanceUsd >= 0;
 
   return (
@@ -38,7 +43,7 @@ export default function DashboardSummaryCards({
           <div className={`${styles.summaryCardIcon} ${styles.summaryCardIconExpense}`}>🛒</div>
         </div>
         <div className={`${styles.summaryCardAmount} ${styles.summaryCardAmountExpense}`}>
-          {formatArs(variableExpensePesos)}
+          {formatArs(variableExpenseArs)}
         </div>
         <div className={styles.summaryCardSecondary}>≈ {formatUsd(variableExpenseUsd)}</div>
         <div className={styles.summaryCardMeta}>
@@ -54,7 +59,7 @@ export default function DashboardSummaryCards({
           <div className={`${styles.summaryCardIcon} ${styles.summaryCardIconExpense}`}>📉</div>
         </div>
         <div className={`${styles.summaryCardAmount} ${styles.summaryCardAmountExpense}`}>
-          {formatArs(totalExpensePesos)}
+          {formatArs(totalExpenseArs)}
         </div>
         <div className={styles.summaryCardSecondary}>≈ {formatUsd(totalExpenseUsd)}</div>
         <div className={styles.summaryCardMeta}>
