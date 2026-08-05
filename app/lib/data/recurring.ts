@@ -77,6 +77,7 @@ export async function fetchRecurringExpenseById(id: string, userId: string): Pro
 }
 
 export async function fetchRecurringPaidIds(financialPeriodId: string, userId: string): Promise<Set<string>> {
+  if (!financialPeriodId) return new Set();
   return withAuthenticatedTx(userId, async (tx) => {
     const rows = (await tx`
       SELECT DISTINCT recurring_expense_id

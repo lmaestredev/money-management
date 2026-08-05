@@ -94,6 +94,7 @@ export async function fetchInstallmentById(id: string, userId: string): Promise<
 }
 
 export async function fetchInstallmentPaidIds(financialPeriodId: string, userId: string): Promise<Set<string>> {
+  if (!financialPeriodId) return new Set();
   return withAuthenticatedTx(userId, async (tx) => {
     const rows = (await tx`
       SELECT DISTINCT installment_id

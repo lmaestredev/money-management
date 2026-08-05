@@ -57,6 +57,7 @@ export async function fetchMovementsByPeriod(period: string, userId: string): Pr
 }
 
 export async function fetchMovementsByFinancialPeriod(financialPeriodId: string, userId: string): Promise<Movement[]> {
+  if (!financialPeriodId) return [];
   return withAuthenticatedTx(userId, async (tx) => {
     const rows = await tx`
       SELECT m.id, m.period, m.financial_period_id, m.record_type, m.account_id, m.credit_card_id,

@@ -69,6 +69,7 @@ export async function fetchRecurringIncomeById(id: string, userId: string): Prom
 }
 
 export async function fetchRecurringIncomeReceivedIds(financialPeriodId: string, userId: string): Promise<Set<string>> {
+  if (!financialPeriodId) return new Set();
   return withAuthenticatedTx(userId, async (tx) => {
     const rows = (await tx`
       SELECT DISTINCT recurring_income_id
