@@ -1,15 +1,7 @@
 import type { Account } from '@/app/lib/definitions';
-import { formatUsd } from '@/app/lib/utils';
+import { getAccountBalance } from '@/app/lib/data/accounts';
+import { formatUsd, formatArs } from '@/app/lib/utils';
 import styles from './DashboardAccountList.module.css';
-
-function formatPesos(amount: number): string {
-  return amount.toLocaleString('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
-}
 
 function getAccountIcon(currency: string): string {
   if (currency === 'dollar') return '💵';
@@ -19,9 +11,11 @@ function getAccountIcon(currency: string): string {
 
 type Props = {
   accounts: Account[];
+  /** Tasa efectiva (pesos/USD), para mostrar una referencia secundaria. Null si no hay cotización. */
+  rate?: number | null;
 };
 
-export default function DashboardAccountList({ accounts }: Props) {
+export default function DashboardAccountList({ accounts, rate = null }: Props) {
   return (
     <section className={styles.card}>
       <div className={styles.cardHeader}>
@@ -31,27 +25,34 @@ export default function DashboardAccountList({ accounts }: Props) {
         </div>
       </div>
       <div className={styles.list}>
-        {accounts.map((account) => (
-          <div key={account.id} className={styles.accountCard}>
-            <div className={styles.accountHeader}>
-              <span className={styles.accountIcon} aria-hidden>
-                {getAccountIcon(account.currency)}
-              </span>
-              <div className={styles.accountInfo}>
-                <span className={styles.accountName}>{account.name}</span>
-                <span className={styles.accountType}>
-                  {account.bank ?? (account.currency === 'peso' ? 'Pesos' : account.currency === 'dollar' ? 'Dólares' : 'Efectivo')}
+        {accounts.map((account) => {
+          const balance = getAccountBalance(account);
+          const isPeso = account.currency === 'peso';
+          const secondary = rate
+            ? isPeso
+              ? formatUsd(balance / rate)
+              : formatArs(balance * rate)
+            : null;
+          return (
+            <div key={account.id} className={styles.accountCard}>
+              <div className={styles.accountHeader}>
+                <span className={styles.accountIcon} aria-hidden>
+                  {getAccountIcon(account.currency)}
                 </span>
+                <div className={styles.accountInfo}>
+                  <span className={styles.accountName}>{account.name}</span>
+                  <span className={styles.accountType}>
+                    {account.bank ?? (isPeso ? 'Pesos' : account.currency === 'dollar' ? 'Dólares' : 'Efectivo')}
+                  </span>
+                </div>
               </div>
+              <div className={styles.accountAmount}>
+                {isPeso ? formatArs(balance) : formatUsd(balance)}
+              </div>
+              {secondary && <div className={styles.accountSecondary}>≈ {secondary}</div>}
             </div>
-            <div className={styles.accountAmount}>
-              {formatPesos(account.balance_pesos)}
-            </div>
-            <div className={styles.accountSecondary}>
-              {formatUsd(account.balance_dollars)}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

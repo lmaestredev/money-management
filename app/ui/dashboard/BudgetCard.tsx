@@ -1,19 +1,39 @@
+import { formatUsd, formatArs } from '@/app/lib/utils';
 import styles from './BudgetCard.module.css';
 
 type Props = {
+  /** Moneda en la que están expresados available/total/spent. */
+  primaryCurrency?: 'usd' | 'ars';
   available?: number;
   total?: number;
   spent?: number;
+  /** Valores de referencia en la otra moneda (opcional), se muestran más chicos. */
+  secondaryAvailable?: number | null;
+  secondaryTotal?: number | null;
+  secondarySpent?: number | null;
   percentUsed?: number;
   showWarning?: boolean;
   title?: string;
   subtitle?: string;
 };
 
+function formatPrimary(amount: number, currency: 'usd' | 'ars'): string {
+  return currency === 'usd' ? formatUsd(amount) : formatArs(amount);
+}
+
+function formatSecondary(amount: number, primaryCurrency: 'usd' | 'ars'): string {
+  // La referencia se muestra en la moneda contraria a la primaria.
+  return primaryCurrency === 'usd' ? formatArs(amount) : formatUsd(amount);
+}
+
 export default function BudgetCard({
+  primaryCurrency = 'usd',
   available = 0,
   total = 500,
   spent = 0,
+  secondaryAvailable = null,
+  secondaryTotal = null,
+  secondarySpent = null,
   percentUsed = 0,
   showWarning = false,
   title = 'Presupuesto variables',
@@ -33,8 +53,13 @@ export default function BudgetCard({
       <div className={styles.budgetBlock}>
         <div className={styles.budgetRow}>
           <span className={styles.budgetLabel}>Disponible</span>
-          <span className={styles.budgetAmount}>
-            ${available.toFixed(2)}
+          <span className={styles.budgetAmountGroup}>
+            <span className={styles.budgetAmount}>{formatPrimary(available, primaryCurrency)}</span>
+            {secondaryAvailable != null && (
+              <span className={styles.budgetAmountSecondary}>
+                ≈ {formatSecondary(secondaryAvailable, primaryCurrency)}
+              </span>
+            )}
           </span>
         </div>
         <div className={styles.progressWrap}>
@@ -54,11 +79,25 @@ export default function BudgetCard({
       <div className={styles.divider}>
         <div className={styles.detailRow}>
           <span className={styles.detailLabel}>Presupuesto total:</span>
-          <span className={styles.detailValue}>${total.toFixed(2)}</span>
+          <span className={styles.detailValueGroup}>
+            <span className={styles.detailValue}>{formatPrimary(total, primaryCurrency)}</span>
+            {secondaryTotal != null && (
+              <span className={styles.detailValueSecondary}>
+                ≈ {formatSecondary(secondaryTotal, primaryCurrency)}
+              </span>
+            )}
+          </span>
         </div>
         <div className={styles.detailRow}>
           <span className={styles.detailLabel}>Gastado:</span>
-          <span className={styles.detailValueExpense}>${spent.toFixed(2)}</span>
+          <span className={styles.detailValueGroup}>
+            <span className={styles.detailValueExpense}>{formatPrimary(spent, primaryCurrency)}</span>
+            {secondarySpent != null && (
+              <span className={styles.detailValueSecondary}>
+                ≈ {formatSecondary(secondarySpent, primaryCurrency)}
+              </span>
+            )}
+          </span>
         </div>
       </div>
     </section>

@@ -50,10 +50,23 @@
   color: var(--color-on-surface);
 }
 
+.budgetAmountGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.0625rem;
+}
+
 .budgetAmount {
   font-size: 0.875rem;
   font-weight: 700;
   color: var(--color-on-surface);
+}
+
+.budgetAmountSecondary {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-on-surface-variant);
 }
 
 .progressWrap { margin-top: 0; }
@@ -102,6 +115,13 @@
   color: var(--color-on-surface-variant);
 }
 
+.detailValueGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.0625rem;
+}
+
 .detailValue {
   font-size: 0.75rem;
   font-weight: 600;
@@ -112,4 +132,10 @@
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-expense);
+}
+
+.detailValueSecondary {
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: var(--color-on-surface-variant);
 }

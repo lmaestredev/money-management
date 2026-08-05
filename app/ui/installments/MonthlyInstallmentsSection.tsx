@@ -51,7 +51,7 @@ export default function MonthlyInstallmentsSection({ installments, paidIds, peri
               <div className={styles.info}>
                 <div className={styles.name}>{i.name}</div>
                 <div className={styles.meta}>
-                  <span>🏦 {i.account_name ?? 'Sin tarjeta'}</span>
+                  <span>🏦 {i.credit_card_name ?? i.account_name ?? 'Sin tarjeta'}</span>
                   <span className={styles.cuotaNum}>
                     Cuota {currentNumber}/{i.total_installments}
                   </span>

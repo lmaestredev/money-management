@@ -44,14 +44,6 @@
   gap: 0.625rem;
 }
 
-.balanceMetaTag {
-  background: var(--color-surface-container-high);
-  border-radius: 6px;
-  padding: 2px 7px;
-  font-weight: 500;
-  color: var(--color-on-surface-variant);
-}
-
 .grid2 {
   display: grid;
   grid-template-columns: 1fr;

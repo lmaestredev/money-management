@@ -56,7 +56,7 @@ export default function InstallmentsCard({ installments }: Props) {
                     </div>
                   </div>
                   <div className={styles.itemMeta}>
-                    <span className={styles.itemBank}>💳 {i.account_name ?? 'Sin tarjeta'}</span>
+                    <span className={styles.itemBank}>💳 {i.credit_card_name ?? i.account_name ?? 'Sin tarjeta'}</span>
                     <span className={styles.itemRemaining}>
                       Faltan {formatArs(i.remaining_amount_pesos)}
                     </span>

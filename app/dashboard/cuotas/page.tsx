@@ -117,7 +117,7 @@ export default async function CuotasPage({ searchParams }: Props) {
                       <DeleteInstallmentButton id={i.id} name={i.name} />
                     </div>
                   </div>
-                  <div className={styles.itemBank}>💳 {i.account_name ?? 'Sin tarjeta'}</div>
+                  <div className={styles.itemBank}>💳 {i.credit_card_name ?? i.account_name ?? 'Sin tarjeta'}</div>
                   <div className={styles.itemTotal}>
                     Total de la compra: {formatArs(i.total_amount_pesos)}
                     {i.total_amount_dollars > 0 && ` (${formatUsd(i.total_amount_dollars)})`}

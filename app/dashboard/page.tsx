@@ -15,7 +15,8 @@ import {
   refreshExchangeRatesIfStale,
 } from '@/app/lib/data/exchange-rates';
 import { createClient } from '@/app/lib/supabase/server';
-import SummaryCards from '@/app/ui/movements/SummaryCards';
+import DashboardSummaryCards from '@/app/ui/dashboard/DashboardSummaryCards';
+import ExchangeRateBadge from '@/app/ui/dashboard/ExchangeRateBadge';
 import DashboardAlert from '@/app/ui/dashboard/DashboardAlert';
 import PeriodBadge, { formatPeriodRange } from '@/app/ui/financial-periods/PeriodBadge';
 import ExpenseBreakdownCard from '@/app/ui/dashboard/ExpenseBreakdownCard';
@@ -52,14 +53,15 @@ function computeSummary(
   statementPaymentIds: Set<string>,
   rate: number | null
 ) {
-  let totalIncome = 0;       // USD (convertido)
-  let totalExpense = 0;      // USD (convertido)
-  let totalIncomePesos = 0;  // ARS crudo
-  let totalExpensePesos = 0; // ARS crudo
+  let totalIncome = 0;         // USD (convertido)
+  let totalExpense = 0;        // USD (convertido)
+  let totalIncomePesos = 0;    // ARS crudo
+  let totalExpensePesos = 0;   // ARS crudo
   let incomeCount = 0;
   let expenseCount = 0;
   let fixedTotal = 0;
   let variableTotal = 0;
+  let variableTotalPesos = 0;  // ARS crudo (solo gastos variables)
   const categoryMap = new Map<string, number>();
 
   for (const m of movements) {
@@ -78,8 +80,12 @@ function computeSummary(
         const usd = toUsd(m, rate);
         totalExpense += usd;
         totalExpensePesos += m.amount_pesos;
-        if (m.record_type === 'fixed_payment') fixedTotal += usd;
-        else variableTotal += usd;
+        if (m.record_type === 'fixed_payment') {
+          fixedTotal += usd;
+        } else {
+          variableTotal += usd;
+          variableTotalPesos += m.amount_pesos;
+        }
         const cat = m.category_name?.trim() || 'Sin categoría';
         categoryMap.set(cat, (categoryMap.get(cat) ?? 0) + usd);
       }
@@ -102,6 +108,7 @@ function computeSummary(
     expenseCount,
     fixedTotal,
     variableTotal,
+    variableTotalPesos,
     categoryTotals,
   };
 }
@@ -163,12 +170,18 @@ export default async function DashboardPage() {
   const totalPercentUsed = budgetTotalLimit > 0 ? (totalSpent / budgetTotalLimit) * 100 : 0;
   const showTotalWarning = totalPercentUsed >= 80;
 
-  // Presupuesto de gastos variables.
+  // Presupuesto de gastos variables. Foco en pesos (gasto del día a día),
+  // con el USD como referencia. El % usado se calcula en USD (fuente única)
+  // para que la alerta de "casi agotado" sea consistente en ambas monedas.
   const budgetVarLimit = settings.budget_variable_usd;
   const varSpent = summary.variableTotal;
   const varAvailable = Math.max(0, budgetVarLimit - varSpent);
   const varPercentUsed = budgetVarLimit > 0 ? (varSpent / budgetVarLimit) * 100 : 0;
   const showVarWarning = varPercentUsed >= 80;
+
+  const budgetVarLimitArs = rate ? budgetVarLimit * rate : null;
+  const varAvailableArs =
+    budgetVarLimitArs != null ? Math.max(0, budgetVarLimitArs - summary.variableTotalPesos) : null;
 
   const noRate = rate == null;
 
@@ -180,10 +193,22 @@ export default async function DashboardPage() {
           <p className={styles.pageSubtitle}>Resumen de tu situación financiera</p>
         </div>
         <div className={styles.headerActions}>
+          <ExchangeRateBadge effective={effectiveRate} />
           <PeriodBadge period={currentFinancialPeriod} />
           <ClosePeriodButton />
         </div>
       </header>
+
+      <DashboardSummaryCards
+        variableExpensePesos={summary.variableTotalPesos}
+        variableExpenseUsd={summary.variableTotal}
+        totalExpensePesos={summary.totalExpensePesos}
+        totalExpenseUsd={summary.totalExpense}
+        balanceUsd={summary.balance}
+        totalIncomeUsd={summary.totalIncome}
+        totalIncomePesos={summary.totalIncomePesos}
+        rate={rate}
+      />
 
       {noRate && (
         <DashboardAlert
@@ -224,23 +249,11 @@ export default async function DashboardPage() {
         />
       )}
 
-      <SummaryCards
-        balance={summary.balance}
-        totalIncome={summary.totalIncome}
-        totalExpense={summary.totalExpense}
-        totalExpensePesos={summary.totalExpensePesos}
-        totalIncomePesos={summary.totalIncomePesos}
-        rate={rate}
-        incomeCount={summary.incomeCount}
-        expenseCount={summary.expenseCount}
-        balanceLabel="Balance neto"
-        balanceMeta={<span className={styles.balanceMetaTag}>Ingresos − Egresos</span>}
-      />
-
       <div className={styles.grid2}>
         <BudgetCard
-          title="Presupuesto total"
-          subtitle="Todos los gastos del mes"
+          title="Presupuesto total (USD)"
+          subtitle="Todos los gastos del mes, en dólares"
+          primaryCurrency="usd"
           available={totalAvailable}
           total={budgetTotalLimit}
           spent={totalSpent}
@@ -249,10 +262,14 @@ export default async function DashboardPage() {
         />
         <BudgetCard
           title="Presupuesto variables"
-          subtitle="Tarjeta + efectivo/cuentas"
-          available={varAvailable}
-          total={budgetVarLimit}
-          spent={varSpent}
+          subtitle="Día a día en pesos: tarjeta + efectivo/cuentas"
+          primaryCurrency="ars"
+          available={varAvailableArs ?? 0}
+          total={budgetVarLimitArs ?? 0}
+          spent={summary.variableTotalPesos}
+          secondaryAvailable={varAvailable}
+          secondaryTotal={budgetVarLimit}
+          secondarySpent={varSpent}
           percentUsed={varPercentUsed}
           showWarning={showVarWarning}
         />
@@ -268,7 +285,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className={styles.grid2}>
-        <DashboardAccountList accounts={accounts} />
+        <DashboardAccountList accounts={accounts} rate={rate} />
         <InstallmentsCard installments={installments} />
       </div>
 

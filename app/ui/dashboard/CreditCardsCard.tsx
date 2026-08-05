@@ -37,7 +37,7 @@ export default function CreditCardsCard({ cards = [] }: Props) {
       <div className={styles.cardHeader}>
         <div>
           <h2 className={styles.cardTitle}>Gastos por tarjeta</h2>
-          <p className={styles.cardSubtitle}>Deuda acumulada del mes</p>
+          <p className={styles.cardSubtitle}>Deuda acumulada sin pagar (baja al pagar el resumen)</p>
         </div>
         <Link href="/dashboard/tarjetas" className={styles.headerLink}>
           Ver todas
