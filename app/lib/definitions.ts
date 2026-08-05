@@ -247,6 +247,21 @@ export type InstallmentInsert = {
   user_id?: string | null;
 };
 
+export type InstallmentUpdate = {
+  name: string;
+  account_id?: string | null;
+  credit_card_id?: string | null;
+  category_id?: string | null;
+  total_installments: number;
+  paid_installments: number;
+  monthly_amount_pesos?: number;
+  monthly_amount_dollars?: number;
+  total_amount_pesos?: number;
+  total_amount_dollars?: number;
+  pay_before_day?: number | null;
+  start_period?: string | null;
+};
+
 // Gastos fijos recurrentes (plantillas mensuales)
 export type RecurringExpense = {
   id: string;

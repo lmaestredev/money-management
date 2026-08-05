@@ -1,7 +1,7 @@
 import { sql, withAuthenticatedTx } from '../db';
 import { getBalanceDeltas, getCardDeltas } from './movements';
 import { applyCardCharge, resolveOrCreateStatement } from './credit-cards';
-import type { InstallmentInsert, InstallmentPurchase, InstallmentStatus } from '../definitions';
+import type { InstallmentInsert, InstallmentPurchase, InstallmentStatus, InstallmentUpdate } from '../definitions';
 
 function rowToInstallment(row: Record<string, unknown>): InstallmentPurchase {
   const total = Number(row.total_installments);
@@ -138,6 +138,69 @@ export async function createInstallment(
   });
   const created = await fetchInstallmentById(insertedId, userId);
   return created!;
+}
+
+export async function updateInstallment(
+  id: string,
+  data: InstallmentUpdate,
+  userId: string
+): Promise<InstallmentPurchase | null> {
+  const status: InstallmentStatus = data.paid_installments >= data.total_installments ? 'finished' : 'active';
+
+  const updated = await withAuthenticatedTx(userId, async (tx) => {
+    const rows = await tx`
+      UPDATE installment_purchases SET
+        name = ${data.name},
+        account_id = ${data.account_id ?? null},
+        credit_card_id = ${data.credit_card_id ?? null},
+        category_id = ${data.category_id ?? null},
+        total_installments = ${data.total_installments},
+        paid_installments = ${data.paid_installments},
+        monthly_amount_pesos = ${data.monthly_amount_pesos ?? 0},
+        monthly_amount_dollars = ${data.monthly_amount_dollars ?? 0},
+        total_amount_pesos = ${data.total_amount_pesos ?? 0},
+        total_amount_dollars = ${data.total_amount_dollars ?? 0},
+        pay_before_day = ${data.pay_before_day ?? null},
+        start_period = ${data.start_period ?? null},
+        status = ${status},
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING id
+    `;
+    return rows.length > 0;
+  });
+  if (!updated) return null;
+  return fetchInstallmentById(id, userId);
+}
+
+export type CompleteInstallmentResult =
+  | { ok: true }
+  | { ok: false; reason: 'not_found' | 'already_finished' };
+
+export async function completeInstallment(
+  installmentId: string,
+  userId: string
+): Promise<CompleteInstallmentResult> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const [inst] = await tx`
+      SELECT id, total_installments, status
+      FROM installment_purchases
+      WHERE id = ${installmentId}
+      FOR UPDATE
+    `;
+    if (!inst) return { ok: false, reason: 'not_found' as const };
+    if (inst.status === 'finished') return { ok: false, reason: 'already_finished' as const };
+
+    await tx`
+      UPDATE installment_purchases
+      SET paid_installments = ${Number(inst.total_installments)},
+          status = 'finished',
+          updated_at = NOW()
+      WHERE id = ${installmentId}
+    `;
+
+    return { ok: true as const };
+  });
 }
 
 export type PayInstallmentResult =
