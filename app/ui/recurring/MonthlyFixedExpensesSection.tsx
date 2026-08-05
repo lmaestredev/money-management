@@ -1,6 +1,7 @@
 import type { Account, RecurringExpense } from '@/app/lib/definitions';
 import { formatUsd } from '@/app/lib/utils';
 import { payRecurringExpenseAction } from '@/app/lib/actions/recurring';
+import PayRecurringButton from './PayRecurringButton';
 import styles from './MonthlyFixedExpensesSection.module.css';
 
 function formatPesos(amount: number): string {
@@ -82,9 +83,7 @@ export default function MonthlyFixedExpensesSection({
                   <form action={payRecurringExpenseAction}>
                     <input type="hidden" name="recurring_expense_id" value={e.id} />
                     <input type="hidden" name="period" value={period} />
-                    <button type="submit" className={styles.payBtn}>
-                      Registrar pago
-                    </button>
+                    <PayRecurringButton />
                   </form>
                 ) : accounts.length === 0 ? (
                   <span
@@ -107,9 +106,7 @@ export default function MonthlyFixedExpensesSection({
                         </option>
                       ))}
                     </select>
-                    <button type="submit" className={styles.payBtn}>
-                      Confirmar
-                    </button>
+                    <PayRecurringButton label="Confirmar" />
                   </form>
                 )}
               </div>

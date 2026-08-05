@@ -8,6 +8,7 @@ import {
   deleteRecurringExpense,
   payRecurringExpense,
   updateRecurringExpense,
+  type PayRecurringResult,
 } from '@/app/lib/data/recurring';
 import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
@@ -168,11 +169,29 @@ export async function payRecurringExpenseAction(formData: FormData) {
   const { recurring_expense_id, period, account_id } = parsed.data;
   const currentPeriod = await fetchCurrentPeriod(user.id);
   if (!currentPeriod) redirect('/dashboard/movimientos');
-  await payRecurringExpense(recurring_expense_id, period, currentPeriod.id, user.id, account_id);
+
+  // Idempotente: si el gasto de este período ya estaba pagado (p. ej. un
+  // doble click mandó dos submits), no se crea un segundo movimiento; se
+  // informa el estado real en vez de fingir un nuevo pago.
+  const result = await payRecurringExpense(recurring_expense_id, period, currentPeriod.id, user.id, account_id);
   revalidatePath('/dashboard/movimientos');
   revalidatePath('/dashboard/gastos-fijos');
   revalidatePath('/dashboard');
-  redirectWithToast(`/dashboard/movimientos?period=${period}`, 'Gasto fijo pagado');
+
+  const redirectPath = `/dashboard/movimientos?period=${period}`;
+  if (result.ok) {
+    redirectWithToast(redirectPath, 'Gasto fijo pagado');
+  }
+
+  type FailureReason = Extract<PayRecurringResult, { ok: false }>['reason'];
+  const messages: Record<FailureReason, string> = {
+    already_paid: 'Ese gasto ya estaba pagado',
+    inactive: 'Este gasto fijo está inactivo',
+    no_account: 'Asigná una cuenta o tarjeta antes de registrar el pago',
+    not_found: 'El gasto fijo no existe o ya fue eliminado',
+  };
+  const isError = result.reason === 'no_account' || result.reason === 'not_found' || result.reason === 'inactive';
+  redirectWithToast(redirectPath, messages[result.reason], isError ? 'error' : 'success');
 }
 
 const deleteRecurringFormSchema = z.object({ id: z.string().uuid() });
