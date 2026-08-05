@@ -45,6 +45,16 @@
   text-align: center;
 }
 
+.success {
+  padding: 0.625rem 0.875rem;
+  background: var(--color-income-dim);
+  border: 1px solid var(--color-income);
+  border-radius: var(--radius-default);
+  color: var(--color-on-surface);
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
 .form {
   display: flex;
   flex-direction: column;
@@ -78,6 +88,11 @@
   outline-offset: 2px;
 }
 
+.hint {
+  font-size: 0.6875rem;
+  color: var(--color-on-surface-variant);
+}
+
 .button {
   margin-top: 0.25rem;
   padding: 0.625rem 1rem;
@@ -96,6 +111,13 @@
   transform: translateY(-1px);
 }
 
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}
+
 .backLink {
   text-align: center;
   font-size: 0.8125rem;
@@ -105,4 +127,11 @@
 
 .backLink:hover {
   text-decoration: underline;
+}
+
+.verifying {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--color-on-surface-variant);
+  padding: 1rem 0;
 }

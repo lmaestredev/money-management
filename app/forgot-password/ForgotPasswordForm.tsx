@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { createClient } from '@/app/lib/supabase/client';
 import styles from './page.module.css';
 
-export default function LoginForm() {
+export default function ForgotPasswordForm() {
   const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -16,23 +17,34 @@ export default function LoginForm() {
 
     const form = new FormData(e.currentTarget);
     const email = String(form.get('email') ?? '').trim();
-    const password = String(form.get('password') ?? '');
 
     const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
     });
 
-    if (signInError) {
-      setError(signInError.message || 'Email o contraseña incorrectos.');
-      setLoading(false);
+    setLoading(false);
+
+    if (resetError) {
+      setError(resetError.message || 'No se pudo enviar el email. Intenta de nuevo en unos minutos.');
       return;
     }
 
-    // Navegación dura: garantiza que el servidor/middleware lean la cookie de
-    // sesión recién escrita por el navegador.
-    window.location.assign('/dashboard');
+    setSent(true);
+  }
+
+  if (sent) {
+    return (
+      <div className={styles.form}>
+        <div className={styles.success} role="status">
+          Si el email está registrado, te enviamos un enlace para restablecer tu contraseña.
+          Revisa tu bandeja de entrada (y spam).
+        </div>
+        <Link href="/login" className={styles.backLink}>
+          Volver a iniciar sesión
+        </Link>
+      </div>
+    );
   }
 
   return (
@@ -56,25 +68,11 @@ export default function LoginForm() {
           placeholder="tu@email.com"
         />
       </div>
-      <div className={styles.field}>
-        <label htmlFor="password" className={styles.label}>
-          Contraseña
-        </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          className={styles.input}
-          placeholder="••••••••"
-        />
-      </div>
       <button type="submit" className={styles.button} disabled={loading}>
-        {loading ? 'Ingresando…' : 'Iniciar sesión'}
+        {loading ? 'Enviando…' : 'Enviar enlace de recuperación'}
       </button>
-      <Link href="/forgot-password" className={styles.backLink}>
-        ¿Olvidaste tu contraseña?
+      <Link href="/login" className={styles.backLink}>
+        Volver a iniciar sesión
       </Link>
     </form>
   );
