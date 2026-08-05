@@ -307,3 +307,12 @@ export type RecurringIncomeInsert = {
   active?: boolean;
   user_id?: string | null;
 };
+
+export type RecurringIncomeUpdate = {
+  name: string;
+  category_id?: string | null;
+  account_id?: string | null;
+  amount_pesos?: number;
+  amount_dollars?: number;
+  receive_day?: number | null;
+};

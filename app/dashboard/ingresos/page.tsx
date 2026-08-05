@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { fetchRecurringIncomes } from '@/app/lib/data/recurring-incomes';
 import { createClient } from '@/app/lib/supabase/server';
 import { formatUsd } from '@/app/lib/utils';
@@ -104,7 +104,17 @@ export default async function IngresosPage({ searchParams }: Props) {
                     <span className={styles.itemAmount}>+{formatUsd(i.amount_dollars)}</span>
                     <span className={styles.itemAmountSecondary}>{formatPesos(i.amount_pesos)}</span>
                   </div>
-                  <DeleteRecurringIncomeButton id={i.id} name={i.name} />
+                  <div className={styles.itemActions}>
+                    <Link
+                      href={`/dashboard/ingresos/editar/${i.id}`}
+                      className={styles.editBtn}
+                      title="Editar"
+                      aria-label={`Editar ingreso ${i.name}`}
+                    >
+                      <PencilIcon className={styles.editIcon} aria-hidden />
+                    </Link>
+                    <DeleteRecurringIncomeButton id={i.id} name={i.name} />
+                  </div>
                 </div>
               </li>
             ))}

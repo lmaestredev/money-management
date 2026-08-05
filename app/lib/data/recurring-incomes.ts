@@ -1,6 +1,6 @@
 import { sql, withAuthenticatedTx } from '../db';
 import { getBalanceDeltas } from './movements';
-import type { RecurringIncome, RecurringIncomeInsert } from '../definitions';
+import type { RecurringIncome, RecurringIncomeInsert, RecurringIncomeUpdate } from '../definitions';
 
 function rowToRecurringIncome(row: Record<string, unknown>): RecurringIncome {
   return {
@@ -106,6 +106,30 @@ export async function createRecurringIncome(
   });
   const created = await fetchRecurringIncomeById(insertedId, userId);
   return created!;
+}
+
+export async function updateRecurringIncome(
+  id: string,
+  data: RecurringIncomeUpdate,
+  userId: string
+): Promise<RecurringIncome | null> {
+  const updated = await withAuthenticatedTx(userId, async (tx) => {
+    const rows = await tx`
+      UPDATE recurring_incomes SET
+        name = ${data.name},
+        category_id = ${data.category_id ?? null},
+        account_id = ${data.account_id ?? null},
+        amount_pesos = ${data.amount_pesos ?? 0},
+        amount_dollars = ${data.amount_dollars ?? 0},
+        receive_day = ${data.receive_day ?? null},
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING id
+    `;
+    return rows.length > 0;
+  });
+  if (!updated) return null;
+  return fetchRecurringIncomeById(id, userId);
 }
 
 export async function deleteRecurringIncome(id: string, userId: string): Promise<boolean> {

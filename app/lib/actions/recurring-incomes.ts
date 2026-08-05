@@ -7,6 +7,7 @@ import {
   createRecurringIncome,
   deleteRecurringIncome,
   receiveRecurringIncome,
+  updateRecurringIncome,
 } from '@/app/lib/data/recurring-incomes';
 import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
@@ -69,6 +70,59 @@ export async function createRecurringIncomeAction(formData: FormData) {
   revalidatePath('/dashboard/ingresos');
   revalidatePath('/dashboard');
   redirectWithToast('/dashboard/ingresos', 'Ingreso recurrente creado');
+}
+
+const updateIncomeFormSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1),
+  category_id: z
+    .union([z.string().uuid(), z.literal('')])
+    .optional()
+    .transform((s) => (s && String(s).trim() ? s : null)),
+  account_id: z
+    .union([z.string().uuid(), z.literal('')])
+    .optional()
+    .transform((s) => (s && String(s).trim() ? s : null)),
+  amount_pesos: optionalNumber,
+  amount_dollars: optionalNumber,
+  receive_day: z.string().optional().or(z.literal('')),
+});
+
+export async function updateRecurringIncomeAction(formData: FormData) {
+  const user = await requireUser();
+  const rawId = formData.get('id');
+  const parsed = updateIncomeFormSchema.safeParse({
+    id: rawId,
+    name: formData.get('name') ?? '',
+    category_id: formData.get('category_id') ?? undefined,
+    account_id: formData.get('account_id') ?? undefined,
+    amount_pesos: formData.get('amount_pesos') ?? undefined,
+    amount_dollars: formData.get('amount_dollars') ?? undefined,
+    receive_day: formData.get('receive_day') ?? undefined,
+  });
+  if (!parsed.success) {
+    const id = typeof rawId === 'string' ? rawId : '';
+    redirect(id ? `/dashboard/ingresos/editar/${id}?error=validation` : '/dashboard/ingresos');
+  }
+
+  const data = parsed.data;
+  const receiveDay = data.receive_day ? parseInt(data.receive_day, 10) : null;
+
+  const updated = await updateRecurringIncome(data.id, {
+    name: data.name.trim(),
+    category_id: data.category_id,
+    account_id: data.account_id,
+    amount_pesos: data.amount_pesos,
+    amount_dollars: data.amount_dollars,
+    receive_day: receiveDay != null && !Number.isNaN(receiveDay) ? receiveDay : null,
+  }, user.id);
+  if (!updated) {
+    redirect('/dashboard/ingresos?error=notfound');
+  }
+
+  revalidatePath('/dashboard/ingresos');
+  revalidatePath('/dashboard');
+  redirectWithToast('/dashboard/ingresos', 'Ingreso actualizado');
 }
 
 const receiveIncomeFormSchema = z.object({
