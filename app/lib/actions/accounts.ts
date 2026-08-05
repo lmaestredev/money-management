@@ -5,7 +5,15 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createAccount, deleteAccount, updateAccount } from '@/app/lib/data/accounts';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
+import { createClient } from '@/app/lib/supabase/server';
 import type { AccountCurrency } from '@/app/lib/definitions';
+
+async function requireUser() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  return user;
+}
 
 function buildAccountName(bank: string, currency: AccountCurrency): string {
   const label = currency === 'peso' ? 'Pesos' : currency === 'dollar' ? 'Dólares' : 'Cripto';
@@ -14,7 +22,6 @@ function buildAccountName(bank: string, currency: AccountCurrency): string {
 
 const currencySchema = z.enum(['peso', 'dollar', 'crypto']);
 
-// El select de dueño envía un UUID o '' (compartida / sin asignar) -> null.
 const ownerSchema = z
   .union([z.string().uuid(), z.literal('')])
   .optional()
@@ -28,6 +35,7 @@ const createAccountFormSchema = z.object({
 });
 
 export async function createAccountAction(formData: FormData) {
+  const user = await requireUser();
   const raw = {
     bank: formData.get('bank'),
     currency: formData.get('currency'),
@@ -49,7 +57,7 @@ export async function createAccountAction(formData: FormData) {
     balance_pesos: currency === 'peso' ? balance : 0,
     balance_dollars: currency !== 'peso' ? balance : 0,
     owner_id,
-  });
+  }, user.id);
 
   revalidatePath('/dashboard/cuentas');
   revalidatePath('/dashboard');
@@ -61,6 +69,7 @@ const deleteAccountFormSchema = z.object({
 });
 
 export async function deleteAccountAction(formData: FormData) {
+  const user = await requireUser();
   const raw = { id: formData.get('id') };
   const parsed = deleteAccountFormSchema.safeParse(raw);
   if (!parsed.success) {
@@ -69,7 +78,7 @@ export async function deleteAccountAction(formData: FormData) {
 
   let result: Awaited<ReturnType<typeof deleteAccount>>;
   try {
-    result = await deleteAccount(parsed.data.id);
+    result = await deleteAccount(parsed.data.id, user.id);
   } catch {
     redirect('/dashboard/cuentas?error=delete');
   }
@@ -94,6 +103,7 @@ const updateAccountFormSchema = z.object({
 });
 
 export async function updateAccountAction(formData: FormData) {
+  const user = await requireUser();
   const rawId = formData.get('id');
   const parsed = updateAccountFormSchema.safeParse({
     id: rawId,
@@ -116,7 +126,7 @@ export async function updateAccountAction(formData: FormData) {
     balance_pesos: cur === 'peso' ? balance : 0,
     balance_dollars: cur !== 'peso' ? balance : 0,
     owner_id,
-  });
+  }, user.id);
   if (!updated) {
     redirect('/dashboard/cuentas?error=notfound');
   }

@@ -1,11 +1,16 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { fetchInstallments } from '@/app/lib/data/installments';
+import { createClient } from '@/app/lib/supabase/server';
 import { formatUsd } from '@/app/lib/utils';
 import styles from './page.module.css';
 
 export default async function CuotasPage() {
-  const installments = await fetchInstallments();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  const installments = await fetchInstallments(user.id);
   const active = installments.filter((i) => i.status === 'active');
   const monthlyCommitted = active.reduce((sum, i) => sum + i.monthly_amount_dollars, 0);
   const remainingTotal = active.reduce((sum, i) => sum + i.remaining_amount_dollars, 0);

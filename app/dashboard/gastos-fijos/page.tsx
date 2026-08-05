@@ -1,6 +1,8 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { fetchRecurringExpenses } from '@/app/lib/data/recurring';
+import { createClient } from '@/app/lib/supabase/server';
 import { formatUsd } from '@/app/lib/utils';
 import DeleteRecurringButton from '@/app/ui/recurring/DeleteRecurringButton';
 import styles from './page.module.css';
@@ -15,7 +17,10 @@ function formatPesos(amount: number): string {
 }
 
 export default async function GastosFijosPage() {
-  const expenses = await fetchRecurringExpenses();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  const expenses = await fetchRecurringExpenses(user.id);
   const active = expenses.filter((e) => e.active);
   const monthlyTotal = active.reduce((sum, e) => sum + e.amount_dollars, 0);
 

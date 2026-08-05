@@ -1,6 +1,8 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { fetchRecurringIncomes } from '@/app/lib/data/recurring-incomes';
+import { createClient } from '@/app/lib/supabase/server';
 import { formatUsd } from '@/app/lib/utils';
 import DeleteRecurringIncomeButton from '@/app/ui/recurring-incomes/DeleteRecurringIncomeButton';
 import styles from './page.module.css';
@@ -25,9 +27,12 @@ type Props = {
 };
 
 export default async function IngresosPage({ searchParams }: Props) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
   const { error } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] ?? null : null;
-  const incomes = await fetchRecurringIncomes();
+  const incomes = await fetchRecurringIncomes(user.id);
   const active = incomes.filter((i) => i.active);
   const monthlyTotal = active.reduce((sum, i) => sum + i.amount_dollars, 0);
 

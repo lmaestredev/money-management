@@ -6,6 +6,14 @@ import { z } from 'zod';
 import { createInstallment, payInstallment } from '@/app/lib/data/installments';
 import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
+import { createClient } from '@/app/lib/supabase/server';
+
+async function requireUser() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  return user;
+}
 
 const optionalNumber = z
   .string()
@@ -38,6 +46,7 @@ const createInstallmentFormSchema = z.object({
 });
 
 export async function createInstallmentAction(formData: FormData) {
+  const user = await requireUser();
   const raw = {
     name: formData.get('name') ?? '',
     account_id: formData.get('account_id') ?? undefined,
@@ -67,7 +76,6 @@ export async function createInstallmentAction(formData: FormData) {
 
   const payBeforeDay = data.pay_before_day ? parseInt(data.pay_before_day, 10) : null;
 
-  // Si no se informa el total, derivarlo de la cuota mensual × cuotas totales.
   const totalPesos = data.total_amount_pesos || data.monthly_amount_pesos * total;
   const totalDollars = data.total_amount_dollars || data.monthly_amount_dollars * total;
 
@@ -84,7 +92,7 @@ export async function createInstallmentAction(formData: FormData) {
     total_amount_dollars: totalDollars,
     pay_before_day: payBeforeDay != null && !Number.isNaN(payBeforeDay) ? payBeforeDay : null,
     start_period: data.start_period && /^\d{4}-\d{2}$/.test(data.start_period) ? data.start_period : null,
-  });
+  }, user.id);
 
   revalidatePath('/dashboard/cuotas');
   revalidatePath('/dashboard');
@@ -97,6 +105,7 @@ const payInstallmentFormSchema = z.object({
 });
 
 export async function payInstallmentAction(formData: FormData) {
+  const user = await requireUser();
   const parsed = payInstallmentFormSchema.safeParse({
     installment_id: formData.get('installment_id'),
     period: formData.get('period'),
@@ -106,9 +115,9 @@ export async function payInstallmentAction(formData: FormData) {
   }
 
   const { installment_id, period } = parsed.data;
-  const currentPeriod = await fetchCurrentPeriod();
+  const currentPeriod = await fetchCurrentPeriod(user.id);
   if (!currentPeriod) redirect('/dashboard/movimientos');
-  await payInstallment(installment_id, period, currentPeriod.id);
+  await payInstallment(installment_id, period, currentPeriod.id, user.id);
   revalidatePath('/dashboard/movimientos');
   revalidatePath('/dashboard/cuotas');
   revalidatePath('/dashboard');

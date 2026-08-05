@@ -1,6 +1,8 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { fetchAccounts, getAccountBalance } from '@/app/lib/data/accounts';
+import { createClient } from '@/app/lib/supabase/server';
 import type { AccountCurrency } from '@/app/lib/definitions';
 import CuentasPageInfoBox from '@/app/ui/accounts/CuentasPageInfoBox';
 import CuentasSummaryCards from '@/app/ui/accounts/CuentasSummaryCards';
@@ -20,9 +22,12 @@ type Props = {
 };
 
 export default async function CuentasPage({ searchParams }: Props) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
   const { error } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] ?? null : null;
-  const accounts = await fetchAccounts();
+  const accounts = await fetchAccounts(user.id);
 
   const totalPesos = accounts
     .filter((a) => a.currency === 'peso')

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import type { Movement } from '@/app/lib/definitions';
 import { fetchAccounts } from '@/app/lib/data/accounts';
 import { fetchMovementsByFinancialPeriod } from '@/app/lib/data/movements';
@@ -13,6 +14,7 @@ import {
   getEffectiveRate,
   refreshExchangeRatesIfStale,
 } from '@/app/lib/data/exchange-rates';
+import { createClient } from '@/app/lib/supabase/server';
 import SummaryCards from '@/app/ui/movements/SummaryCards';
 import DashboardAlert from '@/app/ui/dashboard/DashboardAlert';
 import PeriodBadge, { formatPeriodRange } from '@/app/ui/financial-periods/PeriodBadge';
@@ -105,14 +107,16 @@ function computeSummary(
 }
 
 export default async function DashboardPage() {
-  // Período YYYY-MM del mes actual: se usa como campo secundario en movimientos
-  // (el filtro principal ya es financial_period_id).
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  const userId = user.id;
+
   const period = getCurrentPeriod();
 
-  // Red de seguridad: si las cotizaciones quedaron viejas, refrescamos antes de leer.
   await refreshExchangeRatesIfStale();
 
-  const currentFinancialPeriod = await fetchCurrentPeriod();
+  const currentFinancialPeriod = await fetchCurrentPeriod(userId);
   const currentFinancialPeriodId = currentFinancialPeriod?.id ?? '';
 
   const [
@@ -127,15 +131,15 @@ export default async function DashboardPage() {
     effectiveRate,
     rates,
   ] = await Promise.all([
-    fetchAccounts(),
-    fetchMovementsByFinancialPeriod(currentFinancialPeriodId),
-    fetchInstallments(),
-    fetchRecurringExpenses(),
-    fetchRecurringIncomes(),
-    fetchCreditCards(),
-    fetchStatementPaymentIds(),
-    getSettings(),
-    getEffectiveRate(),
+    fetchAccounts(userId),
+    fetchMovementsByFinancialPeriod(currentFinancialPeriodId, userId),
+    fetchInstallments(userId),
+    fetchRecurringExpenses(userId),
+    fetchRecurringIncomes(userId),
+    fetchCreditCards(userId),
+    fetchStatementPaymentIds(userId),
+    getSettings(userId),
+    getEffectiveRate(userId),
     fetchExchangeRates(),
   ]);
 

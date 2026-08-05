@@ -1,4 +1,4 @@
-import { sql } from '../db';
+import { withAuthenticatedTx } from '../db';
 import {
   applyCardCharge,
   resolveOrCreateStatement,
@@ -32,78 +32,86 @@ function rowToMovement(row: Record<string, unknown>): Movement {
     exchange_rate: row.exchange_rate != null ? Number(row.exchange_rate) : null,
     comment: (row.comment as string) ?? null,
     created_at: row.created_at as string,
-    user_id: (row.user_id as string) ?? null,
+    user_id: row.user_id as string,
     source: (row.source as MovementSource) ?? null,
     installment_id: (row.installment_id as string) ?? null,
   };
 }
 
-export async function fetchMovementsByPeriod(period: string): Promise<Movement[]> {
-  const rows = await sql`
-    SELECT m.id, m.period, m.financial_period_id, m.record_type, m.account_id, m.credit_card_id,
-           m.statement_id, m.category_id,
-           c.name AS category_name,
-           m.description, m.status, m.amount_pesos, m.amount_dollars,
-           m.payment_date, m.dollar_rate, m.exchange_rate, m.comment,
-           m.created_at, m.user_id, m.source
-    FROM movements m
-    LEFT JOIN categories c ON m.category_id = c.id
-    WHERE m.period = ${period}
-    ORDER BY m.record_type, m.created_at ASC
-  `;
-  return rows.map((r) => rowToMovement(r as Record<string, unknown>));
+export async function fetchMovementsByPeriod(period: string, userId: string): Promise<Movement[]> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const rows = await tx`
+      SELECT m.id, m.period, m.financial_period_id, m.record_type, m.account_id, m.credit_card_id,
+             m.statement_id, m.category_id,
+             c.name AS category_name,
+             m.description, m.status, m.amount_pesos, m.amount_dollars,
+             m.payment_date, m.dollar_rate, m.exchange_rate, m.comment,
+             m.created_at, m.user_id, m.source
+      FROM movements m
+      LEFT JOIN categories c ON m.category_id = c.id
+      WHERE m.period = ${period}
+      ORDER BY m.record_type, m.created_at ASC
+    `;
+    return rows.map((r) => rowToMovement(r as Record<string, unknown>));
+  });
 }
 
-/** Movimientos del período financiero (rango de fechas del período activo o cerrado). */
-export async function fetchMovementsByFinancialPeriod(financialPeriodId: string): Promise<Movement[]> {
-  const rows = await sql`
-    SELECT m.id, m.period, m.financial_period_id, m.record_type, m.account_id, m.credit_card_id,
-           m.statement_id, m.category_id,
-           c.name AS category_name,
-           m.description, m.status, m.amount_pesos, m.amount_dollars,
-           m.payment_date, m.dollar_rate, m.exchange_rate, m.comment,
-           m.created_at, m.user_id, m.source
-    FROM movements m
-    LEFT JOIN categories c ON m.category_id = c.id
-    WHERE m.financial_period_id = ${financialPeriodId}
-    ORDER BY m.record_type, m.created_at ASC
-  `;
-  return rows.map((r) => rowToMovement(r as Record<string, unknown>));
+export async function fetchMovementsByFinancialPeriod(financialPeriodId: string, userId: string): Promise<Movement[]> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const rows = await tx`
+      SELECT m.id, m.period, m.financial_period_id, m.record_type, m.account_id, m.credit_card_id,
+             m.statement_id, m.category_id,
+             c.name AS category_name,
+             m.description, m.status, m.amount_pesos, m.amount_dollars,
+             m.payment_date, m.dollar_rate, m.exchange_rate, m.comment,
+             m.created_at, m.user_id, m.source
+      FROM movements m
+      LEFT JOIN categories c ON m.category_id = c.id
+      WHERE m.financial_period_id = ${financialPeriodId}
+      ORDER BY m.record_type, m.created_at ASC
+    `;
+    return rows.map((r) => rowToMovement(r as Record<string, unknown>));
+  });
 }
 
 export async function fetchMovementsByPeriodAndType(
   period: string,
-  recordType: RecordType
+  recordType: RecordType,
+  userId: string
 ): Promise<Movement[]> {
-  const rows = await sql`
-    SELECT m.id, m.period, m.financial_period_id, m.record_type, m.account_id, m.credit_card_id,
-           m.statement_id, m.category_id,
-           c.name AS category_name,
-           m.description, m.status, m.amount_pesos, m.amount_dollars,
-           m.payment_date, m.dollar_rate, m.exchange_rate, m.comment,
-           m.created_at, m.user_id, m.source
-    FROM movements m
-    LEFT JOIN categories c ON m.category_id = c.id
-    WHERE m.period = ${period} AND m.record_type = ${recordType}
-    ORDER BY m.created_at ASC
-  `;
-  return rows.map((r) => rowToMovement(r as Record<string, unknown>));
+  return withAuthenticatedTx(userId, async (tx) => {
+    const rows = await tx`
+      SELECT m.id, m.period, m.financial_period_id, m.record_type, m.account_id, m.credit_card_id,
+             m.statement_id, m.category_id,
+             c.name AS category_name,
+             m.description, m.status, m.amount_pesos, m.amount_dollars,
+             m.payment_date, m.dollar_rate, m.exchange_rate, m.comment,
+             m.created_at, m.user_id, m.source
+      FROM movements m
+      LEFT JOIN categories c ON m.category_id = c.id
+      WHERE m.period = ${period} AND m.record_type = ${recordType}
+      ORDER BY m.created_at ASC
+    `;
+    return rows.map((r) => rowToMovement(r as Record<string, unknown>));
+  });
 }
 
-export async function fetchMovementById(id: string): Promise<Movement | null> {
-  const [row] = await sql`
-    SELECT m.id, m.period, m.financial_period_id, m.record_type, m.account_id, m.credit_card_id,
-           m.statement_id, m.category_id,
-           c.name AS category_name,
-           m.description, m.status, m.amount_pesos, m.amount_dollars,
-           m.payment_date, m.dollar_rate, m.exchange_rate, m.comment,
-           m.created_at, m.user_id, m.source, m.installment_id
-    FROM movements m
-    LEFT JOIN categories c ON m.category_id = c.id
-    WHERE m.id = ${id}
-  `;
-  if (!row) return null;
-  return rowToMovement(row as Record<string, unknown>);
+export async function fetchMovementById(id: string, userId: string): Promise<Movement | null> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const [row] = await tx`
+      SELECT m.id, m.period, m.financial_period_id, m.record_type, m.account_id, m.credit_card_id,
+             m.statement_id, m.category_id,
+             c.name AS category_name,
+             m.description, m.status, m.amount_pesos, m.amount_dollars,
+             m.payment_date, m.dollar_rate, m.exchange_rate, m.comment,
+             m.created_at, m.user_id, m.source, m.installment_id
+      FROM movements m
+      LEFT JOIN categories c ON m.category_id = c.id
+      WHERE m.id = ${id}
+    `;
+    if (!row) return null;
+    return rowToMovement(row as Record<string, unknown>);
+  });
 }
 
 export function getBalanceDeltas(
@@ -128,11 +136,6 @@ export function getBalanceDeltas(
   }
 }
 
-/**
- * Delta de DEUDA para un cargo a tarjeta. A diferencia de las cuentas, un cargo
- * a tarjeta suma a la deuda apenas se hace (no depende del estado pagado/pendiente:
- * el resumen es lo que luego se paga). Solo aplica a egresos.
- */
 export function getCardDeltas(
   recordType: RecordType,
   amountPesos: number,
@@ -146,18 +149,17 @@ export function getCardDeltas(
 
 export async function createMovement(
   data: MovementInsert,
+  userId: string,
   source: MovementSource = 'app'
 ): Promise<Movement> {
   const sourceValue = data.source ?? source;
 
-  // Resuelve el financial_period_id: usa el del data si viene (cierre automático),
-  // si no, toma el período abierto activo.
+  // fetchCurrentPeriod crea su propia transacción; debe resolverse ANTES de withAuthenticatedTx.
   const financialPeriodId = data.financial_period_id
-    ?? (await fetchCurrentPeriod())?.id
+    ?? (await fetchCurrentPeriod(userId))?.id
     ?? (() => { throw new Error('No hay período financiero abierto'); })();
 
-  const [row] = await sql.begin(async (tx) => {
-    // Cargo a tarjeta: ubica el resumen del ciclo; no se debita ninguna cuenta.
+  const [row] = await withAuthenticatedTx(userId, async (tx) => {
     let statementId: string | null = data.statement_id ?? null;
     if (data.credit_card_id) {
       const chargeDate = data.payment_date ? new Date(data.payment_date) : new Date();
@@ -188,7 +190,7 @@ export async function createMovement(
         ${data.dollar_rate ?? null},
         ${data.exchange_rate ?? null},
         ${data.comment ?? null},
-        ${data.user_id ?? null},
+        ${userId},
         ${sourceValue}
       )
       RETURNING id, period, financial_period_id, record_type, account_id, credit_card_id, statement_id,
@@ -229,17 +231,12 @@ export async function createMovement(
   return rowToMovement((row ?? {}) as Record<string, unknown>);
 }
 
-/**
- * Edita un movimiento ajustando saldos de forma atómica: revierte el efecto del
- * movimiento anterior (sobre su cuenta original) y aplica el nuevo (sobre la
- * cuenta nueva). Preserva los vínculos a cuota/gasto fijo (installment_id,
- * recurring_expense_id) y el periodo.
- */
 export async function updateMovement(
   id: string,
-  data: MovementInsert
+  data: MovementInsert,
+  userId: string
 ): Promise<Movement | null> {
-  return sql.begin(async (tx) => {
+  return withAuthenticatedTx(userId, async (tx) => {
     const [old] = await tx`
       SELECT account_id, credit_card_id, statement_id, record_type, status,
              amount_pesos, amount_dollars
@@ -249,7 +246,6 @@ export async function updateMovement(
     `;
     if (!old) return null;
 
-    // Revertir efecto del movimiento anterior (tarjeta o cuenta).
     if (old.credit_card_id) {
       const oldCard = getCardDeltas(
         old.record_type as RecordType,
@@ -281,7 +277,6 @@ export async function updateMovement(
       }
     }
 
-    // Aplicar efecto del movimiento nuevo (tarjeta o cuenta).
     let statementId: string | null = data.statement_id ?? null;
     if (data.credit_card_id) {
       const chargeDate = data.payment_date ? new Date(data.payment_date) : new Date();
@@ -321,7 +316,7 @@ export async function updateMovement(
         payment_date = ${data.payment_date ?? null},
         dollar_rate = ${data.dollar_rate ?? null}
       WHERE id = ${id}
-      RETURNING id, period, record_type, account_id, credit_card_id, statement_id,
+      RETURNING id, period, financial_period_id, record_type, account_id, credit_card_id, statement_id,
                 category_id, description, status,
                 amount_pesos, amount_dollars, payment_date, dollar_rate, exchange_rate,
                 comment, created_at, user_id, source, installment_id
@@ -330,15 +325,8 @@ export async function updateMovement(
   });
 }
 
-/**
- * Elimina un movimiento revirtiendo sus efectos de forma atómica:
- * - Devuelve al saldo de la cuenta el delta que se aplicó al crearlo.
- * - Si era el pago de una cuota, descuenta paid_installments y la reactiva.
- * (Los pagos de gastos fijos se detectan por la existencia del movimiento en el
- * periodo, así que al borrarlo vuelven a quedar "pendientes" automáticamente.)
- */
-export async function deleteMovement(id: string): Promise<boolean> {
-  return sql.begin(async (tx) => {
+export async function deleteMovement(id: string, userId: string): Promise<boolean> {
+  return withAuthenticatedTx(userId, async (tx) => {
     const [mov] = await tx`
       SELECT id, account_id, credit_card_id, statement_id, record_type, status,
              amount_pesos, amount_dollars, installment_id
@@ -349,7 +337,6 @@ export async function deleteMovement(id: string): Promise<boolean> {
     if (!mov) return false;
 
     if (mov.credit_card_id) {
-      // Revertir el cargo de la deuda de la tarjeta y del total de su resumen.
       const card = getCardDeltas(
         mov.record_type as RecordType,
         Number(mov.amount_pesos),

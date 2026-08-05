@@ -1,11 +1,16 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { createAccountAction } from '@/app/lib/actions/accounts';
 import { fetchPeople } from '@/app/lib/data/people';
+import { createClient } from '@/app/lib/supabase/server';
 import SubmitButton from '@/app/ui/SubmitButton';
 import styles from './AccountForm.module.css';
 
 export default async function AccountForm() {
-  const people = await fetchPeople();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  const people = await fetchPeople(user.id);
 
   return (
     <form action={createAccountAction} className={styles.form}>

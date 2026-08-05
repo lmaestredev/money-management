@@ -10,7 +10,15 @@ import {
   updateCreditCard,
 } from '@/app/lib/data/credit-cards';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
+import { createClient } from '@/app/lib/supabase/server';
 import type { AccountCurrency, CardBrand } from '@/app/lib/definitions';
+
+async function requireUser() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  return user;
+}
 
 const currencySchema = z.enum(['peso', 'dollar', 'crypto']);
 const brandSchema = z
@@ -18,13 +26,11 @@ const brandSchema = z
   .optional()
   .transform((v) => (v ? (v as CardBrand) : null));
 
-// El select de dueño envía un UUID o '' (compartida / sin asignar) -> null.
 const ownerSchema = z
   .union([z.string().uuid(), z.literal('')])
   .optional()
   .transform((v) => (v ? v : null));
 
-// Día del mes 1–31 o '' -> null.
 const daySchema = z
   .union([z.string(), z.literal('')])
   .optional()
@@ -46,6 +52,7 @@ const cardFormSchema = z.object({
 });
 
 export async function createCreditCardAction(formData: FormData) {
+  const user = await requireUser();
   const parsed = cardFormSchema.safeParse({
     name: formData.get('name'),
     bank: formData.get('bank'),
@@ -70,7 +77,7 @@ export async function createCreditCardAction(formData: FormData) {
     closing_day: d.closing_day,
     due_day: d.due_day,
     owner_id: d.owner_id,
-  });
+  }, user.id);
 
   revalidatePath('/dashboard/tarjetas');
   revalidatePath('/dashboard');
@@ -86,6 +93,7 @@ const updateCardFormSchema = cardFormSchema.extend({
 });
 
 export async function updateCreditCardAction(formData: FormData) {
+  const user = await requireUser();
   const rawId = formData.get('id');
   const parsed = updateCardFormSchema.safeParse({
     id: rawId,
@@ -115,7 +123,7 @@ export async function updateCreditCardAction(formData: FormData) {
     due_day: d.due_day,
     owner_id: d.owner_id,
     active: d.active,
-  });
+  }, user.id);
   if (!updated) {
     redirect('/dashboard/tarjetas?error=notfound');
   }
@@ -128,6 +136,7 @@ export async function updateCreditCardAction(formData: FormData) {
 const deleteCardFormSchema = z.object({ id: z.string().uuid() });
 
 export async function deleteCreditCardAction(formData: FormData) {
+  const user = await requireUser();
   const parsed = deleteCardFormSchema.safeParse({ id: formData.get('id') });
   if (!parsed.success) {
     redirect('/dashboard/tarjetas?error=validation');
@@ -135,7 +144,7 @@ export async function deleteCreditCardAction(formData: FormData) {
 
   let result: Awaited<ReturnType<typeof deleteCreditCard>>;
   try {
-    result = await deleteCreditCard(parsed.data.id);
+    result = await deleteCreditCard(parsed.data.id, user.id);
   } catch {
     redirect('/dashboard/tarjetas?error=delete');
   }
@@ -157,6 +166,7 @@ const payStatementFormSchema = z.object({
 });
 
 export async function payStatementAction(formData: FormData) {
+  const user = await requireUser();
   const parsed = payStatementFormSchema.safeParse({
     statement_id: formData.get('statement_id'),
     account_id: formData.get('account_id'),
@@ -165,7 +175,7 @@ export async function payStatementAction(formData: FormData) {
     redirect('/dashboard/tarjetas?error=validation');
   }
 
-  const result = await payStatement(parsed.data.statement_id, parsed.data.account_id);
+  const result = await payStatement(parsed.data.statement_id, parsed.data.account_id, user.id);
   if (!result.ok) {
     redirect(`/dashboard/tarjetas?error=${result.reason}`);
   }

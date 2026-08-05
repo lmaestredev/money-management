@@ -1,4 +1,4 @@
-import { sql } from '../db';
+import { sql, withAuthenticatedTx } from '../db';
 import { getBalanceDeltas } from './movements';
 import type { RecurringIncome, RecurringIncomeInsert } from '../definitions';
 
@@ -14,7 +14,7 @@ function rowToRecurringIncome(row: Record<string, unknown>): RecurringIncome {
     amount_dollars: Number(row.amount_dollars),
     receive_day: row.receive_day != null ? Number(row.receive_day) : null,
     active: Boolean(row.active),
-    user_id: (row.user_id as string) ?? null,
+    user_id: row.user_id as string,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
   };
@@ -27,81 +27,88 @@ const SELECT_COLUMNS = sql`
   r.user_id, r.created_at, r.updated_at
 `;
 
-export async function fetchRecurringIncomes(): Promise<RecurringIncome[]> {
-  const rows = await sql`
-    SELECT ${SELECT_COLUMNS}
-    FROM recurring_incomes r
-    LEFT JOIN categories c ON r.category_id = c.id
-    LEFT JOIN accounts a ON r.account_id = a.id
-    ORDER BY r.active DESC, r.name ASC
-  `;
-  return rows.map((r) => rowToRecurringIncome(r as Record<string, unknown>));
+export async function fetchRecurringIncomes(userId: string): Promise<RecurringIncome[]> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const rows = await tx`
+      SELECT ${SELECT_COLUMNS}
+      FROM recurring_incomes r
+      LEFT JOIN categories c ON r.category_id = c.id
+      LEFT JOIN accounts a ON r.account_id = a.id
+      ORDER BY r.active DESC, r.name ASC
+    `;
+    return rows.map((r) => rowToRecurringIncome(r as Record<string, unknown>));
+  });
 }
 
-export async function fetchActiveRecurringIncomes(): Promise<RecurringIncome[]> {
-  const rows = await sql`
-    SELECT ${SELECT_COLUMNS}
-    FROM recurring_incomes r
-    LEFT JOIN categories c ON r.category_id = c.id
-    LEFT JOIN accounts a ON r.account_id = a.id
-    WHERE r.active = true
-    ORDER BY r.name ASC
-  `;
-  return rows.map((r) => rowToRecurringIncome(r as Record<string, unknown>));
+export async function fetchActiveRecurringIncomes(userId: string): Promise<RecurringIncome[]> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const rows = await tx`
+      SELECT ${SELECT_COLUMNS}
+      FROM recurring_incomes r
+      LEFT JOIN categories c ON r.category_id = c.id
+      LEFT JOIN accounts a ON r.account_id = a.id
+      WHERE r.active = true
+      ORDER BY r.name ASC
+    `;
+    return rows.map((r) => rowToRecurringIncome(r as Record<string, unknown>));
+  });
 }
 
-export async function fetchRecurringIncomeById(id: string): Promise<RecurringIncome | null> {
-  const [row] = await sql`
-    SELECT ${SELECT_COLUMNS}
-    FROM recurring_incomes r
-    LEFT JOIN categories c ON r.category_id = c.id
-    LEFT JOIN accounts a ON r.account_id = a.id
-    WHERE r.id = ${id}
-  `;
-  if (!row) return null;
-  return rowToRecurringIncome(row as Record<string, unknown>);
+export async function fetchRecurringIncomeById(id: string, userId: string): Promise<RecurringIncome | null> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const [row] = await tx`
+      SELECT ${SELECT_COLUMNS}
+      FROM recurring_incomes r
+      LEFT JOIN categories c ON r.category_id = c.id
+      LEFT JOIN accounts a ON r.account_id = a.id
+      WHERE r.id = ${id}
+    `;
+    if (!row) return null;
+    return rowToRecurringIncome(row as Record<string, unknown>);
+  });
 }
 
-/** IDs de ingresos ya cobrados en el período financiero dado. */
-export async function fetchRecurringIncomeReceivedIds(financialPeriodId: string): Promise<Set<string>> {
-  const rows = (await sql`
-    SELECT DISTINCT recurring_income_id
-    FROM movements
-    WHERE financial_period_id = ${financialPeriodId} AND recurring_income_id IS NOT NULL
-  `) as { recurring_income_id: string }[];
-  return new Set(rows.map((r) => r.recurring_income_id));
+export async function fetchRecurringIncomeReceivedIds(financialPeriodId: string, userId: string): Promise<Set<string>> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const rows = (await tx`
+      SELECT DISTINCT recurring_income_id
+      FROM movements
+      WHERE financial_period_id = ${financialPeriodId} AND recurring_income_id IS NOT NULL
+    `) as { recurring_income_id: string }[];
+    return new Set(rows.map((r) => r.recurring_income_id));
+  });
 }
 
 export async function createRecurringIncome(
-  data: RecurringIncomeInsert
+  data: RecurringIncomeInsert,
+  userId: string
 ): Promise<RecurringIncome> {
-  const [row] = await sql`
-    INSERT INTO recurring_incomes (
-      name, category_id, account_id, amount_pesos, amount_dollars,
-      receive_day, active, user_id
-    )
-    VALUES (
-      ${data.name},
-      ${data.category_id ?? null},
-      ${data.account_id ?? null},
-      ${data.amount_pesos ?? 0},
-      ${data.amount_dollars ?? 0},
-      ${data.receive_day ?? null},
-      ${data.active ?? true},
-      ${data.user_id ?? null}
-    )
-    RETURNING id
-  `;
-  const created = await fetchRecurringIncomeById((row as { id: string }).id);
+  const insertedId = await withAuthenticatedTx(userId, async (tx) => {
+    const [row] = await tx`
+      INSERT INTO recurring_incomes (
+        name, category_id, account_id, amount_pesos, amount_dollars,
+        receive_day, active, user_id
+      )
+      VALUES (
+        ${data.name},
+        ${data.category_id ?? null},
+        ${data.account_id ?? null},
+        ${data.amount_pesos ?? 0},
+        ${data.amount_dollars ?? 0},
+        ${data.receive_day ?? null},
+        ${data.active ?? true},
+        ${userId}
+      )
+      RETURNING id
+    `;
+    return (row as { id: string }).id;
+  });
+  const created = await fetchRecurringIncomeById(insertedId, userId);
   return created!;
 }
 
-/**
- * Elimina un ingreso recurrente. Preserva el historial: desvincula los cobros
- * ya registrados (quedan como movimientos normales) antes de borrar la plantilla.
- */
-export async function deleteRecurringIncome(id: string): Promise<boolean> {
-  return sql.begin(async (tx) => {
+export async function deleteRecurringIncome(id: string, userId: string): Promise<boolean> {
+  return withAuthenticatedTx(userId, async (tx) => {
     await tx`
       UPDATE movements SET recurring_income_id = NULL
       WHERE recurring_income_id = ${id}
@@ -118,18 +125,14 @@ export type ReceiveIncomeResult =
   | { ok: true }
   | { ok: false; reason: 'not_found' | 'inactive' | 'already_received' | 'no_account' };
 
-/**
- * Registra el cobro del ingreso del mes: crea un movement de tipo income que
- * acredita la cuenta. Atómico. Evita doble cobro en el periodo. La cuenta se
- * resuelve por override (elegida al confirmar) o la fija de la plantilla.
- */
 export async function receiveRecurringIncome(
   recurringId: string,
   period: string,
   financialPeriodId: string,
+  userId: string,
   overrideAccountId?: string | null
 ): Promise<ReceiveIncomeResult> {
-  return sql.begin(async (tx) => {
+  return withAuthenticatedTx(userId, async (tx) => {
     const [rec] = await tx`
       SELECT id, name, account_id, category_id, amount_pesos, amount_dollars, active
       FROM recurring_incomes
@@ -155,12 +158,12 @@ export async function receiveRecurringIncome(
     await tx`
       INSERT INTO movements (
         period, financial_period_id, record_type, account_id, category_id, description, status,
-        amount_pesos, amount_dollars, payment_date, comment, source, recurring_income_id
+        amount_pesos, amount_dollars, payment_date, comment, source, recurring_income_id, user_id
       )
       VALUES (
         ${period}, ${financialPeriodId}, 'income', ${accountId}, ${rec.category_id ?? null},
         ${rec.name}, true, ${amountPesos}, ${amountDollars}, NULL, NULL, 'app',
-        ${recurringId}
+        ${recurringId}, ${userId}
       )
     `;
 

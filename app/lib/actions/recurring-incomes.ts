@@ -10,6 +10,14 @@ import {
 } from '@/app/lib/data/recurring-incomes';
 import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
+import { createClient } from '@/app/lib/supabase/server';
+
+async function requireUser() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  return user;
+}
 
 const optionalNumber = z
   .string()
@@ -33,6 +41,7 @@ const createIncomeFormSchema = z.object({
 });
 
 export async function createRecurringIncomeAction(formData: FormData) {
+  const user = await requireUser();
   const parsed = createIncomeFormSchema.safeParse({
     name: formData.get('name') ?? '',
     category_id: formData.get('category_id') ?? undefined,
@@ -55,7 +64,7 @@ export async function createRecurringIncomeAction(formData: FormData) {
     amount_pesos: data.amount_pesos,
     amount_dollars: data.amount_dollars,
     receive_day: receiveDay != null && !Number.isNaN(receiveDay) ? receiveDay : null,
-  });
+  }, user.id);
 
   revalidatePath('/dashboard/ingresos');
   revalidatePath('/dashboard');
@@ -72,6 +81,7 @@ const receiveIncomeFormSchema = z.object({
 });
 
 export async function receiveRecurringIncomeAction(formData: FormData) {
+  const user = await requireUser();
   const parsed = receiveIncomeFormSchema.safeParse({
     recurring_income_id: formData.get('recurring_income_id'),
     period: formData.get('period'),
@@ -82,9 +92,9 @@ export async function receiveRecurringIncomeAction(formData: FormData) {
   }
 
   const { recurring_income_id, period, account_id } = parsed.data;
-  const currentPeriod = await fetchCurrentPeriod();
+  const currentPeriod = await fetchCurrentPeriod(user.id);
   if (!currentPeriod) redirect('/dashboard/movimientos');
-  await receiveRecurringIncome(recurring_income_id, period, currentPeriod.id, account_id);
+  await receiveRecurringIncome(recurring_income_id, period, currentPeriod.id, user.id, account_id);
   revalidatePath('/dashboard/movimientos');
   revalidatePath('/dashboard/ingresos');
   revalidatePath('/dashboard');
@@ -94,6 +104,7 @@ export async function receiveRecurringIncomeAction(formData: FormData) {
 const deleteIncomeFormSchema = z.object({ id: z.string().uuid() });
 
 export async function deleteRecurringIncomeAction(formData: FormData) {
+  const user = await requireUser();
   const parsed = deleteIncomeFormSchema.safeParse({ id: formData.get('id') });
   if (!parsed.success) {
     redirect('/dashboard/ingresos?error=validation');
@@ -101,7 +112,7 @@ export async function deleteRecurringIncomeAction(formData: FormData) {
 
   let deleted = false;
   try {
-    deleted = await deleteRecurringIncome(parsed.data.id);
+    deleted = await deleteRecurringIncome(parsed.data.id, user.id);
   } catch {
     redirect('/dashboard/ingresos?error=delete');
   }

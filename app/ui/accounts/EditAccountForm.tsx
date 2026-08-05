@@ -1,7 +1,9 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { updateAccountAction } from '@/app/lib/actions/accounts';
 import { getAccountBalance } from '@/app/lib/data/accounts';
 import { fetchPeople } from '@/app/lib/data/people';
+import { createClient } from '@/app/lib/supabase/server';
 import SubmitButton from '@/app/ui/SubmitButton';
 import type { Account } from '@/app/lib/definitions';
 import styles from './AccountForm.module.css';
@@ -11,8 +13,11 @@ type Props = {
 };
 
 export default async function EditAccountForm({ account }: Props) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
   const balance = getAccountBalance(account);
-  const people = await fetchPeople();
+  const people = await fetchPeople(user.id);
 
   return (
     <form action={updateAccountAction} className={styles.form}>

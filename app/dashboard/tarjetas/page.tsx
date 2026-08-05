@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { fetchCreditCards, fetchUnpaidStatements } from '@/app/lib/data/credit-cards';
 import { formatUsd } from '@/app/lib/utils';
 import { fetchAccounts } from '@/app/lib/data/accounts';
+import { createClient } from '@/app/lib/supabase/server';
 import CreditCardItem from '@/app/ui/credit-cards/CreditCardItem';
 import styles from './page.module.css';
 
@@ -31,13 +33,16 @@ type Props = {
 };
 
 export default async function TarjetasPage({ searchParams }: Props) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
   const { error } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] ?? null : null;
 
   const [cards, accounts, unpaidStatements] = await Promise.all([
-    fetchCreditCards(),
-    fetchAccounts(),
-    fetchUnpaidStatements(),
+    fetchCreditCards(user.id),
+    fetchAccounts(user.id),
+    fetchUnpaidStatements(user.id),
   ]);
 
   const statementsByCard = new Map<string, typeof unpaidStatements>();

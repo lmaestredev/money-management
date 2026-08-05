@@ -1,11 +1,16 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { fetchClosedPeriodsWithSummary } from '@/app/lib/data/financial-periods';
+import { createClient } from '@/app/lib/supabase/server';
 import { formatUsd, formatArs } from '@/app/lib/utils';
 import { formatShortDate } from '@/app/ui/financial-periods/PeriodBadge';
 import styles from './page.module.css';
 
 export default async function HistorialPage() {
-  const periods = await fetchClosedPeriodsWithSummary();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  const periods = await fetchClosedPeriodsWithSummary(user.id);
 
   return (
     <div className={styles.page}>

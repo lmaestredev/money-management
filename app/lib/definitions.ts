@@ -1,12 +1,5 @@
 // Tipos para la app de finanzas personales.
 
-export type User = {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-};
-
 // Temporal para utils (generateYAxis).
 export type Revenue = {
   month: string;
@@ -18,6 +11,7 @@ export type Person = {
   id: string;
   name: string;
   sort_order: number;
+  user_id: string;
 };
 
 // Cuentas bancarias
@@ -30,7 +24,7 @@ export type Account = {
   currency: AccountCurrency;
   balance_pesos: number;
   balance_dollars: number;
-  user_id: string | null;
+  user_id: string;
   owner_id: string | null;
   owner_name?: string | null;
   created_at: string;
@@ -64,7 +58,7 @@ export type CreditCard = {
   owner_id: string | null;
   owner_name?: string | null;
   active: boolean;
-  user_id: string | null;
+  user_id: string;
   created_at: string;
   updated_at: string;
 };
@@ -111,6 +105,7 @@ export type FinancialPeriod = {
   status: FinancialPeriodStatus;
   closed_at: string | null;
   created_at: string;
+  user_id: string;
 };
 
 // Configuración (presupuestos + preferencias de tasa de cambio)
@@ -175,7 +170,7 @@ export type Movement = {
   exchange_rate: number | null;
   comment: string | null;
   created_at: string;
-  user_id: string | null;
+  user_id: string;
   source: MovementSource | null;
   installment_id?: string | null;
   recurring_expense_id?: string | null;
@@ -227,7 +222,7 @@ export type InstallmentPurchase = {
   pay_before_day: number | null;
   start_period: string | null;
   status: InstallmentStatus;
-  user_id: string | null;
+  user_id: string;
   created_at: string;
   updated_at: string;
   // Derivados (calculados en el mapper)
@@ -267,7 +262,7 @@ export type RecurringExpense = {
   pay_before_day: number | null;
   is_cash: boolean;
   active: boolean;
-  user_id: string | null;
+  user_id: string;
   created_at: string;
   updated_at: string;
 };
@@ -297,7 +292,7 @@ export type RecurringIncome = {
   amount_dollars: number;
   receive_day: number | null;
   active: boolean;
-  user_id: string | null;
+  user_id: string;
   created_at: string;
   updated_at: string;
 };

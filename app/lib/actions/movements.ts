@@ -7,24 +7,32 @@ import { fetchAccountById } from '@/app/lib/data/accounts';
 import { fetchCreditCardById } from '@/app/lib/data/credit-cards';
 import { createMovement, deleteMovement, updateMovement } from '@/app/lib/data/movements';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
+import { createClient } from '@/app/lib/supabase/server';
 import type { AccountCurrency } from '@/app/lib/definitions';
+
+async function requireUser() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  return user;
+}
 
 const optionalUuid = z
   .union([z.string().uuid(), z.literal('')])
   .optional()
   .transform((s) => (s && String(s).trim() ? (s as string) : null));
 
-/** Resuelve la moneda del medio de pago (cuenta o tarjeta) para repartir el monto. */
 async function resolveSourceCurrency(
+  userId: string,
   accountId: string | null,
   cardId: string | null
 ): Promise<AccountCurrency | null> {
   if (accountId) {
-    const account = await fetchAccountById(accountId);
+    const account = await fetchAccountById(accountId, userId);
     return account ? account.currency : null;
   }
   if (cardId) {
-    const card = await fetchCreditCardById(cardId);
+    const card = await fetchCreditCardById(cardId, userId);
     return card ? card.currency : null;
   }
   return null;
@@ -60,6 +68,7 @@ const createMovementFormSchema = z.object({
 });
 
 export async function createMovementAction(formData: FormData) {
+  const user = await requireUser();
   const raw = {
     period: formData.get('period'),
     record_type: formData.get('record_type') ?? undefined,
@@ -98,7 +107,7 @@ export async function createMovementAction(formData: FormData) {
       const period = data.period;
       redirect(`/dashboard/movimientos/nuevo?period=${period}&error=validation`);
     }
-    const currency = await resolveSourceCurrency(data.account_id, data.credit_card_id);
+    const currency = await resolveSourceCurrency(user.id, data.account_id, data.credit_card_id);
     if (!currency) {
       const period = data.period;
       redirect(`/dashboard/movimientos/nuevo?period=${period}&error=validation`);
@@ -142,6 +151,7 @@ export async function createMovementAction(formData: FormData) {
       dollar_rate: data.dollar_rate && data.dollar_rate !== '' ? parseFloat(data.dollar_rate) : null,
       comment: data.comment || null,
     },
+    user.id,
     'app'
   );
 
@@ -155,6 +165,7 @@ const updateMovementFormSchema = createMovementFormSchema.extend({
 });
 
 export async function updateMovementAction(formData: FormData) {
+  const user = await requireUser();
   const raw = {
     id: formData.get('id'),
     period: formData.get('period'),
@@ -199,7 +210,7 @@ export async function updateMovementAction(formData: FormData) {
     if (Number.isNaN(amount) || amount < 0) {
       redirect(errorTarget);
     }
-    const currency = await resolveSourceCurrency(data.account_id, data.credit_card_id);
+    const currency = await resolveSourceCurrency(user.id, data.account_id, data.credit_card_id);
     if (!currency) {
       redirect(errorTarget);
     }
@@ -238,7 +249,7 @@ export async function updateMovementAction(formData: FormData) {
     payment_date: data.payment_date && data.payment_date !== '' ? data.payment_date : null,
     dollar_rate: data.dollar_rate && data.dollar_rate !== '' ? parseFloat(data.dollar_rate) : null,
     comment: data.comment || null,
-  });
+  }, user.id);
 
   revalidatePath('/dashboard/movimientos');
   revalidatePath('/dashboard');
@@ -251,6 +262,7 @@ const deleteMovementFormSchema = z.object({
 });
 
 export async function deleteMovementAction(formData: FormData) {
+  const user = await requireUser();
   const parsed = deleteMovementFormSchema.safeParse({
     id: formData.get('id'),
     period: formData.get('period'),
@@ -260,7 +272,7 @@ export async function deleteMovementAction(formData: FormData) {
   }
 
   const { id, period } = parsed.data;
-  await deleteMovement(id);
+  await deleteMovement(id, user.id);
 
   revalidatePath('/dashboard/movimientos');
   revalidatePath('/dashboard');

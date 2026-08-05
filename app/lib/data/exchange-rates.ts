@@ -133,8 +133,8 @@ export type EffectiveRate = {
  * Tasa efectiva para convertir pesos→USD: el override manual si está activo y es
  * válido; si no, la `venta` de la casa configurada. null si no hay cotización.
  */
-export async function getEffectiveRate(): Promise<EffectiveRate | null> {
-  const settings = await getSettings();
+export async function getEffectiveRate(userId: string): Promise<EffectiveRate | null> {
+  const settings = await getSettings(userId);
 
   if (
     settings.manual_rate_enabled &&

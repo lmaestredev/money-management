@@ -1,12 +1,20 @@
 'use server';
 
+import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { refreshExchangeRates } from '@/app/lib/data/exchange-rates';
 import { updateSettings } from '@/app/lib/data/settings';
+import { createClient } from '@/app/lib/supabase/server';
 import type { RateSource } from '@/app/lib/definitions';
 
-/** Botón "Actualizar ahora": refresca las cotizaciones contra dolarapi. */
+async function requireUser() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  return user;
+}
+
 export async function refreshRatesAction() {
   await refreshExchangeRates();
   revalidatePath('/dashboard/configuracion');
@@ -40,13 +48,13 @@ const settingsFormSchema = z.object({
     }),
 });
 
-// Estado que devuelve la action a useActionState (para disparar el toast).
 export type SettingsActionState = { ok: boolean; message: string } | null;
 
 export async function updateSettingsAction(
   _prevState: SettingsActionState,
   formData: FormData
 ): Promise<SettingsActionState> {
+  const user = await requireUser();
   const parsed = settingsFormSchema.safeParse({
     budget_total_usd: formData.get('budget_total_usd') ?? undefined,
     budget_variable_usd: formData.get('budget_variable_usd') ?? undefined,
@@ -59,7 +67,7 @@ export async function updateSettingsAction(
   }
 
   const d = parsed.data;
-  await updateSettings({
+  await updateSettings(user.id, {
     budget_total_usd: d.budget_total_usd,
     budget_variable_usd: d.budget_variable_usd,
     rate_source: d.rate_source as RateSource,
@@ -67,8 +75,6 @@ export async function updateSettingsAction(
     manual_rate_value: d.manual_rate_value,
   });
 
-  // Sin redirect: revalidamos para refrescar los datos en la misma pantalla y
-  // devolvemos el estado para que el cliente muestre el toast de confirmación.
   revalidatePath('/dashboard/configuracion');
   revalidatePath('/dashboard');
   return { ok: true, message: 'Configuración guardada.' };

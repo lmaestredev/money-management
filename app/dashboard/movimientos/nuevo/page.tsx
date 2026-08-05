@@ -1,6 +1,8 @@
+import { redirect } from 'next/navigation';
 import { fetchAccounts } from '@/app/lib/data/accounts';
 import { fetchActiveCreditCards } from '@/app/lib/data/credit-cards';
 import { fetchCategories } from '@/app/lib/data/categories';
+import { createClient } from '@/app/lib/supabase/server';
 import MovementForm from '@/app/ui/movements/MovementForm';
 import styles from './page.module.css';
 
@@ -20,6 +22,9 @@ type Props = {
 };
 
 export default async function NuevoMovimientoPage({ searchParams }: Props) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
   const { period: periodParam } = await searchParams;
   const period =
     periodParam && /^\d{4}-\d{2}$/.test(periodParam)
@@ -27,8 +32,8 @@ export default async function NuevoMovimientoPage({ searchParams }: Props) {
       : getCurrentPeriod();
 
   const [accounts, cards, categories] = await Promise.all([
-    fetchAccounts(),
-    fetchActiveCreditCards(),
+    fetchAccounts(user.id),
+    fetchActiveCreditCards(user.id),
     fetchCategories(),
   ]);
 

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { fetchAccounts } from '@/app/lib/data/accounts';
 import { fetchMovementsByFinancialPeriod } from '@/app/lib/data/movements';
@@ -9,6 +10,7 @@ import {
   fetchActiveRecurringIncomes,
   fetchRecurringIncomeReceivedIds,
 } from '@/app/lib/data/recurring-incomes';
+import { createClient } from '@/app/lib/supabase/server';
 import type { Movement } from '@/app/lib/definitions';
 import PeriodBadge from '@/app/ui/financial-periods/PeriodBadge';
 import MovementsPageClient, { type MovementSummary } from '@/app/ui/movements/MovementsPageClient';
@@ -57,11 +59,14 @@ function computeSummary(movements: Movement[]): MovementSummary {
 }
 
 export default async function MovimientosPage() {
-  // Período YYYY-MM de hoy — usado como campo secundario en los forms
-  // (el filtro principal es financial_period_id del período activo).
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  const userId = user.id;
+
   const period = getCurrentPeriod();
 
-  const currentFinancialPeriod = await fetchCurrentPeriod();
+  const currentFinancialPeriod = await fetchCurrentPeriod(userId);
   const financialPeriodId = currentFinancialPeriod?.id ?? '';
 
   const [
@@ -74,14 +79,14 @@ export default async function MovimientosPage() {
     activeIncomes,
     receivedIncomeIds,
   ] = await Promise.all([
-    fetchAccounts(),
-    fetchMovementsByFinancialPeriod(financialPeriodId),
-    fetchActiveInstallments(),
-    fetchInstallmentPaidIds(financialPeriodId),
-    fetchActiveRecurringExpenses(),
-    fetchRecurringPaidIds(financialPeriodId),
-    fetchActiveRecurringIncomes(),
-    fetchRecurringIncomeReceivedIds(financialPeriodId),
+    fetchAccounts(userId),
+    fetchMovementsByFinancialPeriod(financialPeriodId, userId),
+    fetchActiveInstallments(userId),
+    fetchInstallmentPaidIds(financialPeriodId, userId),
+    fetchActiveRecurringExpenses(userId),
+    fetchRecurringPaidIds(financialPeriodId, userId),
+    fetchActiveRecurringIncomes(userId),
+    fetchRecurringIncomeReceivedIds(financialPeriodId, userId),
   ]);
 
   const accountNames = new Map(accounts.map((a) => [a.id, a.name]));

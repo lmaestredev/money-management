@@ -1,7 +1,8 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { fetchCreditCardById } from '@/app/lib/data/credit-cards';
+import { createClient } from '@/app/lib/supabase/server';
 import CreditCardForm from '@/app/ui/credit-cards/CreditCardForm';
 import styles from './page.module.css';
 
@@ -10,8 +11,11 @@ type Props = {
 };
 
 export default async function EditarTarjetaPage({ params }: Props) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
   const { id } = await params;
-  const card = await fetchCreditCardById(id);
+  const card = await fetchCreditCardById(id, user.id);
   if (!card) notFound();
 
   return (

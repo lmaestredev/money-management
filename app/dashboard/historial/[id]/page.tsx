@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 import { fetchPeriodById } from '@/app/lib/data/financial-periods';
@@ -6,6 +6,7 @@ import { fetchMovementsByFinancialPeriod } from '@/app/lib/data/movements';
 import { fetchAccounts } from '@/app/lib/data/accounts';
 import { fetchStatementPaymentIds } from '@/app/lib/data/credit-cards';
 import { getEffectiveRate } from '@/app/lib/data/exchange-rates';
+import { createClient } from '@/app/lib/supabase/server';
 import { formatUsd, formatArs } from '@/app/lib/utils';
 import { formatShortDate } from '@/app/ui/financial-periods/PeriodBadge';
 import SummaryCards from '@/app/ui/movements/SummaryCards';
@@ -65,18 +66,22 @@ function computeSummary(
 }
 
 export default async function HistorialDetailPage({ params }: Props) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  const userId = user.id;
   const { id } = await params;
   const [period, accounts, statementPaymentIds, effectiveRate] = await Promise.all([
-    fetchPeriodById(id),
-    fetchAccounts(),
-    fetchStatementPaymentIds(),
-    getEffectiveRate(),
+    fetchPeriodById(id, userId),
+    fetchAccounts(userId),
+    fetchStatementPaymentIds(userId),
+    getEffectiveRate(userId),
   ]);
 
   if (!period) notFound();
   if (period.status !== 'closed') notFound();
 
-  const movements = await fetchMovementsByFinancialPeriod(id);
+  const movements = await fetchMovementsByFinancialPeriod(id, userId);
   const accountNames = new Map(accounts.map((a) => [a.id, a.name]));
   const rate = effectiveRate?.rate ?? null;
   const summary = computeSummary(movements, statementPaymentIds, rate);

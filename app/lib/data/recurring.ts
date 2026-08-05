@@ -1,4 +1,4 @@
-import { sql } from '../db';
+import { sql, withAuthenticatedTx } from '../db';
 import { getBalanceDeltas, getCardDeltas } from './movements';
 import { applyCardCharge, resolveOrCreateStatement } from './credit-cards';
 import type { RecurringExpense, RecurringExpenseInsert } from '../definitions';
@@ -18,7 +18,7 @@ function rowToRecurring(row: Record<string, unknown>): RecurringExpense {
     pay_before_day: row.pay_before_day != null ? Number(row.pay_before_day) : null,
     is_cash: Boolean(row.is_cash),
     active: Boolean(row.active),
-    user_id: (row.user_id as string) ?? null,
+    user_id: row.user_id as string,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
   };
@@ -32,86 +32,93 @@ const SELECT_COLUMNS = sql`
   r.user_id, r.created_at, r.updated_at
 `;
 
-export async function fetchRecurringExpenses(): Promise<RecurringExpense[]> {
-  const rows = await sql`
-    SELECT ${SELECT_COLUMNS}
-    FROM recurring_expenses r
-    LEFT JOIN categories c ON r.category_id = c.id
-    LEFT JOIN accounts a ON r.account_id = a.id
-    LEFT JOIN credit_cards cc ON r.credit_card_id = cc.id
-    ORDER BY r.active DESC, r.name ASC
-  `;
-  return rows.map((r) => rowToRecurring(r as Record<string, unknown>));
+export async function fetchRecurringExpenses(userId: string): Promise<RecurringExpense[]> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const rows = await tx`
+      SELECT ${SELECT_COLUMNS}
+      FROM recurring_expenses r
+      LEFT JOIN categories c ON r.category_id = c.id
+      LEFT JOIN accounts a ON r.account_id = a.id
+      LEFT JOIN credit_cards cc ON r.credit_card_id = cc.id
+      ORDER BY r.active DESC, r.name ASC
+    `;
+    return rows.map((r) => rowToRecurring(r as Record<string, unknown>));
+  });
 }
 
-export async function fetchActiveRecurringExpenses(): Promise<RecurringExpense[]> {
-  const rows = await sql`
-    SELECT ${SELECT_COLUMNS}
-    FROM recurring_expenses r
-    LEFT JOIN categories c ON r.category_id = c.id
-    LEFT JOIN accounts a ON r.account_id = a.id
-    LEFT JOIN credit_cards cc ON r.credit_card_id = cc.id
-    WHERE r.active = true
-    ORDER BY r.name ASC
-  `;
-  return rows.map((r) => rowToRecurring(r as Record<string, unknown>));
+export async function fetchActiveRecurringExpenses(userId: string): Promise<RecurringExpense[]> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const rows = await tx`
+      SELECT ${SELECT_COLUMNS}
+      FROM recurring_expenses r
+      LEFT JOIN categories c ON r.category_id = c.id
+      LEFT JOIN accounts a ON r.account_id = a.id
+      LEFT JOIN credit_cards cc ON r.credit_card_id = cc.id
+      WHERE r.active = true
+      ORDER BY r.name ASC
+    `;
+    return rows.map((r) => rowToRecurring(r as Record<string, unknown>));
+  });
 }
 
-export async function fetchRecurringExpenseById(id: string): Promise<RecurringExpense | null> {
-  const [row] = await sql`
-    SELECT ${SELECT_COLUMNS}
-    FROM recurring_expenses r
-    LEFT JOIN categories c ON r.category_id = c.id
-    LEFT JOIN accounts a ON r.account_id = a.id
-    LEFT JOIN credit_cards cc ON r.credit_card_id = cc.id
-    WHERE r.id = ${id}
-  `;
-  if (!row) return null;
-  return rowToRecurring(row as Record<string, unknown>);
+export async function fetchRecurringExpenseById(id: string, userId: string): Promise<RecurringExpense | null> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const [row] = await tx`
+      SELECT ${SELECT_COLUMNS}
+      FROM recurring_expenses r
+      LEFT JOIN categories c ON r.category_id = c.id
+      LEFT JOIN accounts a ON r.account_id = a.id
+      LEFT JOIN credit_cards cc ON r.credit_card_id = cc.id
+      WHERE r.id = ${id}
+    `;
+    if (!row) return null;
+    return rowToRecurring(row as Record<string, unknown>);
+  });
 }
 
-/** IDs de gastos fijos ya pagados en el período financiero dado. */
-export async function fetchRecurringPaidIds(financialPeriodId: string): Promise<Set<string>> {
-  const rows = (await sql`
-    SELECT DISTINCT recurring_expense_id
-    FROM movements
-    WHERE financial_period_id = ${financialPeriodId} AND recurring_expense_id IS NOT NULL
-  `) as { recurring_expense_id: string }[];
-  return new Set(rows.map((r) => r.recurring_expense_id));
+export async function fetchRecurringPaidIds(financialPeriodId: string, userId: string): Promise<Set<string>> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const rows = (await tx`
+      SELECT DISTINCT recurring_expense_id
+      FROM movements
+      WHERE financial_period_id = ${financialPeriodId} AND recurring_expense_id IS NOT NULL
+    `) as { recurring_expense_id: string }[];
+    return new Set(rows.map((r) => r.recurring_expense_id));
+  });
 }
 
 export async function createRecurringExpense(
-  data: RecurringExpenseInsert
+  data: RecurringExpenseInsert,
+  userId: string
 ): Promise<RecurringExpense> {
-  const [row] = await sql`
-    INSERT INTO recurring_expenses (
-      name, category_id, account_id, credit_card_id, amount_pesos, amount_dollars,
-      pay_before_day, is_cash, active, user_id
-    )
-    VALUES (
-      ${data.name},
-      ${data.category_id ?? null},
-      ${data.account_id ?? null},
-      ${data.credit_card_id ?? null},
-      ${data.amount_pesos ?? 0},
-      ${data.amount_dollars ?? 0},
-      ${data.pay_before_day ?? null},
-      ${data.is_cash ?? false},
-      ${data.active ?? true},
-      ${data.user_id ?? null}
-    )
-    RETURNING id
-  `;
-  const created = await fetchRecurringExpenseById((row as { id: string }).id);
+  const insertedId = await withAuthenticatedTx(userId, async (tx) => {
+    const [row] = await tx`
+      INSERT INTO recurring_expenses (
+        name, category_id, account_id, credit_card_id, amount_pesos, amount_dollars,
+        pay_before_day, is_cash, active, user_id
+      )
+      VALUES (
+        ${data.name},
+        ${data.category_id ?? null},
+        ${data.account_id ?? null},
+        ${data.credit_card_id ?? null},
+        ${data.amount_pesos ?? 0},
+        ${data.amount_dollars ?? 0},
+        ${data.pay_before_day ?? null},
+        ${data.is_cash ?? false},
+        ${data.active ?? true},
+        ${userId}
+      )
+      RETURNING id
+    `;
+    return (row as { id: string }).id;
+  });
+  const created = await fetchRecurringExpenseById(insertedId, userId);
   return created!;
 }
 
-/**
- * Elimina un gasto fijo. Preserva el historial: desvincula los pagos ya
- * registrados (quedan como movimientos normales) antes de borrar la plantilla.
- */
-export async function deleteRecurringExpense(id: string): Promise<boolean> {
-  return sql.begin(async (tx) => {
+export async function deleteRecurringExpense(id: string, userId: string): Promise<boolean> {
+  return withAuthenticatedTx(userId, async (tx) => {
     await tx`
       UPDATE movements SET recurring_expense_id = NULL
       WHERE recurring_expense_id = ${id}
@@ -128,25 +135,14 @@ export type PayRecurringResult =
   | { ok: true }
   | { ok: false; reason: 'not_found' | 'inactive' | 'already_paid' | 'no_account' };
 
-/**
- * Registra el pago del gasto fijo del mes: crea un movement enlazado. Atómico.
- * Evita doble pago en el periodo.
- *
- * Cómo se contabiliza:
- * - Si se pasa `overrideAccountId` (caso efectivo: se elige al confirmar) se
- *   debita esa cuenta.
- * - Si no, y la plantilla está asociada a una tarjeta, se carga al resumen de
- *   la tarjeta (suma a la deuda; no debita ninguna cuenta).
- * - Si no, se debita la cuenta fija de la plantilla.
- * Si no hay ninguna, devuelve 'no_account'.
- */
 export async function payRecurringExpense(
   recurringId: string,
   period: string,
   financialPeriodId: string,
+  userId: string,
   overrideAccountId?: string | null
 ): Promise<PayRecurringResult> {
-  return sql.begin(async (tx) => {
+  return withAuthenticatedTx(userId, async (tx) => {
     const [rec] = await tx`
       SELECT id, name, account_id, credit_card_id, category_id,
              amount_pesos, amount_dollars, active
@@ -177,12 +173,12 @@ export async function payRecurringExpense(
         INSERT INTO movements (
           period, financial_period_id, record_type, credit_card_id, statement_id, category_id,
           description, status,
-          amount_pesos, amount_dollars, payment_date, comment, source, recurring_expense_id
+          amount_pesos, amount_dollars, payment_date, comment, source, recurring_expense_id, user_id
         )
         VALUES (
           ${period}, ${financialPeriodId}, 'fixed_payment', ${rec.credit_card_id}, ${st.id}, ${rec.category_id ?? null},
           ${rec.name}, true, ${amountPesos}, ${amountDollars}, NULL, NULL, 'app',
-          ${recurringId}
+          ${recurringId}, ${userId}
         )
       `;
       const card = getCardDeltas('fixed_payment', amountPesos, amountDollars);
@@ -191,12 +187,12 @@ export async function payRecurringExpense(
       await tx`
         INSERT INTO movements (
           period, financial_period_id, record_type, account_id, category_id, description, status,
-          amount_pesos, amount_dollars, payment_date, comment, source, recurring_expense_id
+          amount_pesos, amount_dollars, payment_date, comment, source, recurring_expense_id, user_id
         )
         VALUES (
           ${period}, ${financialPeriodId}, 'fixed_payment', ${accountId}, ${rec.category_id ?? null},
           ${rec.name}, true, ${amountPesos}, ${amountDollars}, NULL, NULL, 'app',
-          ${recurringId}
+          ${recurringId}, ${userId}
         )
       `;
 

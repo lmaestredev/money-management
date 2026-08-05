@@ -10,6 +10,14 @@ import {
 } from '@/app/lib/data/recurring';
 import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
+import { createClient } from '@/app/lib/supabase/server';
+
+async function requireUser() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  return user;
+}
 
 const optionalNumber = z
   .string()
@@ -37,6 +45,7 @@ const createRecurringFormSchema = z.object({
 });
 
 export async function createRecurringExpenseAction(formData: FormData) {
+  const user = await requireUser();
   const raw = {
     name: formData.get('name') ?? '',
     category_id: formData.get('category_id') ?? undefined,
@@ -54,7 +63,6 @@ export async function createRecurringExpenseAction(formData: FormData) {
 
   const data = parsed.data;
   const payBeforeDay = data.pay_before_day ? parseInt(data.pay_before_day, 10) : null;
-  // Efectivo: la cuenta no se fija al crear; se elige al confirmar el pago.
   const isCash = formData.get('is_cash') === 'true';
 
   await createRecurringExpense({
@@ -66,7 +74,7 @@ export async function createRecurringExpenseAction(formData: FormData) {
     amount_dollars: data.amount_dollars,
     pay_before_day: payBeforeDay != null && !Number.isNaN(payBeforeDay) ? payBeforeDay : null,
     is_cash: isCash,
-  });
+  }, user.id);
 
   revalidatePath('/dashboard/gastos-fijos');
   revalidatePath('/dashboard');
@@ -83,6 +91,7 @@ const payRecurringFormSchema = z.object({
 });
 
 export async function payRecurringExpenseAction(formData: FormData) {
+  const user = await requireUser();
   const parsed = payRecurringFormSchema.safeParse({
     recurring_expense_id: formData.get('recurring_expense_id'),
     period: formData.get('period'),
@@ -93,9 +102,9 @@ export async function payRecurringExpenseAction(formData: FormData) {
   }
 
   const { recurring_expense_id, period, account_id } = parsed.data;
-  const currentPeriod = await fetchCurrentPeriod();
+  const currentPeriod = await fetchCurrentPeriod(user.id);
   if (!currentPeriod) redirect('/dashboard/movimientos');
-  await payRecurringExpense(recurring_expense_id, period, currentPeriod.id, account_id);
+  await payRecurringExpense(recurring_expense_id, period, currentPeriod.id, user.id, account_id);
   revalidatePath('/dashboard/movimientos');
   revalidatePath('/dashboard/gastos-fijos');
   revalidatePath('/dashboard');
@@ -105,6 +114,7 @@ export async function payRecurringExpenseAction(formData: FormData) {
 const deleteRecurringFormSchema = z.object({ id: z.string().uuid() });
 
 export async function deleteRecurringExpenseAction(formData: FormData) {
+  const user = await requireUser();
   const parsed = deleteRecurringFormSchema.safeParse({ id: formData.get('id') });
   if (!parsed.success) {
     redirect('/dashboard/gastos-fijos?error=validation');
@@ -112,7 +122,7 @@ export async function deleteRecurringExpenseAction(formData: FormData) {
 
   let deleted = false;
   try {
-    deleted = await deleteRecurringExpense(parsed.data.id);
+    deleted = await deleteRecurringExpense(parsed.data.id, user.id);
   } catch {
     redirect('/dashboard/gastos-fijos?error=delete');
   }

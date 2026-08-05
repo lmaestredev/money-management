@@ -1,5 +1,6 @@
 'use server';
 
+import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import {
   fetchCurrentPeriod,
@@ -20,7 +21,15 @@ import {
   fetchRecurringIncomeReceivedIds,
   receiveRecurringIncome,
 } from '@/app/lib/data/recurring-incomes';
+import { createClient } from '@/app/lib/supabase/server';
 import type { FinancialPeriod } from '@/app/lib/definitions';
+
+async function requireUser() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  return user;
+}
 
 export type SkippedItem = {
   id: string;
@@ -31,7 +40,6 @@ export type SkippedItem = {
 export type ManualItem = {
   id: string;
   name: string;
-  /** Por qué requiere acción manual. */
   hint: string;
 };
 
@@ -52,7 +60,6 @@ export type ClosePeriodResult =
   | { ok: true; summary: ClosePeriodSummary }
   | { ok: false; reason: 'no_open_period' | 'error'; error?: string };
 
-/** Hoy en YYYY-MM-DD (sin conversión TZ). */
 function todayIso(): string {
   const d = new Date();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -60,32 +67,25 @@ function todayIso(): string {
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
-/** Periodo YYYY-MM de hoy (para el campo `period` de los movimientos). */
 function todayPeriod(): string {
   const d = new Date();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   return `${d.getFullYear()}-${mm}`;
 }
 
-/**
- * Cierra el período financiero activo:
- * 1. Auto-registra cuotas, gastos fijos e ingresos pendientes.
- * 2. Sella el período (end_date = hoy) y abre el siguiente (start_date = hoy).
- *
- * Los ítems en efectivo (is_cash) o sin cuenta/tarjeta asignada se reportan
- * como "manuales" — no se bloquea el cierre por ellos.
- */
 export async function closePeriodAction(): Promise<ClosePeriodResult> {
-  const currentPeriod = await fetchCurrentPeriod();
+  const user = await requireUser();
+  const userId = user.id;
+
+  const currentPeriod = await fetchCurrentPeriod(userId);
   if (!currentPeriod) {
     return { ok: false, reason: 'no_open_period' };
   }
 
   const fpId = currentPeriod.id;
-  const period = todayPeriod(); // YYYY-MM para el campo legacy de movements
+  const period = todayPeriod();
 
   try {
-    // ── Fetch en paralelo ──────────────────────────────────────────────────
     const [
       activeInstallments,
       activeRecurring,
@@ -94,15 +94,14 @@ export async function closePeriodAction(): Promise<ClosePeriodResult> {
       paidRecurringIds,
       receivedIncomeIds,
     ] = await Promise.all([
-      fetchActiveInstallments(),
-      fetchActiveRecurringExpenses(),
-      fetchActiveRecurringIncomes(),
-      fetchInstallmentPaidIds(fpId),
-      fetchRecurringPaidIds(fpId),
-      fetchRecurringIncomeReceivedIds(fpId),
+      fetchActiveInstallments(userId),
+      fetchActiveRecurringExpenses(userId),
+      fetchActiveRecurringIncomes(userId),
+      fetchInstallmentPaidIds(fpId, userId),
+      fetchRecurringPaidIds(fpId, userId),
+      fetchRecurringIncomeReceivedIds(fpId, userId),
     ]);
 
-    // ── Cuotas ────────────────────────────────────────────────────────────
     const installmentsPaid: number[] = [];
     const installmentsSkipped: SkippedItem[] = [];
 
@@ -111,7 +110,7 @@ export async function closePeriodAction(): Promise<ClosePeriodResult> {
         installmentsSkipped.push({ id: inst.id, name: inst.name, reason: 'already_paid' });
         continue;
       }
-      const result = await payInstallment(inst.id, period, fpId);
+      const result = await payInstallment(inst.id, period, fpId, userId);
       if (result.ok) {
         installmentsPaid.push(1);
       } else {
@@ -126,7 +125,6 @@ export async function closePeriodAction(): Promise<ClosePeriodResult> {
       }
     }
 
-    // ── Gastos fijos recurrentes ───────────────────────────────────────────
     const fixedPaid: number[] = [];
     const fixedManual: ManualItem[] = [];
     const fixedSkipped: SkippedItem[] = [];
@@ -136,7 +134,6 @@ export async function closePeriodAction(): Promise<ClosePeriodResult> {
         fixedSkipped.push({ id: exp.id, name: exp.name, reason: 'already_paid' });
         continue;
       }
-      // Efectivo sin cuenta: requiere acción manual al pagar.
       if (exp.is_cash) {
         fixedManual.push({
           id: exp.id,
@@ -145,7 +142,6 @@ export async function closePeriodAction(): Promise<ClosePeriodResult> {
         });
         continue;
       }
-      // Sin cuenta ni tarjeta asignada.
       if (!exp.account_id && !exp.credit_card_id) {
         fixedManual.push({
           id: exp.id,
@@ -154,7 +150,7 @@ export async function closePeriodAction(): Promise<ClosePeriodResult> {
         });
         continue;
       }
-      const result = await payRecurringExpense(exp.id, period, fpId);
+      const result = await payRecurringExpense(exp.id, period, fpId, userId);
       if (result.ok) {
         fixedPaid.push(1);
       } else {
@@ -168,7 +164,6 @@ export async function closePeriodAction(): Promise<ClosePeriodResult> {
       }
     }
 
-    // ── Ingresos recurrentes ───────────────────────────────────────────────
     const incomePaid: number[] = [];
     const incomeManual: ManualItem[] = [];
     const incomeSkipped: SkippedItem[] = [];
@@ -178,7 +173,6 @@ export async function closePeriodAction(): Promise<ClosePeriodResult> {
         incomeSkipped.push({ id: inc.id, name: inc.name, reason: 'already_paid' });
         continue;
       }
-      // Sin cuenta asignada: requiere acción manual al cobrar.
       if (!inc.account_id) {
         incomeManual.push({
           id: inc.id,
@@ -187,7 +181,7 @@ export async function closePeriodAction(): Promise<ClosePeriodResult> {
         });
         continue;
       }
-      const result = await receiveRecurringIncome(inc.id, period, fpId);
+      const result = await receiveRecurringIncome(inc.id, period, fpId, userId);
       if (result.ok) {
         incomePaid.push(1);
       } else {
@@ -201,11 +195,9 @@ export async function closePeriodAction(): Promise<ClosePeriodResult> {
       }
     }
 
-    // ── Cierre del período y apertura del siguiente ────────────────────────
     const today = todayIso();
-    const { closed, next } = await closePeriodRecord(fpId, today, today);
+    const { closed, next } = await closePeriodRecord(fpId, today, today, userId);
 
-    // Revalida todas las rutas afectadas.
     revalidatePath('/dashboard');
     revalidatePath('/dashboard/movimientos');
     revalidatePath('/dashboard/cuotas');
@@ -237,10 +229,6 @@ export async function closePeriodAction(): Promise<ClosePeriodResult> {
   }
 }
 
-/**
- * Devuelve un preview de lo que se procesaría al cerrar el período activo,
- * sin ejecutar ningún cambio. Útil para poblar el modal de confirmación.
- */
 export async function previewClosePeriod(): Promise<{
   installmentsPending: number;
   fixedExpensesPending: number;
@@ -249,7 +237,10 @@ export async function previewClosePeriod(): Promise<{
   incomesManual: number;
   currentPeriod: FinancialPeriod | null;
 }> {
-  const currentPeriod = await fetchCurrentPeriod();
+  const user = await requireUser();
+  const userId = user.id;
+
+  const currentPeriod = await fetchCurrentPeriod(userId);
   if (!currentPeriod) {
     return {
       installmentsPending: 0,
@@ -271,12 +262,12 @@ export async function previewClosePeriod(): Promise<{
     paidRecurringIds,
     receivedIncomeIds,
   ] = await Promise.all([
-    fetchActiveInstallments(),
-    fetchActiveRecurringExpenses(),
-    fetchActiveRecurringIncomes(),
-    fetchInstallmentPaidIds(fpId),
-    fetchRecurringPaidIds(fpId),
-    fetchRecurringIncomeReceivedIds(fpId),
+    fetchActiveInstallments(userId),
+    fetchActiveRecurringExpenses(userId),
+    fetchActiveRecurringIncomes(userId),
+    fetchInstallmentPaidIds(fpId, userId),
+    fetchRecurringPaidIds(fpId, userId),
+    fetchRecurringIncomeReceivedIds(fpId, userId),
   ]);
 
   const installmentsPending = activeInstallments.filter(

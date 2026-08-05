@@ -1,7 +1,8 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { fetchAccountById } from '@/app/lib/data/accounts';
+import { createClient } from '@/app/lib/supabase/server';
 import EditAccountForm from '@/app/ui/accounts/EditAccountForm';
 import styles from './page.module.css';
 
@@ -10,8 +11,11 @@ type Props = {
 };
 
 export default async function EditarCuentaPage({ params }: Props) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
   const { id } = await params;
-  const account = await fetchAccountById(id);
+  const account = await fetchAccountById(id, user.id);
   if (!account) notFound();
 
   return (

@@ -55,3 +55,17 @@ export const sql =
   });
 
 globalForDb._sql = sql;
+
+export type Tx = postgres.TransactionSql<Record<string, never>>;
+
+export async function withAuthenticatedTx<T>(
+  userId: string,
+  callback: (tx: Tx) => Promise<T>
+): Promise<T> {
+  if (!userId) throw new Error('withAuthenticatedTx: userId requerido');
+  return sql.begin(async (tx) => {
+    await tx`SELECT set_config('request.jwt.claim.sub', ${userId}, true)`;
+    await tx`SET LOCAL ROLE authenticated`;
+    return callback(tx);
+  }) as Promise<T>;
+}
