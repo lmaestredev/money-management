@@ -1,11 +1,5 @@
 // Tipos para la app de finanzas personales.
 
-// Temporal para utils (generateYAxis).
-export type Revenue = {
-  month: string;
-  revenue: number;
-};
-
 // Personas del hogar (dueños de cuentas; base del reporte mensual por persona)
 export type Person = {
   id: string;

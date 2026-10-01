@@ -29,7 +29,7 @@ Leyenda: 🟢 fácil · 🟡 media · 🔴 difícil · 🛑 requiere decisión d
 - **Verificar primero en una DB de prueba:** `app/lib/db.ts:67-68` solo setea `request.jwt.claim.sub`; si las policies de `categories` usan `auth.role()` podrían devolver 0 filas (todo "Sin categoría"). Dentro de una transacción con `SET LOCAL ROLE authenticated` correr `SELECT count(*) FROM categories`. Si da 0, fijar `request.jwt.claim.role` en `db.ts` o ajustar la policy.
 - Hecho cuando: un usuario autenticado no puede modificar `exchange_rates`; `users` no existe; categorías siguen visibles.
 
-**E03 — Borrar código del curso** 🟢 ⏱1
+**E03 — Borrar código del curso** 🟢 ⏱1 ✅ 2026-10-01
 - `app/lib/placeholder-data.ts` (usuario y password de ejemplo), `app/ui/login-form.tsx`, `app/ui/button.tsx` si no se usan, funciones sin uso de `app/lib/utils.ts` (`generateYAxis`, `generatePagination`, `formatCurrency`, `formatDateToLocal`), tipo `Revenue`, `public/customers/`, referencias en `tsconfig.json`, `app/ui/DesignSystemPreview`. Reescribir `README.md`.
 - Antes de borrar cada archivo: `grep` para confirmar que nadie lo importa.
 
