@@ -65,6 +65,8 @@ export async function withAuthenticatedTx<T>(
   if (!userId) throw new Error('withAuthenticatedTx: userId requerido');
   return sql.begin(async (tx) => {
     await tx`SELECT set_config('request.jwt.claim.sub', ${userId}, true)`;
+    // Las policies de datos globales (categories, exchange_rates) usan auth.role().
+    await tx`SELECT set_config('request.jwt.claim.role', 'authenticated', true)`;
     await tx`SET LOCAL ROLE authenticated`;
     return callback(tx);
   }) as Promise<T>;

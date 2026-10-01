@@ -22,7 +22,7 @@ Leyenda: 🟢 fácil · 🟡 media · 🔴 difícil · 🛑 requiere decisión d
 - `.env.example`: agregar `BOT_USER_ID`, `CRON_SECRET`, `SKIP_DB_CHECK`; documentar que los secretos son obligatorios.
 - Hecho cuando: sin secreto la API responde error; `/seed` no existe; `pnpm build` pasa.
 
-**E02 — Permisos y RLS en base de datos** 🟡 ⏱3 — *nueva migración, no editar las viejas*
+**E02 — Permisos y RLS en base de datos** 🟡 ⏱3 ✅ 2026-10-01 — *nueva migración, no editar las viejas*
 - `public.users` (con columna `password`, de `001_initial.sql`) sin RLS: `DROP TABLE IF EXISTS public.users CASCADE`.
 - `_migrations` sin RLS; `REVOKE ALL` a `anon`/`authenticated` sobre `_migrations`.
 - `017_rls_policies.sql:162-164`: `exchange_rates_insert/update` permiten a cualquier autenticado reescribir la cotización global. Quitarlas (escribe el rol de servicio).
