@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { currentPeriodAR, todayAR } from '@/app/lib/dates';
 import {
   fetchCurrentPeriod,
   closePeriodRecord,
@@ -60,19 +61,6 @@ export type ClosePeriodResult =
   | { ok: true; summary: ClosePeriodSummary }
   | { ok: false; reason: 'no_open_period' | 'error'; error?: string };
 
-function todayIso(): string {
-  const d = new Date();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${mm}-${dd}`;
-}
-
-function todayPeriod(): string {
-  const d = new Date();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${d.getFullYear()}-${mm}`;
-}
-
 export async function closePeriodAction(): Promise<ClosePeriodResult> {
   const user = await requireUser();
   const userId = user.id;
@@ -83,7 +71,7 @@ export async function closePeriodAction(): Promise<ClosePeriodResult> {
   }
 
   const fpId = currentPeriod.id;
-  const period = todayPeriod();
+  const period = currentPeriodAR();
 
   try {
     const [
@@ -195,7 +183,7 @@ export async function closePeriodAction(): Promise<ClosePeriodResult> {
       }
     }
 
-    const today = todayIso();
+    const today = todayAR();
     const { closed, next } = await closePeriodRecord(fpId, today, today, userId);
 
     revalidatePath('/dashboard');

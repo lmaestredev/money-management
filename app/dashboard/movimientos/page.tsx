@@ -4,6 +4,7 @@ import { PlusIcon } from '@heroicons/react/24/outline';
 import { fetchAccounts } from '@/app/lib/data/accounts';
 import { fetchMovementsByFinancialPeriod } from '@/app/lib/data/movements';
 import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
+import { currentPeriodAR } from '@/app/lib/dates';
 import { fetchActiveInstallments, fetchInstallmentPaidIds } from '@/app/lib/data/installments';
 import { fetchActiveRecurringExpenses, fetchRecurringPaidIds } from '@/app/lib/data/recurring';
 import {
@@ -19,13 +20,6 @@ import MonthlyInstallmentsSection from '@/app/ui/installments/MonthlyInstallment
 import MonthlyFixedExpensesSection from '@/app/ui/recurring/MonthlyFixedExpensesSection';
 import MonthlyIncomesSection from '@/app/ui/recurring-incomes/MonthlyIncomesSection';
 import styles from './page.module.css';
-
-function getCurrentPeriod(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  return `${year}-${month}`;
-}
 
 /**
  * Valor del movimiento en USD. Los importes en dólares se toman directo; los de
@@ -81,7 +75,7 @@ export default async function MovimientosPage() {
   if (!user) redirect('/login');
   const userId = user.id;
 
-  const period = getCurrentPeriod();
+  const period = currentPeriodAR();
 
   const currentFinancialPeriod = await fetchCurrentPeriod(userId);
   const financialPeriodId = currentFinancialPeriod?.id ?? '';

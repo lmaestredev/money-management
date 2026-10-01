@@ -2,20 +2,10 @@ import { redirect } from 'next/navigation';
 import { fetchAccounts } from '@/app/lib/data/accounts';
 import { fetchActiveCreditCards } from '@/app/lib/data/credit-cards';
 import { fetchCategories } from '@/app/lib/data/categories';
+import { currentPeriodAR, todayAR } from '@/app/lib/dates';
 import { createClient } from '@/app/lib/supabase/server';
 import MovementForm from '@/app/ui/movements/MovementForm';
 import styles from './page.module.css';
-
-function getCurrentPeriod(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  return `${year}-${month}`;
-}
-
-function getTodayISO(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 type Props = {
   searchParams: Promise<{ period?: string }>;
@@ -29,7 +19,7 @@ export default async function NuevoMovimientoPage({ searchParams }: Props) {
   const period =
     periodParam && /^\d{4}-\d{2}$/.test(periodParam)
       ? periodParam
-      : getCurrentPeriod();
+      : currentPeriodAR();
 
   const [accounts, cards, categories] = await Promise.all([
     fetchAccounts(user.id),
@@ -47,7 +37,7 @@ export default async function NuevoMovimientoPage({ searchParams }: Props) {
         accounts={accounts}
         cards={cards}
         categories={categories}
-        defaultPaymentDate={getTodayISO()}
+        defaultPaymentDate={todayAR()}
       />
     </div>
   );

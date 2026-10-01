@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { fetchAccountById } from '@/app/lib/data/accounts';
 import { fetchCreditCardById } from '@/app/lib/data/credit-cards';
 import { createMovement, deleteMovement, updateMovement } from '@/app/lib/data/movements';
+import { currentPeriodAR } from '@/app/lib/dates';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
 import { createClient } from '@/app/lib/supabase/server';
 import type { AccountCurrency } from '@/app/lib/definitions';
@@ -90,7 +91,7 @@ export async function createMovementAction(formData: FormData) {
     const period =
       typeof raw.period === 'string' && /^\d{4}-\d{2}$/.test(raw.period)
         ? raw.period
-        : new Date().toISOString().slice(0, 7);
+        : currentPeriodAR();
     redirect(`/dashboard/movimientos/nuevo?period=${period}&error=validation`);
   }
 
@@ -189,7 +190,7 @@ export async function updateMovementAction(formData: FormData) {
     const period =
       typeof raw.period === 'string' && /^\d{4}-\d{2}$/.test(raw.period)
         ? raw.period
-        : new Date().toISOString().slice(0, 7);
+        : currentPeriodAR();
     redirect(
       id
         ? `/dashboard/movimientos/editar/${id}?period=${period}&error=validation`
