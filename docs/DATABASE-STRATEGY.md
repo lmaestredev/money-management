@@ -26,7 +26,7 @@ Tanto `pnpm dev` como `pnpm start` ejecutan `db:migrate` automáticamente antes 
 
 ## Seed (datos iniciales)
 
-- La ruta `/api/seed` (o el script `pnpm db:seed` si se añade) **solo inserta datos** (usuarios, cuentas, categorías, movimientos de ejemplo).
+- El script `pnpm db:seed` **solo inserta datos** de referencia (categorías). No es una ruta HTTP.
 - **No** crea tablas ni columnas. Asume que el esquema ya está aplicado vía `pnpm db:migrate`.
 - Úsalo después de migrar, cuando quieras datos de prueba.
 
@@ -45,4 +45,4 @@ Si no defines `SKIP_DB_CHECK=1`, al arrancar (dev/start) y al hacer build se com
 | `pnpm db:migrate`| Aplica migraciones pendientes. Obligatorio antes de usar la app. |
 | `pnpm dev`       | Ejecuta `db:migrate` y, si termina bien, inicia el servidor de desarrollo. |
 | `pnpm start`     | Ejecuta `db:migrate` y, si termina bien, inicia el servidor de producción. |
-| GET `/api/seed`  | Inserta datos iniciales (requiere esquema ya migrado). |
+| `pnpm db:seed`   | Inserta las categorías de referencia (requiere esquema ya migrado). |
