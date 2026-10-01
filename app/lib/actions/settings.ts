@@ -16,6 +16,7 @@ async function requireUser() {
 }
 
 export async function refreshRatesAction() {
+  await requireUser();
   await refreshExchangeRates();
   revalidatePath('/dashboard/configuracion');
   revalidatePath('/dashboard');

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { requireBearerSecret } from '@/app/lib/auth/bearer';
 import {
   createMovement,
   fetchMovementsByPeriod,
@@ -26,10 +27,8 @@ const createMovementSchema = z.object({
   comment: z.string().optional().nullable(),
 });
 
-function getBearerToken(request: Request): string | null {
-  const auth = request.headers.get('Authorization');
-  if (!auth?.startsWith('Bearer ')) return null;
-  return auth.slice(7).trim() || null;
+function getExpectedSecret(): string | undefined {
+  return process.env.TELEGRAM_BOT_SECRET || process.env.API_SECRET || undefined;
 }
 
 function getBotUserId(): string {
@@ -39,11 +38,8 @@ function getBotUserId(): string {
 }
 
 export async function POST(request: Request) {
-  const token = getBearerToken(request);
-  const expectedToken = process.env.TELEGRAM_BOT_SECRET ?? process.env.API_SECRET;
-  if (expectedToken && token !== expectedToken) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = requireBearerSecret(request, getExpectedSecret());
+  if (denied) return denied;
 
   let body: unknown;
   try {
@@ -78,11 +74,8 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const token = getBearerToken(request);
-  const expectedToken = process.env.TELEGRAM_BOT_SECRET ?? process.env.API_SECRET;
-  if (expectedToken && token !== expectedToken) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = requireBearerSecret(request, getExpectedSecret());
+  if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
   const period = searchParams.get('period');

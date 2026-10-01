@@ -1,20 +1,16 @@
+import { requireBearerSecret } from '@/app/lib/auth/bearer';
 import { refreshExchangeRates } from '@/app/lib/data/exchange-rates';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * Refresca las cotizaciones desde dolarapi. La pega el Vercel Cron (11:00 y
- * 17:00 ART → 14:00 y 20:00 UTC). Si CRON_SECRET está definido, exige el header
- * Authorization: Bearer <CRON_SECRET> (Vercel lo envía automáticamente).
+ * 17:00 ART → 14:00 y 20:00 UTC). Exige CRON_SECRET: sin él responde error, y con él
+ * requiere Authorization: Bearer <CRON_SECRET> (Vercel lo envía automáticamente).
  */
 async function handle(request: Request): Promise<Response> {
-  const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = request.headers.get('authorization');
-    if (auth !== `Bearer ${secret}`) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-  }
+  const denied = requireBearerSecret(request, process.env.CRON_SECRET);
+  if (denied) return denied;
 
   const result = await refreshExchangeRates();
   if (!result.ok) {
