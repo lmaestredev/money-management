@@ -17,7 +17,7 @@ export default function Page() {
             finanzas personales en un solo lugar.
           </p>
           <Link href="/dashboard" className={styles.link}>
-            <span>Ir al dashboard</span>
+            <span>Ir al dashboard - by luis</span>
             <ArrowRightIcon className={styles.linkIcon} />
           </Link>
         </div>
