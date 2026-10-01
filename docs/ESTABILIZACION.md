@@ -194,6 +194,16 @@ Leyenda: 🟢 fácil · 🟡 media · 🔴 difícil · 🛑 requiere decisión d
 - `credit_card_statements.user_id` + policy simple; `ON DELETE CASCADE` hacia `auth.users` (`014-017`).
 - 🛑 **Pago parcial de resumen** (hoy solo total): necesita diseño de modelo (`paid_pesos/paid_dollars`, remanente al siguiente resumen). No implementar sin acordar.
 
+**E35 — Decidir destino de `DesignSystemPreview` y `ds/`** 🟢 ⏱1 🛑 — *Backlog, prioridad baja; detectado al ejecutar E03*
+- `app/ui/DesignSystemPreview/page.tsx` es una **ruta pública** (`/ui/DesignSystemPreview`, sin login) que muestra el design system "Ethereal Finance". Sin datos sensibles, pero es una página de desarrollo expuesta en producción.
+- `app/ui/ds/` (`Button`, `Card`, `TransactionItem`) y `app/styles/{globals,glass.module,typography.module}.css` solo los usa el preview; la app real no los importa (`globals.css` aclara que no se importa en el root layout para no pisar el tema claro actual). No es código del curso: es la referencia visual del rediseño oscuro, por eso no se borró en E03.
+- Opciones (decidir antes de implementar):
+  1. **Esconderlo en producción** (recomendada mientras no se retome el rediseño): `notFound()` si `NODE_ENV === 'production'`; ~3 líneas, conserva el catálogo.
+  2. **Borrarlo**: eliminar `DesignSystemPreview/` y `ds/`; dejar `app/styles/tokens.css` (lo importa `app/ui/global.css`) y borrar los estilos huérfanos. La referencia queda en `DESIGN.md` y `docs/mockups/`.
+  3. **Adoptarlo**: migrar la app al tema oscuro con `ds/` (feature, fuera de estabilización).
+- Hecho cuando: opción decidida y documentada; `/ui/DesignSystemPreview` no accesible públicamente en producción (opciones 1 o 2); `pnpm build` pasa.
+- *Pendiente: crear la tarjeta en Notion (el workspace llegó al límite de bloques gratuitos).*
+
 ---
 
 # Prompt para Claude Code
