@@ -2,6 +2,7 @@ import postgres from 'postgres';
 import { sql, withAuthenticatedTx } from '../db';
 import { getBalanceDeltas } from './movements';
 import { fetchCurrentPeriod } from './financial-periods';
+import { resolveCycle } from '../billing-cycle';
 import type {
   AccountCurrency,
   CardBrand,
@@ -60,64 +61,6 @@ function rowToStatement(row: Record<string, unknown>): CardStatement {
 // Lógica de ciclo de facturación
 // ---------------------------------------------------------------------------
 
-function clampDay(year: number, month0: number, day: number): number {
-  const daysInMonth = new Date(year, month0 + 1, 0).getDate();
-  return Math.min(day, daysInMonth);
-}
-
-function toISODate(year: number, month0: number, day: number): string {
-  const d = clampDay(year, month0, day);
-  const mm = String(month0 + 1).padStart(2, '0');
-  const dd = String(d).padStart(2, '0');
-  return `${year}-${mm}-${dd}`;
-}
-
-export type Cycle = { period: string; closingDate: string | null; dueDate: string | null };
-
-export function resolveCycle(
-  chargeDate: Date,
-  closingDay: number | null,
-  dueDay: number | null
-): Cycle {
-  const year = chargeDate.getFullYear();
-  const month0 = chargeDate.getMonth();
-  const day = chargeDate.getDate();
-
-  if (!closingDay) {
-    const period = `${year}-${String(month0 + 1).padStart(2, '0')}`;
-    return { period, closingDate: null, dueDate: null };
-  }
-
-  let closingYear = year;
-  let closingMonth0 = month0;
-  if (day > clampDay(year, month0, closingDay)) {
-    closingMonth0 += 1;
-    if (closingMonth0 > 11) {
-      closingMonth0 = 0;
-      closingYear += 1;
-    }
-  }
-
-  const closingDate = toISODate(closingYear, closingMonth0, closingDay);
-  const period = `${closingYear}-${String(closingMonth0 + 1).padStart(2, '0')}`;
-
-  let dueDate: string | null = null;
-  if (dueDay) {
-    let dueYear = closingYear;
-    let dueMonth0 = closingMonth0;
-    if (dueDay <= closingDay) {
-      dueMonth0 += 1;
-      if (dueMonth0 > 11) {
-        dueMonth0 = 0;
-        dueYear += 1;
-      }
-    }
-    dueDate = toISODate(dueYear, dueMonth0, dueDay);
-  }
-
-  return { period, closingDate, dueDate };
-}
-
 // ---------------------------------------------------------------------------
 // Helpers transaccionales: cargar / revertir un cargo a la tarjeta
 // ---------------------------------------------------------------------------
@@ -125,7 +68,7 @@ export function resolveCycle(
 export async function resolveOrCreateStatement(
   tx: Tx,
   cardId: string,
-  chargeDate: Date
+  chargeDate: string
 ): Promise<{ id: string; period: string }> {
   const [card] = await tx`
     SELECT closing_day, due_day FROM credit_cards WHERE id = ${cardId}

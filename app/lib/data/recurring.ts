@@ -1,4 +1,5 @@
 import { sql, withAuthenticatedTx } from '../db';
+import { todayAR } from '../dates';
 import { getBalanceDeltas, getCardDeltas } from './movements';
 import { applyCardCharge, resolveOrCreateStatement } from './credit-cards';
 import type { RecurringExpense, RecurringExpenseInsert, RecurringExpenseUpdate } from '../definitions';
@@ -195,7 +196,7 @@ export async function payRecurringExpense(
     const amountDollars = Number(rec.amount_dollars);
 
     if (useCard) {
-      const st = await resolveOrCreateStatement(tx, rec.credit_card_id as string, new Date());
+      const st = await resolveOrCreateStatement(tx, rec.credit_card_id as string, todayAR());
       await tx`
         INSERT INTO movements (
           period, financial_period_id, record_type, credit_card_id, statement_id, category_id,

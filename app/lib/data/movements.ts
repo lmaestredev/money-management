@@ -1,4 +1,5 @@
 import { withAuthenticatedTx } from '../db';
+import { todayAR } from '../dates';
 import {
   applyCardCharge,
   resolveOrCreateStatement,
@@ -163,7 +164,7 @@ export async function createMovement(
   const [row] = await withAuthenticatedTx(userId, async (tx) => {
     let statementId: string | null = data.statement_id ?? null;
     if (data.credit_card_id) {
-      const chargeDate = data.payment_date ? new Date(data.payment_date) : new Date();
+      const chargeDate = data.payment_date || todayAR();
       const st = await resolveOrCreateStatement(tx, data.credit_card_id, chargeDate);
       statementId = st.id;
     }
@@ -280,7 +281,7 @@ export async function updateMovement(
 
     let statementId: string | null = data.statement_id ?? null;
     if (data.credit_card_id) {
-      const chargeDate = data.payment_date ? new Date(data.payment_date) : new Date();
+      const chargeDate = data.payment_date || todayAR();
       const st = await resolveOrCreateStatement(tx, data.credit_card_id, chargeDate);
       statementId = st.id;
       const newCard = getCardDeltas(data.record_type, data.amount_pesos, data.amount_dollars);

@@ -1,4 +1,5 @@
 import { sql, withAuthenticatedTx } from '../db';
+import { todayAR } from '../dates';
 import { getBalanceDeltas, getCardDeltas } from './movements';
 import { applyCardCharge, resolveOrCreateStatement } from './credit-cards';
 import type { InstallmentInsert, InstallmentPurchase, InstallmentStatus, InstallmentUpdate } from '../definitions';
@@ -260,7 +261,7 @@ export async function payInstallment(
     const description = `${inst.name} (cuota ${nextNumber}/${total})`;
 
     if (inst.credit_card_id) {
-      const st = await resolveOrCreateStatement(tx, inst.credit_card_id as string, new Date());
+      const st = await resolveOrCreateStatement(tx, inst.credit_card_id as string, todayAR());
       await tx`
         INSERT INTO movements (
           period, financial_period_id, record_type, credit_card_id, statement_id, category_id,

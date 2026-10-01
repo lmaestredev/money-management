@@ -19,11 +19,12 @@ pnpm install
 pnpm db:migrate          # aplica db/migrations/ en orden (registra en _migrations)
 pnpm db:seed             # inserta las categorías de referencia (idempotente)
 pnpm dev                 # corre db:migrate y luego next dev --turbopack
+pnpm test                # tests (node:test vía tsx): app/**/*.test.ts
 pnpm exec tsc --noEmit   # chequeo de tipos
 pnpm build               # build de producción
 ```
 
-- No hay script de lint ni tests configurados todavía.
+- No hay script de lint todavía. Los tests usan `node:test` (sin dependencias); E33 puede migrarlos a Vitest.
 - `pnpm build` y `pnpm dev` necesitan una DB con migraciones aplicadas; en CI sin DB usar `SKIP_DB_CHECK=1` (omite el chequeo de `_migrations` de `instrumentation.ts`).
 - DB local opcional: `docker compose up -d` (Postgres + pgvector en el puerto 5433). Ver `.env.example` para las variables.
 
@@ -55,7 +56,7 @@ DESIGN.md               guía de diseño
 - **Nunca** correr migraciones ni scripts (`db:migrate`, `db:seed`) contra producción; solo contra una base local o de prueba. Si no hay una, pedirla.
 - **Montos:** validar en el servidor con zod (finitos, `>= 0`); no confiar en el cliente.
 - **Endpoints con secreto:** usar `requireBearerSecret` (`app/lib/auth/bearer.ts`); sin secreto configurado responden 500 (falla cerrado). Las rutas HTTP no deben escribir en la DB saltando RLS.
-- **Fechas:** usar el helper de `app/lib/dates.ts` (zona Argentina) cuando exista (ticket E04); no usar `new Date('YYYY-MM-DD')` ni `toISOString().slice(0,10)` para "hoy".
+- **Fechas:** usar el helper de `app/lib/dates.ts` (`todayAR()`, `currentPeriodAR()`, `parseISODate()`, `addDays()`; zona Argentina, fechas como string `YYYY-MM-DD`). El ciclo de tarjeta está en `app/lib/billing-cycle.ts` (puro, sin DB). No usar `new Date('YYYY-MM-DD')` ni `toISOString().slice(0,10)` para "hoy".
 - **Secretos:** no subir ni imprimir `.env`, claves ni tokens.
 - Cambio mínimo por ticket: sin refactors ni mejoras fuera de alcance; otros problemas se anotan como "Hallazgos nuevos" sin corregirlos. Si el fix toca más de ~8 archivos o crece, proponer partirlo. Ante un ticket con 🛑 o dudas entre dos diseños, parar y preguntar con opciones y recomendación.
 

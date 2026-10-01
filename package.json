@@ -5,7 +5,8 @@
     "dev": "npm run db:migrate && next dev --turbopack",
     "start": "next start",
     "db:migrate": "tsx scripts/migrate.ts",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:seed": "tsx scripts/seed.ts",
+    "test": "node --import tsx --test \"app/**/*.test.ts\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
