@@ -14,9 +14,9 @@ Leyenda: 🟢 fácil · 🟡 media · 🔴 difícil · 🛑 requiere decisión d
 
 ### Fase 0 — Seguridad y accesos (primero, es barato y crítico)
 
-**E01 — Cerrar endpoints y secretos** 🟢 ⏱2
+**E01 — Cerrar endpoints y secretos** 🟢 ⏱2 ✅ 2026-10-01 744e159
 - `app/api/movements/route.ts:43-46,82-85`: `if (expectedToken && token !== expectedToken)` deja la API abierta si el secreto está vacío, y `.env.example` los trae vacíos. Fallar cerrado (500/401 si no hay secreto) y comparar con `crypto.timingSafeEqual`.
-- `app/seed/route.ts`: GET público que escribe en DB saltando RLS y devuelve `String(error)`. Eliminar la ruta (el seed va como script).
+- `app/seed/route.ts`: GET público que escribe en DB saltando RLS y devuelve `String(error)`. Eliminar la ruta (el seed va como script). *(Reemplazo: `scripts/seed.ts`, `pnpm db:seed`.)*
 - `app/api/rates/refresh/route.ts:11-17`: exigir `CRON_SECRET` siempre (fallar cerrado en producción).
 - `app/lib/actions/settings.ts:14-22`: `refreshRatesAction` declara `requireUser` pero no lo usa.
 - `.env.example`: agregar `BOT_USER_ID`, `CRON_SECRET`, `SKIP_DB_CHECK`; documentar que los secretos son obligatorios.
