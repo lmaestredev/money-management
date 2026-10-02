@@ -5,7 +5,7 @@ import {
   resolveOrCreateStatement,
   reverseCardCharge,
 } from './credit-cards';
-import { fetchCurrentPeriod } from './financial-periods';
+import { ensureCurrentPeriod } from './financial-periods';
 import type {
   Movement,
   MovementInsert,
@@ -156,10 +156,10 @@ export async function createMovement(
 ): Promise<Movement> {
   const sourceValue = data.source ?? source;
 
-  // fetchCurrentPeriod crea su propia transacción; debe resolverse ANTES de withAuthenticatedTx.
+  // ensureCurrentPeriod crea su propia transacción; debe resolverse ANTES de withAuthenticatedTx.
+  // Un usuario nuevo no tiene período: se crea el primero en su primer movimiento.
   const financialPeriodId = data.financial_period_id
-    ?? (await fetchCurrentPeriod(userId))?.id
-    ?? (() => { throw new Error('No hay período financiero abierto'); })();
+    ?? (await ensureCurrentPeriod(userId)).id;
 
   const [row] = await withAuthenticatedTx(userId, async (tx) => {
     let statementId: string | null = data.statement_id ?? null;

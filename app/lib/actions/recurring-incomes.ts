@@ -9,7 +9,7 @@ import {
   receiveRecurringIncome,
   updateRecurringIncome,
 } from '@/app/lib/data/recurring-incomes';
-import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
+import { ensureCurrentPeriod } from '@/app/lib/data/financial-periods';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
 import { createClient } from '@/app/lib/supabase/server';
 import { formAmount, formOptionalDay, refineOneCurrency } from '@/app/lib/validation';
@@ -139,8 +139,7 @@ export async function receiveRecurringIncomeAction(formData: FormData) {
   }
 
   const { recurring_income_id, period, account_id } = parsed.data;
-  const currentPeriod = await fetchCurrentPeriod(user.id);
-  if (!currentPeriod) redirect('/dashboard/movimientos');
+  const currentPeriod = await ensureCurrentPeriod(user.id);
   await receiveRecurringIncome(recurring_income_id, period, currentPeriod.id, user.id, account_id);
   revalidatePath('/dashboard/movimientos');
   revalidatePath('/dashboard/ingresos');

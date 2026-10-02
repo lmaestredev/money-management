@@ -11,7 +11,7 @@ import {
   updateInstallment,
   type PayInstallmentResult,
 } from '@/app/lib/data/installments';
-import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
+import { ensureCurrentPeriod } from '@/app/lib/data/financial-periods';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
 import { createClient } from '@/app/lib/supabase/server';
 import { installmentScheduleFields, refineInstallment } from '@/app/lib/validation';
@@ -177,8 +177,7 @@ export async function payInstallmentAction(formData: FormData) {
   }
 
   const { installment_id, period } = parsed.data;
-  const currentPeriod = await fetchCurrentPeriod(user.id);
-  if (!currentPeriod) redirect('/dashboard/movimientos');
+  const currentPeriod = await ensureCurrentPeriod(user.id);
 
   // Idempotente: si la cuota de este período ya estaba registrada (p. ej. un
   // doble click mandó dos submits), no se crea un segundo movimiento; se

@@ -1,4 +1,5 @@
 import { withAuthenticatedTx } from '../db';
+import { currentPeriodAR } from '../dates';
 import type { FinancialPeriod, FinancialPeriodStatus } from '../definitions';
 
 function toDateStr(val: unknown): string {
@@ -120,6 +121,33 @@ export async function fetchPeriodById(id: string, userId: string): Promise<Finan
       WHERE id = ${id}
     `;
     if (!row) return null;
+    return rowToPeriod(row as Record<string, unknown>);
+  });
+}
+
+/**
+ * Devuelve el período abierto del usuario y, si no tiene ninguno (usuario nuevo),
+ * crea el primero: arranca el día 1 del mes actual (hora Argentina).
+ * Seguro ante pedidos simultáneos: el índice único parcial de un período abierto
+ * por usuario (migración 019) hace que el segundo INSERT no haga nada.
+ */
+export async function ensureCurrentPeriod(userId: string): Promise<FinancialPeriod> {
+  const existing = await fetchCurrentPeriod(userId);
+  if (existing) return existing;
+
+  return withAuthenticatedTx(userId, async (tx) => {
+    await tx`
+      INSERT INTO financial_periods (start_date, status, user_id)
+      VALUES (${`${currentPeriodAR()}-01`}, 'open', ${userId})
+      ON CONFLICT (user_id) WHERE status = 'open' DO NOTHING
+    `;
+    const [row] = await tx`
+      SELECT id, start_date, end_date, status, closed_at, created_at, user_id
+      FROM financial_periods
+      WHERE status = 'open'
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
     return rowToPeriod(row as Record<string, unknown>);
   });
 }
