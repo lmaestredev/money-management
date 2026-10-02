@@ -1,4 +1,5 @@
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { AR_TIME_ZONE } from '@/app/lib/dates';
 import { formatUsd } from '@/app/lib/utils';
 import { refreshRatesAction } from '@/app/lib/actions/settings';
 import type { ExchangeRate } from '@/app/lib/definitions';
@@ -22,6 +23,7 @@ function formatDateTime(iso: string | null): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
   return d.toLocaleString('es-AR', {
+    timeZone: AR_TIME_ZONE,
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
