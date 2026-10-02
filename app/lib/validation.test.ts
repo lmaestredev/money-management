@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { z } from 'zod';
 import {
   MAX_AMOUNT,
   formAmount,
@@ -8,11 +9,14 @@ import {
   hasExactlyOneCurrency,
   hasValidMovementAmounts,
   installmentCount,
+  installmentScheduleFields,
   isoDate,
   movementApiSchema,
   parseAmount,
   parseOptionalRate,
   period,
+  refineInstallment,
+  refineOneCurrency,
 } from './validation';
 
 test('parseAmount acepta importes válidos y rechaza NaN, Infinity, negativos y basura', () => {
@@ -106,4 +110,64 @@ test('API: dos monedas a la vez, ambas en cero, fecha inválida y textos largos'
     movementApiSchema.safeParse({ ...validBody, record_type: 'conversion', amount_dollars: 10 }).success,
     true
   );
+});
+
+const installmentSchema = z.object(installmentScheduleFields).superRefine(refineInstallment);
+const validInstallment = {
+  total_installments: '12',
+  paid_installments: '',
+  monthly_amount_pesos: '1500.50',
+  monthly_amount_dollars: '',
+  total_amount_pesos: '',
+  total_amount_dollars: '',
+  pay_before_day: '10',
+  start_period: '2026-10',
+};
+
+test('cuotas: un formulario válido pasa y normaliza vacíos', () => {
+  const r = installmentSchema.safeParse(validInstallment);
+  assert.equal(r.success, true);
+  if (r.success) {
+    assert.equal(r.data.paid_installments, 0);
+    assert.equal(r.data.monthly_amount_dollars, 0);
+    assert.equal(r.data.pay_before_day, 10);
+  }
+  const sinOpcionales = installmentSchema.safeParse({ ...validInstallment, pay_before_day: '', start_period: '' });
+  assert.equal(sinOpcionales.success && sinOpcionales.data.pay_before_day, null);
+});
+
+test('cuotas: rechaza NaN, Infinity, negativos, doble moneda y cuotas inconsistentes', () => {
+  const bad: Record<string, unknown>[] = [
+    { monthly_amount_pesos: 'abc' },
+    { monthly_amount_pesos: 'Infinity' },
+    { monthly_amount_pesos: '-10' },
+    { monthly_amount_dollars: '5' }, // pesos y dólares a la vez
+    { monthly_amount_pesos: '0' }, // sin importe
+    { total_amount_dollars: '100' }, // total en otra moneda
+    { total_installments: '0' },
+    { total_installments: '2.5' },
+    { paid_installments: '13' }, // más pagadas que el total
+    { paid_installments: '-1' },
+    { pay_before_day: '32' },
+    { start_period: '2026-13' },
+  ];
+  for (const override of bad) {
+    assert.equal(
+      installmentSchema.safeParse({ ...validInstallment, ...override }).success,
+      false,
+      JSON.stringify(override)
+    );
+  }
+});
+
+test('gastos fijos e ingresos recurrentes: una sola moneda', () => {
+  const schema = z
+    .object({ amount_pesos: formAmount, amount_dollars: formAmount })
+    .superRefine((d, ctx) => refineOneCurrency(d.amount_pesos, d.amount_dollars, 'amount_pesos', ctx));
+  assert.equal(schema.safeParse({ amount_pesos: '100', amount_dollars: '' }).success, true);
+  assert.equal(schema.safeParse({ amount_pesos: '', amount_dollars: '20' }).success, true);
+  assert.equal(schema.safeParse({ amount_pesos: '100', amount_dollars: '20' }).success, false);
+  assert.equal(schema.safeParse({ amount_pesos: '', amount_dollars: '' }).success, false);
+  assert.equal(schema.safeParse({ amount_pesos: '-1', amount_dollars: '' }).success, false);
+  assert.equal(schema.safeParse({ amount_pesos: 'NaN', amount_dollars: '' }).success, false);
 });

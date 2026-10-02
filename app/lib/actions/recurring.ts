@@ -13,6 +13,7 @@ import {
 import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
 import { createClient } from '@/app/lib/supabase/server';
+import { formAmount, formOptionalDay, refineOneCurrency } from '@/app/lib/validation';
 
 async function requireUser() {
   const supabase = await createClient();
@@ -20,12 +21,6 @@ async function requireUser() {
   if (!user) redirect('/login');
   return user;
 }
-
-const optionalNumber = z
-  .string()
-  .optional()
-  .or(z.literal(''))
-  .transform((s) => (s && String(s).trim() ? parseFloat(String(s)) : 0));
 
 const createRecurringFormSchema = z.object({
   name: z.string().min(1),
@@ -41,10 +36,10 @@ const createRecurringFormSchema = z.object({
     .union([z.string().uuid(), z.literal('')])
     .optional()
     .transform((s) => (s && String(s).trim() ? s : null)),
-  amount_pesos: optionalNumber,
-  amount_dollars: optionalNumber,
-  pay_before_day: z.string().optional().or(z.literal('')),
-});
+  amount_pesos: formAmount,
+  amount_dollars: formAmount,
+  pay_before_day: formOptionalDay,
+}).superRefine((d, ctx) => refineOneCurrency(d.amount_pesos, d.amount_dollars, 'amount_pesos', ctx));
 
 export async function createRecurringExpenseAction(formData: FormData) {
   const user = await requireUser();
@@ -64,7 +59,6 @@ export async function createRecurringExpenseAction(formData: FormData) {
   }
 
   const data = parsed.data;
-  const payBeforeDay = data.pay_before_day ? parseInt(data.pay_before_day, 10) : null;
   const isCash = formData.get('is_cash') === 'true';
 
   await createRecurringExpense({
@@ -74,7 +68,7 @@ export async function createRecurringExpenseAction(formData: FormData) {
     credit_card_id: isCash ? null : data.credit_card_id,
     amount_pesos: data.amount_pesos,
     amount_dollars: data.amount_dollars,
-    pay_before_day: payBeforeDay != null && !Number.isNaN(payBeforeDay) ? payBeforeDay : null,
+    pay_before_day: data.pay_before_day,
     is_cash: isCash,
   }, user.id);
 
@@ -98,10 +92,10 @@ const updateRecurringFormSchema = z.object({
     .union([z.string().uuid(), z.literal('')])
     .optional()
     .transform((s) => (s && String(s).trim() ? s : null)),
-  amount_pesos: optionalNumber,
-  amount_dollars: optionalNumber,
-  pay_before_day: z.string().optional().or(z.literal('')),
-});
+  amount_pesos: formAmount,
+  amount_dollars: formAmount,
+  pay_before_day: formOptionalDay,
+}).superRefine((d, ctx) => refineOneCurrency(d.amount_pesos, d.amount_dollars, 'amount_pesos', ctx));
 
 export async function updateRecurringExpenseAction(formData: FormData) {
   const user = await requireUser();
@@ -123,7 +117,6 @@ export async function updateRecurringExpenseAction(formData: FormData) {
   }
 
   const data = parsed.data;
-  const payBeforeDay = data.pay_before_day ? parseInt(data.pay_before_day, 10) : null;
   const isCash = formData.get('is_cash') === 'true';
 
   const updated = await updateRecurringExpense(data.id, {
@@ -133,7 +126,7 @@ export async function updateRecurringExpenseAction(formData: FormData) {
     credit_card_id: isCash ? null : data.credit_card_id,
     amount_pesos: data.amount_pesos,
     amount_dollars: data.amount_dollars,
-    pay_before_day: payBeforeDay != null && !Number.isNaN(payBeforeDay) ? payBeforeDay : null,
+    pay_before_day: data.pay_before_day,
     is_cash: isCash,
   }, user.id);
   if (!updated) {

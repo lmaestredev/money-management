@@ -14,6 +14,7 @@ import {
 import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
 import { createClient } from '@/app/lib/supabase/server';
+import { installmentScheduleFields, refineInstallment } from '@/app/lib/validation';
 
 async function requireUser() {
   const supabase = await createClient();
@@ -21,12 +22,6 @@ async function requireUser() {
   if (!user) redirect('/login');
   return user;
 }
-
-const optionalNumber = z
-  .string()
-  .optional()
-  .or(z.literal(''))
-  .transform((s) => (s && String(s).trim() ? parseFloat(String(s)) : 0));
 
 const createInstallmentFormSchema = z.object({
   name: z.string().min(1),
@@ -42,15 +37,8 @@ const createInstallmentFormSchema = z.object({
     .union([z.string().uuid(), z.literal('')])
     .optional()
     .transform((s) => (s && String(s).trim() ? s : null)),
-  total_installments: z.string(),
-  paid_installments: z.string().optional().or(z.literal('')),
-  monthly_amount_pesos: optionalNumber,
-  monthly_amount_dollars: optionalNumber,
-  total_amount_pesos: optionalNumber,
-  total_amount_dollars: optionalNumber,
-  pay_before_day: z.string().optional().or(z.literal('')),
-  start_period: z.string().optional().or(z.literal('')),
-});
+  ...installmentScheduleFields,
+}).superRefine(refineInstallment);
 
 export async function createInstallmentAction(formData: FormData) {
   const user = await requireUser();
@@ -75,13 +63,8 @@ export async function createInstallmentAction(formData: FormData) {
   }
 
   const data = parsed.data;
-  const total = parseInt(data.total_installments, 10);
-  const paid = data.paid_installments ? parseInt(data.paid_installments, 10) : 0;
-  if (Number.isNaN(total) || total < 1 || Number.isNaN(paid) || paid < 0 || paid > total) {
-    redirect('/dashboard/cuotas/nueva?error=validation');
-  }
-
-  const payBeforeDay = data.pay_before_day ? parseInt(data.pay_before_day, 10) : null;
+  const total = data.total_installments;
+  const paid = data.paid_installments;
 
   const totalPesos = data.total_amount_pesos || data.monthly_amount_pesos * total;
   const totalDollars = data.total_amount_dollars || data.monthly_amount_dollars * total;
@@ -97,8 +80,8 @@ export async function createInstallmentAction(formData: FormData) {
     monthly_amount_dollars: data.monthly_amount_dollars,
     total_amount_pesos: totalPesos,
     total_amount_dollars: totalDollars,
-    pay_before_day: payBeforeDay != null && !Number.isNaN(payBeforeDay) ? payBeforeDay : null,
-    start_period: data.start_period && /^\d{4}-\d{2}$/.test(data.start_period) ? data.start_period : null,
+    pay_before_day: data.pay_before_day,
+    start_period: data.start_period,
   }, user.id);
 
   revalidatePath('/dashboard/cuotas');
@@ -121,15 +104,8 @@ const updateInstallmentFormSchema = z.object({
     .union([z.string().uuid(), z.literal('')])
     .optional()
     .transform((s) => (s && String(s).trim() ? s : null)),
-  total_installments: z.string(),
-  paid_installments: z.string().optional().or(z.literal('')),
-  monthly_amount_pesos: optionalNumber,
-  monthly_amount_dollars: optionalNumber,
-  total_amount_pesos: optionalNumber,
-  total_amount_dollars: optionalNumber,
-  pay_before_day: z.string().optional().or(z.literal('')),
-  start_period: z.string().optional().or(z.literal('')),
-});
+  ...installmentScheduleFields,
+}).superRefine(refineInstallment);
 
 export async function updateInstallmentAction(formData: FormData) {
   const user = await requireUser();
@@ -156,13 +132,8 @@ export async function updateInstallmentAction(formData: FormData) {
   }
 
   const data = parsed.data;
-  const total = parseInt(data.total_installments, 10);
-  const paid = data.paid_installments ? parseInt(data.paid_installments, 10) : 0;
-  if (Number.isNaN(total) || total < 1 || Number.isNaN(paid) || paid < 0 || paid > total) {
-    redirect(`${editPath(data.id)}?error=validation`);
-  }
-
-  const payBeforeDay = data.pay_before_day ? parseInt(data.pay_before_day, 10) : null;
+  const total = data.total_installments;
+  const paid = data.paid_installments;
   const totalPesos = data.total_amount_pesos || data.monthly_amount_pesos * total;
   const totalDollars = data.total_amount_dollars || data.monthly_amount_dollars * total;
 
@@ -177,8 +148,8 @@ export async function updateInstallmentAction(formData: FormData) {
     monthly_amount_dollars: data.monthly_amount_dollars,
     total_amount_pesos: totalPesos,
     total_amount_dollars: totalDollars,
-    pay_before_day: payBeforeDay != null && !Number.isNaN(payBeforeDay) ? payBeforeDay : null,
-    start_period: data.start_period && /^\d{4}-\d{2}$/.test(data.start_period) ? data.start_period : null,
+    pay_before_day: data.pay_before_day,
+    start_period: data.start_period,
   }, user.id);
   if (!updated) {
     redirect('/dashboard/cuotas?error=notfound');

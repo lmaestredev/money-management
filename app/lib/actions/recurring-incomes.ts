@@ -12,6 +12,7 @@ import {
 import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
 import { createClient } from '@/app/lib/supabase/server';
+import { formAmount, formOptionalDay, refineOneCurrency } from '@/app/lib/validation';
 
 async function requireUser() {
   const supabase = await createClient();
@@ -19,12 +20,6 @@ async function requireUser() {
   if (!user) redirect('/login');
   return user;
 }
-
-const optionalNumber = z
-  .string()
-  .optional()
-  .or(z.literal(''))
-  .transform((s) => (s && String(s).trim() ? parseFloat(String(s)) : 0));
 
 const createIncomeFormSchema = z.object({
   name: z.string().min(1),
@@ -36,10 +31,10 @@ const createIncomeFormSchema = z.object({
     .union([z.string().uuid(), z.literal('')])
     .optional()
     .transform((s) => (s && String(s).trim() ? s : null)),
-  amount_pesos: optionalNumber,
-  amount_dollars: optionalNumber,
-  receive_day: z.string().optional().or(z.literal('')),
-});
+  amount_pesos: formAmount,
+  amount_dollars: formAmount,
+  receive_day: formOptionalDay,
+}).superRefine((d, ctx) => refineOneCurrency(d.amount_pesos, d.amount_dollars, 'amount_pesos', ctx));
 
 export async function createRecurringIncomeAction(formData: FormData) {
   const user = await requireUser();
@@ -56,7 +51,6 @@ export async function createRecurringIncomeAction(formData: FormData) {
   }
 
   const data = parsed.data;
-  const receiveDay = data.receive_day ? parseInt(data.receive_day, 10) : null;
 
   await createRecurringIncome({
     name: data.name.trim(),
@@ -64,7 +58,7 @@ export async function createRecurringIncomeAction(formData: FormData) {
     account_id: data.account_id,
     amount_pesos: data.amount_pesos,
     amount_dollars: data.amount_dollars,
-    receive_day: receiveDay != null && !Number.isNaN(receiveDay) ? receiveDay : null,
+    receive_day: data.receive_day,
   }, user.id);
 
   revalidatePath('/dashboard/ingresos');
@@ -83,10 +77,10 @@ const updateIncomeFormSchema = z.object({
     .union([z.string().uuid(), z.literal('')])
     .optional()
     .transform((s) => (s && String(s).trim() ? s : null)),
-  amount_pesos: optionalNumber,
-  amount_dollars: optionalNumber,
-  receive_day: z.string().optional().or(z.literal('')),
-});
+  amount_pesos: formAmount,
+  amount_dollars: formAmount,
+  receive_day: formOptionalDay,
+}).superRefine((d, ctx) => refineOneCurrency(d.amount_pesos, d.amount_dollars, 'amount_pesos', ctx));
 
 export async function updateRecurringIncomeAction(formData: FormData) {
   const user = await requireUser();
@@ -106,7 +100,6 @@ export async function updateRecurringIncomeAction(formData: FormData) {
   }
 
   const data = parsed.data;
-  const receiveDay = data.receive_day ? parseInt(data.receive_day, 10) : null;
 
   const updated = await updateRecurringIncome(data.id, {
     name: data.name.trim(),
@@ -114,7 +107,7 @@ export async function updateRecurringIncomeAction(formData: FormData) {
     account_id: data.account_id,
     amount_pesos: data.amount_pesos,
     amount_dollars: data.amount_dollars,
-    receive_day: receiveDay != null && !Number.isNaN(receiveDay) ? receiveDay : null,
+    receive_day: data.receive_day,
   }, user.id);
   if (!updated) {
     redirect('/dashboard/ingresos?error=notfound');

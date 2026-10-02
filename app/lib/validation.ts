@@ -37,6 +37,13 @@ export const installmentCount = z.coerce.number().int().min(1).max(360);
 export const formAmount = z.preprocess((v) => (isBlank(v) ? 0 : v), amount);
 /** Campo de formulario de saldo: vacío o ausente vale 0; admite negativos. */
 export const formSignedAmount = z.preprocess((v) => (isBlank(v) ? 0 : v), signedAmount);
+/** Campo de formulario de cuotas pagadas: vacío o ausente vale 0. */
+export const formPaidCount = z.preprocess(
+  (v) => (isBlank(v) ? 0 : v),
+  z.coerce.number().int().min(0).max(360)
+);
+/** Campo de formulario de período opcional ('YYYY-MM'): vacío o ausente vale null. */
+export const formOptionalPeriod = z.preprocess((v) => (isBlank(v) ? null : v), period.nullable());
 /** Campo de formulario de día opcional: vacío o ausente vale null. */
 export const formOptionalDay = z.preprocess((v) => (isBlank(v) ? null : v), dayOfMonth.nullable());
 
@@ -71,6 +78,65 @@ export function hasValidMovementAmounts(
   dollars: number
 ): boolean {
   return recordType === 'conversion' ? pesos + dollars > 0 : hasExactlyOneCurrency(pesos, dollars);
+}
+
+/** Refinamiento de zod: exactamente una moneda con importe > 0. */
+export function refineOneCurrency(
+  pesos: number,
+  dollars: number,
+  path: string,
+  ctx: z.RefinementCtx
+): void {
+  if (!hasExactlyOneCurrency(pesos, dollars)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [path],
+      message: 'Debe haber exactamente una moneda con importe mayor a 0',
+    });
+  }
+}
+
+/** Campos numéricos y de calendario de una compra en cuotas (create y update). */
+export const installmentScheduleFields = {
+  total_installments: installmentCount,
+  paid_installments: formPaidCount,
+  monthly_amount_pesos: formAmount,
+  monthly_amount_dollars: formAmount,
+  total_amount_pesos: formAmount,
+  total_amount_dollars: formAmount,
+  pay_before_day: formOptionalDay,
+  start_period: formOptionalPeriod,
+};
+
+type InstallmentAmounts = {
+  total_installments: number;
+  paid_installments: number;
+  monthly_amount_pesos: number;
+  monthly_amount_dollars: number;
+  total_amount_pesos: number;
+  total_amount_dollars: number;
+};
+
+/** Una sola moneda (también en el total) y cuotas pagadas <= cuotas totales. */
+export function refineInstallment(d: InstallmentAmounts, ctx: z.RefinementCtx): void {
+  refineOneCurrency(d.monthly_amount_pesos, d.monthly_amount_dollars, 'monthly_amount_pesos', ctx);
+  if (
+    (d.monthly_amount_pesos > 0 && d.total_amount_dollars > 0) ||
+    (d.monthly_amount_dollars > 0 && d.total_amount_pesos > 0)
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['total_amount_pesos'],
+      message: 'El total debe estar en la misma moneda que la cuota',
+    });
+  }
+  if (d.paid_installments > d.total_installments) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['paid_installments'],
+      message: 'Las cuotas pagadas no pueden superar el total',
+    });
+  }
 }
 
 export const recordType = z.enum(['income', 'conversion', 'variable_payment', 'fixed_payment']);
