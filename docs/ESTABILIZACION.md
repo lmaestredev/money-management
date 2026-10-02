@@ -35,7 +35,7 @@ Leyenda: 🟢 fácil · 🟡 media · 🔴 difícil · 🛑 requiere decisión d
 
 ### Fase 1 — Integridad de datos (base para todo lo demás)
 
-**E04 — Helper de fechas (zona Argentina)** 🟡 ⏱3
+**E04 — Helper de fechas (zona Argentina)** 🟡 ⏱3 ✅ 2026-10-02
 - Problema: `new Date('YYYY-MM-DD')` es UTC y se lee con `getDate()` local; "hoy" sale en UTC. Una compra de noche cae en otro día/resumen/período.
 - Crear `app/lib/dates.ts`: `todayAR()`, `parseISODate()` sin pasar por `Date`, `addDays`, `currentPeriodAR()`.
 - Reemplazar en: `data/credit-cards.ts:82-84,263` (`resolveCycle`), `data/movements.ts:166,283`, `actions/financial-periods.ts:63-74,198`, `actions/movements.ts:92,192`, `MovementForm.tsx:13`, `movimientos/nuevo/page.tsx:16-18`, `MovementList.tsx:26-31`, `InstallmentForm.tsx:9-11`, `dashboard/page.tsx:36-41`, `PayStatementForm.tsx:31-36` (vencimiento se ve un día antes: formatear con `timeZone:'UTC'`), `data/recurring.ts:517`.

@@ -3,15 +3,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { createMovementAction } from '@/app/lib/actions/movements';
+import { todayAR } from '@/app/lib/dates';
 import SubmitButton from '@/app/ui/SubmitButton';
 import PaymentSourceSelect, { type PaymentSource } from '@/app/ui/credit-cards/PaymentSourceSelect';
 import ReceiptScanner from './ReceiptScanner';
 import type { Account, AccountCurrency, Category, CreditCard } from '@/app/lib/definitions';
 import styles from './MovementForm.module.css';
-
-function getTodayISO(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 type Props = {
   period: string;
@@ -26,7 +23,7 @@ export default function MovementForm({
   accounts,
   cards,
   categories,
-  defaultPaymentDate = getTodayISO(),
+  defaultPaymentDate = todayAR(),
 }: Props) {
   const [source, setSource] = useState<PaymentSource>(null);
   const [amount, setAmount] = useState('');

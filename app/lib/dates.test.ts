@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addDays, currentPeriodAR, parseISODate, todayAR } from './dates';
+import { addDays, currentPeriodAR, dateOnly, formatDateAR, parseISODate, todayAR } from './dates';
 
 test('todayAR usa la fecha de Argentina, no la de UTC', () => {
   // 15/10 22:00 ART = 16/10 01:00 UTC
@@ -27,4 +27,20 @@ test('parseISODate acepta sufijo de hora y rechaza fechas inválidas', () => {
   assert.throws(() => parseISODate('2026-02-30'));
   assert.throws(() => parseISODate('2026-13-01'));
   assert.throws(() => parseISODate('abc'));
+});
+
+test('dateOnly lee un Date de columna DATE por su fecha UTC', () => {
+  assert.equal(dateOnly(new Date('2026-10-10T00:00:00Z')), '2026-10-10');
+  assert.equal(dateOnly('2026-10-10'), '2026-10-10');
+  assert.equal(dateOnly('2026-10-10T00:00:00.000Z'), '2026-10-10');
+  assert.throws(() => dateOnly(new Date('x')));
+});
+
+test('formatDateAR: el vencimiento 10/10 se muestra "10 oct" (no "9 oct")', () => {
+  const short = { day: '2-digit', month: 'short' } as const;
+  for (const v of ['2026-10-10', new Date('2026-10-10T00:00:00Z')]) {
+    const out = formatDateAR(v, short);
+    assert.match(out, /^10[ -]oct/i);
+  }
+  assert.match(formatDateAR('2026-10-01', { day: 'numeric', month: 'long' }, 'es-ES'), /^1 de octubre/);
 });

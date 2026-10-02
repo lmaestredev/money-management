@@ -7,6 +7,7 @@ import { closePeriodAction, previewClosePeriod } from '@/app/lib/actions/financi
 import { useToast } from '@/app/ui/toast/ToastProvider';
 import type { ClosePeriodSummary } from '@/app/lib/actions/financial-periods';
 import type { FinancialPeriod } from '@/app/lib/definitions';
+import { formatDateAR } from '@/app/lib/dates';
 import styles from './ClosePeriodButton.module.css';
 
 type Preview = {
@@ -19,12 +20,7 @@ type Preview = {
 };
 
 function formatDate(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('es-AR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  return formatDateAR(iso, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 export default function ClosePeriodButton() {

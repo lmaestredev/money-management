@@ -1,16 +1,11 @@
 import type { FinancialPeriod } from '@/app/lib/definitions';
+import { formatDateAR, todayAR } from '@/app/lib/dates';
 import styles from './PeriodBadge.module.css';
 
 /** Formatea una fecha ISO "YYYY-MM-DD" (o un Date) como "1 may. 2025". */
 export function formatShortDate(iso: string | Date): string {
-  // Si llega un Date object (el driver postgres devuelve DATE así), extraemos YYYY-MM-DD.
-  const isoStr = iso instanceof Date ? iso.toISOString().slice(0, 10) : iso;
-  const [y, m, d] = isoStr.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('es-AR', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+  // El driver devuelve las columnas DATE como Date a medianoche UTC: se formatea en UTC.
+  return formatDateAR(iso, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 /** Formatea el rango de un período financiero para usar en labels de cards. */
@@ -31,12 +26,7 @@ type Props = {
  */
 export default function PeriodBadge({ period }: Props) {
   if (!period) return null;
-  const today = new Date();
-  const todayStr = today.toLocaleDateString('es-AR', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+  const todayStr = formatShortDate(todayAR());
 
   return (
     <div className={styles.badge}>

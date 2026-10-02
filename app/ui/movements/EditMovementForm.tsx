@@ -6,13 +6,16 @@ import { updateMovementAction } from '@/app/lib/actions/movements';
 import SubmitButton from '@/app/ui/SubmitButton';
 import PaymentSourceSelect, { type PaymentSource } from '@/app/ui/credit-cards/PaymentSourceSelect';
 import type { Account, AccountCurrency, Category, CreditCard, Movement } from '@/app/lib/definitions';
+import { dateOnly } from '@/app/lib/dates';
 import styles from './MovementForm.module.css';
 
 function toDateInput(v: string | null): string {
   if (!v) return '';
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toISOString().slice(0, 10);
+  try {
+    return dateOnly(v);
+  } catch {
+    return '';
+  }
 }
 
 type Props = {

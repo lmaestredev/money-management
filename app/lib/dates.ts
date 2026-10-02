@@ -60,3 +60,34 @@ export function addDays(iso: string, n: number): string {
   const d = new Date(Date.UTC(year, month - 1, day + n));
   return formatISODate(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
 }
+
+/**
+ * Normaliza el valor de una columna DATE a 'YYYY-MM-DD'. En runtime el driver
+ * de Postgres devuelve un Date a medianoche UTC (aunque los tipos digan string),
+ * así que un Date se lee por su fecha UTC, nunca por la local.
+ */
+export function dateOnly(value: string | Date): string {
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) throw new Error('Fecha inválida');
+    return value.toISOString().slice(0, 10);
+  }
+  const { year, month, day } = parseISODate(value);
+  return formatISODate(year, month, day);
+}
+
+/**
+ * Formatea una fecha calendario (columna DATE o 'YYYY-MM-DD') sin corrimiento de
+ * día: se formatea en UTC, igual que se parseó. Usar esto en vez de
+ * `new Date(iso).toLocaleDateString()`, que muestra el día anterior en Argentina.
+ */
+export function formatDateAR(
+  value: string | Date,
+  options: Intl.DateTimeFormatOptions,
+  locale: string = 'es-AR'
+): string {
+  const { year, month, day } = parseISODate(dateOnly(value));
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString(locale, {
+    ...options,
+    timeZone: 'UTC',
+  });
+}

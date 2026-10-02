@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { dateOnly, formatDateAR, todayAR } from '@/app/lib/dates';
 import { formatUsd } from '@/app/lib/utils';
 import type { Movement } from '@/app/lib/definitions';
 import DeleteMovementButton from './DeleteMovementButton';
@@ -24,24 +25,17 @@ function recordTypeLabel(type: string): string {
 }
 
 function getDayKey(m: Movement): string {
-  const dateStr = m.payment_date ?? m.created_at;
-  if (!dateStr) return 'unknown';
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  // payment_date es una columna DATE (fecha calendario); created_at es un instante
+  // y se pasa a fecha argentina.
+  if (m.payment_date) return dateOnly(m.payment_date);
+  if (m.created_at) return todayAR(new Date(m.created_at));
+  return 'unknown';
 }
 
 function formatDayLabel(dateStr: string): string {
-  const d = new Date(dateStr);
-  const today = new Date();
-  const isToday =
-    d.getDate() === today.getDate() &&
-    d.getMonth() === today.getMonth() &&
-    d.getFullYear() === today.getFullYear();
-  const formatted = d.toLocaleDateString('es-ES', {
-    day: 'numeric',
-    month: 'long',
-  });
-  return isToday ? `Hoy · ${formatted}` : formatted;
+  if (dateStr === 'unknown') return 'Sin fecha';
+  const formatted = formatDateAR(dateStr, { day: 'numeric', month: 'long' }, 'es-ES');
+  return dateStr === todayAR() ? `Hoy · ${formatted}` : formatted;
 }
 
 function getCategoryIcon(categoryName: string | null, recordType: string): string {
@@ -87,11 +81,8 @@ function getStatusLabel(m: Movement): 'paid' | 'pending' | 'overdue' {
   if (m.record_type === 'income') return 'paid';
   if (m.status === true) return 'paid';
   if (m.status === false && m.payment_date) {
-    const due = new Date(m.payment_date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    due.setHours(0, 0, 0, 0);
-    if (due < today) return 'overdue';
+    // Strings YYYY-MM-DD: la comparación lexicográfica equivale a la de fechas.
+    if (dateOnly(m.payment_date) < todayAR()) return 'overdue';
   }
   return 'pending';
 }

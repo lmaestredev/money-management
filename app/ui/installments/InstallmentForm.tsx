@@ -2,14 +2,11 @@
 
 import Link from 'next/link';
 import { createInstallmentAction } from '@/app/lib/actions/installments';
+import { currentPeriodAR } from '@/app/lib/dates';
 import SubmitButton from '@/app/ui/SubmitButton';
 import PaymentSourceSelect from '@/app/ui/credit-cards/PaymentSourceSelect';
 import type { Account, Category, CreditCard } from '@/app/lib/definitions';
 import styles from './InstallmentForm.module.css';
-
-function currentPeriod(): string {
-  return new Date().toISOString().slice(0, 7);
-}
 
 type Props = {
   accounts: Account[];
@@ -148,7 +145,7 @@ export default function InstallmentForm({ accounts, cards, categories }: Props) 
             name="start_period"
             type="month"
             className={styles.input}
-            defaultValue={currentPeriod()}
+            defaultValue={currentPeriodAR()}
           />
         </div>
       </div>
