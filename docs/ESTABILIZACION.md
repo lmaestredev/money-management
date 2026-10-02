@@ -54,7 +54,7 @@ Leyenda: 🟢 fácil · 🟡 media · 🔴 difícil · 🛑 requiere decisión d
 - Antes de cada constraint: query para detectar filas que lo violan y reportarlas a Luis (no borrar datos solos).
 - *Seguimiento 2026-10-02:* 2 cuentas heredadas con `currency = 'dual'` (billeteras con pesos y dólares) se migraron con autorización de Luis: "Dólar App Luis" pasó a `dollar` y "Dolar App Valen" se dividió en una cuenta en pesos y otra en dólares (movimientos y plantillas reasignados por moneda; saldos totales sin cambios). La migración 020 quitó `dual` del constraint. La app no soporta cuentas multi-moneda.
 
-**E07 — Nombres únicos por usuario** 🟢 ⏱2
+**E07 — Nombres únicos por usuario** 🟢 ⏱2 ✅ 2026-10-02
 - `accounts.name` y `people.name` son UNIQUE globales (`001_initial.sql:15`, `008_account_owner.sql:6`). Dos cuentas del mismo banco+moneda, o dos usuarios, dan error 500 (`actions/accounts.ts:18-21,53`).
 - Migración: `DROP CONSTRAINT` de los globales, `UNIQUE (user_id, name)`; capturar `23505` en las actions y mostrar mensaje.
 

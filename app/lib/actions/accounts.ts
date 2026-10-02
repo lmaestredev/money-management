@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createAccount, deleteAccount, updateAccount } from '@/app/lib/data/accounts';
+import { isUniqueViolation } from '@/app/lib/db-errors';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
 import { createClient } from '@/app/lib/supabase/server';
 import { formSignedAmount } from '@/app/lib/validation';
@@ -51,14 +52,20 @@ export async function createAccountAction(formData: FormData) {
 
   const { bank, currency, balance, owner_id } = parsed.data;
   const name = buildAccountName(bank.trim(), currency as AccountCurrency);
-  await createAccount({
-    name,
-    bank: bank.trim(),
-    currency: currency as AccountCurrency,
-    balance_pesos: currency === 'peso' ? balance : 0,
-    balance_dollars: currency !== 'peso' ? balance : 0,
-    owner_id,
-  }, user.id);
+  try {
+    await createAccount({
+      name,
+      bank: bank.trim(),
+      currency: currency as AccountCurrency,
+      balance_pesos: currency === 'peso' ? balance : 0,
+      balance_dollars: currency !== 'peso' ? balance : 0,
+      owner_id,
+    }, user.id);
+  } catch (err) {
+    // Nombre (banco + moneda) repetido para este usuario.
+    if (isUniqueViolation(err)) redirect('/dashboard/cuentas?error=duplicate');
+    throw err;
+  }
 
   revalidatePath('/dashboard/cuentas');
   revalidatePath('/dashboard');
@@ -120,14 +127,21 @@ export async function updateAccountAction(formData: FormData) {
 
   const { id, bank, currency, balance, owner_id } = parsed.data;
   const cur = currency as AccountCurrency;
-  const updated = await updateAccount(id, {
-    name: buildAccountName(bank.trim(), cur),
-    bank: bank.trim(),
-    currency: cur,
-    balance_pesos: cur === 'peso' ? balance : 0,
-    balance_dollars: cur !== 'peso' ? balance : 0,
-    owner_id,
-  }, user.id);
+  let updated: Awaited<ReturnType<typeof updateAccount>>;
+  try {
+    updated = await updateAccount(id, {
+      name: buildAccountName(bank.trim(), cur),
+      bank: bank.trim(),
+      currency: cur,
+      balance_pesos: cur === 'peso' ? balance : 0,
+      balance_dollars: cur !== 'peso' ? balance : 0,
+      owner_id,
+    }, user.id);
+  } catch (err) {
+    // Otra cuenta del usuario ya tiene ese banco y moneda.
+    if (isUniqueViolation(err)) redirect('/dashboard/cuentas?error=duplicate');
+    throw err;
+  }
   if (!updated) {
     redirect('/dashboard/cuentas?error=notfound');
   }

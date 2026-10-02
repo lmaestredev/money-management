@@ -15,6 +15,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   notfound: 'La cuenta no existe o ya fue eliminada.',
   delete: 'No se pudo eliminar la cuenta. Intenta de nuevo.',
   validation: 'Solicitud inválida.',
+  duplicate:
+    'Ya existe una cuenta con ese banco y moneda. Usa otro nombre de banco o edita la existente.',
 };
 
 type Props = {
