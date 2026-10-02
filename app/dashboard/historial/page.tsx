@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { getEffectiveRate } from '@/app/lib/data/exchange-rates';
 import { fetchClosedPeriodsWithSummary } from '@/app/lib/data/financial-periods';
 import { createClient } from '@/app/lib/supabase/server';
 import { formatUsd, formatArs } from '@/app/lib/utils';
@@ -10,7 +11,9 @@ export default async function HistorialPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
-  const periods = await fetchClosedPeriodsWithSummary(user.id);
+  const effectiveRate = await getEffectiveRate(user.id);
+  // Misma tasa que el detalle del período, así ambos muestran el mismo balance.
+  const periods = await fetchClosedPeriodsWithSummary(user.id, effectiveRate?.rate ?? null);
 
   return (
     <div className={styles.page}>

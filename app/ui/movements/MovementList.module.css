@@ -79,6 +79,17 @@
   letter-spacing: 0.05em;
 }
 
+.dayTotals {
+  margin-left: auto;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.dayTotals .dayTotalPositive,
+.dayTotals .dayTotalNegative {
+  margin-left: 0;
+}
+
 .dayTotalPositive {
   margin-left: auto;
   font-size: 0.75rem;

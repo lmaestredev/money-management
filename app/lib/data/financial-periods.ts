@@ -1,5 +1,6 @@
 import { withAuthenticatedTx } from '../db';
 import { currentPeriodAR } from '../dates';
+import { toUsd } from '../summary';
 import type { FinancialPeriod, FinancialPeriodStatus } from '../definitions';
 
 function toDateStr(val: unknown): string {
@@ -53,6 +54,10 @@ export async function fetchClosedPeriods(userId: string): Promise<FinancialPerio
   });
 }
 
+/**
+ * Totales de un período cerrado. Los *_dollars son USD EQUIVALENTES (los pesos se
+ * convierten con la tasa que recibe la función), igual que el detalle del período.
+ */
 export type PeriodWithSummary = FinancialPeriod & {
   movement_count: number;
   total_income_dollars: number;
@@ -62,34 +67,27 @@ export type PeriodWithSummary = FinancialPeriod & {
   balance_dollars: number;
 };
 
-export async function fetchClosedPeriodsWithSummary(userId: string): Promise<PeriodWithSummary[]> {
+export async function fetchClosedPeriodsWithSummary(
+  userId: string,
+  rate: number | null
+): Promise<PeriodWithSummary[]> {
   return withAuthenticatedTx(userId, async (tx) => {
+    // El predicado de gasto debe coincidir con countsAsExpense (app/lib/summary.ts):
+    // egreso con tarjeta o pagado, y que NO sea el pago de un resumen.
     const rows = await tx`
       SELECT
         fp.id, fp.start_date, fp.end_date, fp.status, fp.closed_at, fp.created_at, fp.user_id,
         COUNT(m.id)::int AS movement_count,
-        COALESCE(SUM(
-          CASE WHEN m.record_type = 'income' THEN m.amount_dollars ELSE 0 END
-        ), 0) AS total_income_dollars,
-        COALESCE(SUM(
-          CASE WHEN m.record_type IN ('variable_payment','fixed_payment')
-                AND m.id NOT IN (
-                  SELECT paid_movement_id FROM credit_card_statements
-                  WHERE paid_movement_id IS NOT NULL
-                )
-               THEN m.amount_dollars ELSE 0 END
-        ), 0) AS total_expense_dollars,
-        COALESCE(SUM(
-          CASE WHEN m.record_type = 'income' THEN m.amount_pesos ELSE 0 END
-        ), 0) AS total_income_pesos,
-        COALESCE(SUM(
-          CASE WHEN m.record_type IN ('variable_payment','fixed_payment')
-                AND m.id NOT IN (
-                  SELECT paid_movement_id FROM credit_card_statements
-                  WHERE paid_movement_id IS NOT NULL
-                )
-               THEN m.amount_pesos ELSE 0 END
-        ), 0) AS total_expense_pesos
+        COALESCE(SUM(CASE WHEN m.record_type = 'income' THEN m.amount_dollars ELSE 0 END), 0) AS income_dollars,
+        COALESCE(SUM(CASE WHEN m.record_type = 'income' THEN m.amount_pesos ELSE 0 END), 0) AS income_pesos,
+        COALESCE(SUM(CASE WHEN m.record_type IN ('variable_payment', 'fixed_payment')
+                           AND NOT m.is_statement_payment
+                           AND (m.credit_card_id IS NOT NULL OR m.status = true)
+                          THEN m.amount_dollars ELSE 0 END), 0) AS expense_dollars,
+        COALESCE(SUM(CASE WHEN m.record_type IN ('variable_payment', 'fixed_payment')
+                           AND NOT m.is_statement_payment
+                           AND (m.credit_card_id IS NOT NULL OR m.status = true)
+                          THEN m.amount_pesos ELSE 0 END), 0) AS expense_pesos
       FROM financial_periods fp
       LEFT JOIN movements m ON m.financial_period_id = fp.id
       WHERE fp.status = 'closed'
@@ -98,15 +96,17 @@ export async function fetchClosedPeriodsWithSummary(userId: string): Promise<Per
     `;
 
     return rows.map((r) => {
-      const income = Number(r.total_income_dollars);
-      const expense = Number(r.total_expense_dollars);
+      const incomePesos = Number(r.income_pesos);
+      const expensePesos = Number(r.expense_pesos);
+      const income = toUsd({ amount_pesos: incomePesos, amount_dollars: Number(r.income_dollars) }, rate);
+      const expense = toUsd({ amount_pesos: expensePesos, amount_dollars: Number(r.expense_dollars) }, rate);
       return {
         ...rowToPeriod(r as Record<string, unknown>),
         movement_count: Number(r.movement_count),
         total_income_dollars: income,
         total_expense_dollars: expense,
-        total_income_pesos: Number(r.total_income_pesos),
-        total_expense_pesos: Number(r.total_expense_pesos),
+        total_income_pesos: incomePesos,
+        total_expense_pesos: expensePesos,
         balance_dollars: income - expense,
       };
     });

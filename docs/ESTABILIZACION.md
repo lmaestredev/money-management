@@ -67,7 +67,7 @@ Leyenda: 🟢 fácil · 🟡 media · 🔴 difícil · 🛑 requiere decisión d
 
 ### Fase 2 — Cálculos correctos (lo que más afecta la confianza)
 
-**E09 — Un único "cuenta como gasto"** 🟡 ⏱4 — *el más importante de la fase*
+**E09 — Un único "cuenta como gasto"** 🟡 ⏱4 ✅ 2026-10-02 — *el más importante de la fase*
 - Hoy hay 3 cálculos distintos y solo dashboard e historial-detalle respetan la regla:
   - `app/dashboard/movimientos/page.tsx:43-69`: cuenta cargos de tarjeta solo con `status===true` (pierde los de estado "—") y SÍ cuenta el pago del resumen → doble conteo.
   - `data/financial-periods.ts:70-111`: SQL suma pendientes (`status=false`) y `balance_dollars` ignora los pesos → un período con sueldo $1.000.000 y gastos $600.000 muestra "Balance u$d 0".

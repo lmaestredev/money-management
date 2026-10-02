@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { dateOnly, formatDateAR, todayAR } from '@/app/lib/dates';
+import { countsAsExpense } from '@/app/lib/summary';
 import { formatUsd } from '@/app/lib/utils';
 import type { Movement } from '@/app/lib/definitions';
 import DeleteMovementButton from './DeleteMovementButton';
@@ -63,18 +64,23 @@ function getCategoryIcon(categoryName: string | null, recordType: string): strin
   }
 }
 
-function getDayTotal(movements: Movement[]): number {
-  let total = 0;
+/**
+ * Total neto del día POR MONEDA (sin convertir): ingresos − gastos, con la misma
+ * regla de gasto que el resto de las pantallas (los pagos de resumen no cuentan).
+ */
+function getDayTotals(movements: Movement[]): { pesos: number; dollars: number } {
+  let pesos = 0;
+  let dollars = 0;
   for (const m of movements) {
-    if (m.record_type === 'income') total += m.amount_dollars;
-    else if (
-      (m.record_type === 'variable_payment' || m.record_type === 'fixed_payment') &&
-      m.status === true
-    ) {
-      total -= m.amount_dollars;
+    if (m.record_type === 'income') {
+      pesos += m.amount_pesos;
+      dollars += m.amount_dollars;
+    } else if (countsAsExpense(m)) {
+      pesos -= m.amount_pesos;
+      dollars -= m.amount_dollars;
     }
   }
-  return total;
+  return { pesos, dollars };
 }
 
 function getStatusLabel(m: Movement): 'paid' | 'pending' | 'overdue' {
@@ -133,7 +139,12 @@ export default function MovementList({ movements, accountNames, readOnly = false
 
       {sortedDays.map((dayKey) => {
         const dayMovements = byDay.get(dayKey)!;
-        const dayTotal = getDayTotal(dayMovements);
+        const dayTotals = getDayTotals(dayMovements);
+        const dayParts = [
+          { value: dayTotals.pesos, format: formatPesos },
+          { value: dayTotals.dollars, format: formatUsd },
+        ].filter((p) => p.value !== 0);
+        if (dayParts.length === 0) dayParts.push({ value: 0, format: formatUsd });
         const firstDate = dayMovements[0]?.payment_date ?? dayMovements[0]?.created_at ?? dayKey;
 
         return (
@@ -142,13 +153,16 @@ export default function MovementList({ movements, accountNames, readOnly = false
               <span className={styles.dayLabelText}>
                 {formatDayLabel(firstDate).charAt(0).toUpperCase() + formatDayLabel(firstDate).slice(1)}
               </span>
-              <span
-                className={
-                  dayTotal >= 0 ? styles.dayTotalPositive : styles.dayTotalNegative
-                }
-              >
-                {dayTotal >= 0 ? '+' : '−'}
-                {formatUsd(Math.abs(dayTotal))}
+              <span className={styles.dayTotals}>
+                {dayParts.map((part, i) => (
+                  <span
+                    key={i}
+                    className={part.value >= 0 ? styles.dayTotalPositive : styles.dayTotalNegative}
+                  >
+                    {part.value >= 0 ? '+' : '−'}
+                    {part.format(Math.abs(part.value))}
+                  </span>
+                ))}
               </span>
             </div>
 
@@ -196,11 +210,14 @@ export default function MovementList({ movements, accountNames, readOnly = false
                   <div className={styles.movAmounts}>
                     <div className={`${styles.movAmountPrimary} ${amountClass}`}>
                       {isIncome ? '+' : '−'}
-                      {formatUsd(m.amount_dollars)}
+                      {/* Cada importe en su moneda: un gasto en pesos no se muestra como u$d 0,00. */}
+                      {m.amount_dollars !== 0 ? formatUsd(m.amount_dollars) : formatPesos(m.amount_pesos)}
                     </div>
-                    <div className={styles.movAmountSecondary}>
-                      {formatPesos(m.amount_pesos)}
-                    </div>
+                    {m.amount_dollars !== 0 && m.amount_pesos !== 0 && (
+                      <div className={styles.movAmountSecondary}>
+                        {formatPesos(m.amount_pesos)}
+                      </div>
+                    )}
                   </div>
                   <div className={styles.movStatus}>
                     <span
