@@ -58,11 +58,12 @@ Leyenda: 🟢 fácil · 🟡 media · 🔴 difícil · 🛑 requiere decisión d
 - `accounts.name` y `people.name` son UNIQUE globales (`001_initial.sql:15`, `008_account_owner.sql:6`). Dos cuentas del mismo banco+moneda, o dos usuarios, dan error 500 (`actions/accounts.ts:18-21,53`).
 - Migración: `DROP CONSTRAINT` de los globales, `UNIQUE (user_id, name)`; capturar `23505` en las actions y mostrar mensaje.
 
-**E08 — Primer período del usuario y migraciones robustas** 🟡 ⏱3
+**E08 — Primer período del usuario y migraciones robustas** 🟡 ⏱3 ✅ 2026-10-02
 - Ningún flujo crea el primer período abierto de un usuario nuevo (`data/movements.ts:159-161` lanza "No hay período financiero abierto"; `createNextPeriod` no lo llama nadie). Crear el período si no existe (en `createMovement`/primer uso, con `ON CONFLICT` del índice de E06).
 - `014/015/016` hacen `RAISE EXCEPTION` si `auth.users` está vacío → `RAISE NOTICE` + `RETURN`. No editar las migraciones ya aplicadas en producción: crear una nueva que sea segura y solo arreglar las viejas si `scripts/migrate.ts` en DB vacía falla.
 - `scripts/migrate.ts:45-48`: ejecutar migración + `INSERT INTO _migrations` en la misma transacción, con `pg_advisory_lock`.
 - Hecho cuando: `pnpm db:migrate` corre bien en una DB vacía y un usuario nuevo puede cargar su primer movimiento.
+- *Pendiente de verificar:* `ensureCurrentPeriod` y el runner nuevo se probaron contra la base real (transacción revertida y corrida sin migraciones pendientes), pero **`pnpm db:migrate` sobre una base vacía NO se ejecutó** (no hay Postgres local). Las ediciones de 014/015/016 (solo la rama sin usuarios; en producción no se vuelven a ejecutar) están revisadas solo por lectura. Probar con una base descartable antes de crear un entorno nuevo.
 
 ### Fase 2 — Cálculos correctos (lo que más afecta la confianza)
 

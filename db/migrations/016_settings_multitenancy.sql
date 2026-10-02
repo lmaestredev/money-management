@@ -7,7 +7,11 @@ DECLARE v_user_id UUID;
 BEGIN
   SELECT id INTO v_user_id FROM auth.users ORDER BY created_at LIMIT 1;
   IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'No hay usuarios en auth.users.';
+    -- Base nueva sin usuarios: los defaults sembrados por 011 no pertenecen a nadie
+    -- (la app usa DEFAULTS en código si un usuario no tiene filas).
+    RAISE NOTICE 'No hay usuarios en auth.users: se descartan los settings sembrados sin dueño.';
+    DELETE FROM settings WHERE user_id IS NULL;
+    RETURN;
   END IF;
   UPDATE settings SET user_id = v_user_id WHERE user_id IS NULL;
 END $$;

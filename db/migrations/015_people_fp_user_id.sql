@@ -8,7 +8,10 @@ DECLARE v_user_id UUID;
 BEGIN
   SELECT id INTO v_user_id FROM auth.users ORDER BY created_at LIMIT 1;
   IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'No hay usuarios en auth.users.';
+    -- Base nueva sin usuarios: las personas sembradas por 008 no pertenecen a nadie.
+    RAISE NOTICE 'No hay usuarios en auth.users: se descartan las personas sembradas sin dueño.';
+    DELETE FROM people WHERE user_id IS NULL;
+    RETURN;
   END IF;
   UPDATE people SET user_id = v_user_id WHERE user_id IS NULL;
 END $$;
@@ -23,6 +26,12 @@ DO $$
 DECLARE v_user_id UUID;
 BEGIN
   SELECT id INTO v_user_id FROM auth.users ORDER BY created_at LIMIT 1;
+  IF v_user_id IS NULL THEN
+    -- Base nueva sin usuarios: el período sembrado por 012 no pertenece a nadie.
+    -- Cada usuario crea el suyo en su primer movimiento (ensureCurrentPeriod).
+    DELETE FROM financial_periods WHERE user_id IS NULL;
+    RETURN;
+  END IF;
   UPDATE financial_periods SET user_id = v_user_id WHERE user_id IS NULL;
 END $$;
 

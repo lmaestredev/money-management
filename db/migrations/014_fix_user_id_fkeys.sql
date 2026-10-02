@@ -38,7 +38,9 @@ DECLARE v_user_id UUID;
 BEGIN
   SELECT id INTO v_user_id FROM auth.users ORDER BY created_at LIMIT 1;
   IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'No hay usuarios en auth.users. Crear el usuario primero.';
+    -- Base nueva sin usuarios: no hay filas que asignar (las tablas están vacías).
+    RAISE NOTICE 'No hay usuarios en auth.users: se omite el backfill de user_id.';
+    RETURN;
   END IF;
   UPDATE accounts          SET user_id = v_user_id WHERE user_id IS NULL;
   UPDATE credit_cards      SET user_id = v_user_id WHERE user_id IS NULL;
