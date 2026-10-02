@@ -52,6 +52,7 @@ Leyenda: 🟢 fácil · 🟡 media · 🔴 difícil · 🛑 requiere decisión d
 - `UNIQUE INDEX ... ON financial_periods(user_id) WHERE status='open'`.
 - Idempotencia: `UNIQUE (recurring_expense_id, financial_period_id)`, y lo mismo para `installment_id` y `recurring_income_id` (parciales, `WHERE ... IS NOT NULL`).
 - Antes de cada constraint: query para detectar filas que lo violan y reportarlas a Luis (no borrar datos solos).
+- *Seguimiento 2026-10-02:* 2 cuentas heredadas con `currency = 'dual'` (billeteras con pesos y dólares) se migraron con autorización de Luis: "Dólar App Luis" pasó a `dollar` y "Dolar App Valen" se dividió en una cuenta en pesos y otra en dólares (movimientos y plantillas reasignados por moneda; saldos totales sin cambios). La migración 020 quitó `dual` del constraint. La app no soporta cuentas multi-moneda.
 
 **E07 — Nombres únicos por usuario** 🟢 ⏱2
 - `accounts.name` y `people.name` son UNIQUE globales (`001_initial.sql:15`, `008_account_owner.sql:6`). Dos cuentas del mismo banco+moneda, o dos usuarios, dan error 500 (`actions/accounts.ts:18-21,53`).
