@@ -1,31 +1,9 @@
-import { z } from 'zod';
 import { requireBearerSecret } from '@/app/lib/auth/bearer';
+import { movementApiSchema } from '@/app/lib/validation';
 import {
   createMovement,
   fetchMovementsByPeriod,
 } from '@/app/lib/data/movements';
-
-const recordTypeSchema = z.enum([
-  'income',
-  'conversion',
-  'variable_payment',
-  'fixed_payment',
-]);
-
-const createMovementSchema = z.object({
-  period: z.string().regex(/^\d{4}-\d{2}$/, 'period must be YYYY-MM'),
-  record_type: recordTypeSchema,
-  account_id: z.string().uuid(),
-  category_id: z.string().uuid().optional().nullable(),
-  description: z.string().optional().nullable(),
-  status: z.boolean().optional().nullable(),
-  amount_pesos: z.number(),
-  amount_dollars: z.number(),
-  payment_date: z.string().optional().nullable(),
-  dollar_rate: z.number().optional().nullable(),
-  exchange_rate: z.number().optional().nullable(),
-  comment: z.string().optional().nullable(),
-});
 
 function getExpectedSecret(): string | undefined {
   return process.env.TELEGRAM_BOT_SECRET || process.env.API_SECRET || undefined;
@@ -48,7 +26,7 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const parsed = createMovementSchema.safeParse(body);
+  const parsed = movementApiSchema.safeParse(body);
   if (!parsed.success) {
     return Response.json(
       { error: 'Validation failed', details: parsed.error.flatten() },
