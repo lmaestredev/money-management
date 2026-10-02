@@ -148,7 +148,7 @@ export async function createMovementAction(formData: FormData) {
   }
 
   const data = parsed.data;
-  if (!data.account_id && !data.credit_card_id) {
+  if (!data.account_id === !data.credit_card_id) {
     redirect(`/dashboard/movimientos/nuevo?period=${data.period}&error=validation`);
   }
   const amounts = await resolveMovementAmounts(user.id, data);
@@ -219,7 +219,7 @@ export async function updateMovementAction(formData: FormData) {
 
   const data = parsed.data;
   const errorTarget = `/dashboard/movimientos/editar/${data.id}?period=${data.period}&error=validation`;
-  if (!data.account_id && !data.credit_card_id) {
+  if (!data.account_id === !data.credit_card_id) {
     redirect(errorTarget);
   }
   const amounts = await resolveMovementAmounts(user.id, data);

@@ -47,7 +47,7 @@ Leyenda: 🟢 fácil · 🟡 media · 🔴 difícil · 🛑 requiere decisión d
 - Aplicar en: `actions/movements.ts:122-133`, `actions/installments.ts:25-29,166-167`, `actions/recurring.ts:24-47`, `actions/recurring-incomes.ts:23-40`, `actions/accounts.ts:33,101`, `actions/credit-cards.ts:48`, `app/api/movements/route.ts:14-27` (acotar magnitud y largo de `description`).
 - Hecho cuando: un POST con monto negativo, `NaN` o `Infinity` devuelve error claro.
 
-**E06 — Migración de constraints e índices** 🟡 ⏱4 — *nueva migración, `NOT VALID` + `VALIDATE`*
+**E06 — Migración de constraints e índices** 🟡 ⏱4 ✅ 2026-10-02 — *nueva migración, `NOT VALID` + `VALIDATE`*
 - `CHECK` de importes `>= 0` (movements, installment_purchases, recurring_*, credit_card_statements, credit_limit); `currency IN ('peso','dollar','crypto')`; estados válidos; `closing_day/due_day/pay_before_day BETWEEN 1 AND 31`; `paid_installments BETWEEN 0 AND total_installments`; `total_installments > 0`; `num_nonnulls(account_id, credit_card_id) = 1` en `movements`.
 - `UNIQUE INDEX ... ON financial_periods(user_id) WHERE status='open'`.
 - Idempotencia: `UNIQUE (recurring_expense_id, financial_period_id)`, y lo mismo para `installment_id` y `recurring_income_id` (parciales, `WHERE ... IS NOT NULL`).
