@@ -363,11 +363,11 @@ export async function payStatement(
     const [mov] = await tx`
       INSERT INTO movements (
         period, financial_period_id, record_type, account_id, description, status,
-        amount_pesos, amount_dollars, payment_date, source, user_id
+        amount_pesos, amount_dollars, payment_date, source, user_id, is_statement_payment
       )
       VALUES (
         ${st.period}, ${financialPeriodId}, 'fixed_payment', ${accountId}, ${description}, true,
-        ${totalPesos}, ${totalDollars}, NULL, 'app', ${userId}
+        ${totalPesos}, ${totalDollars}, NULL, 'app', ${userId}, true
       )
       RETURNING id
     `;

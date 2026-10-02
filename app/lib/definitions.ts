@@ -169,6 +169,8 @@ export type Movement = {
   installment_id?: string | null;
   recurring_expense_id?: string | null;
   recurring_income_id?: string | null;
+  /** true si es el pago de un resumen de tarjeta: NO cuenta como gasto. */
+  is_statement_payment: boolean;
 };
 
 export type MovementInsert = {

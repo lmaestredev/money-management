@@ -36,6 +36,7 @@ function rowToMovement(row: Record<string, unknown>): Movement {
     user_id: row.user_id as string,
     source: (row.source as MovementSource) ?? null,
     installment_id: (row.installment_id as string) ?? null,
+    is_statement_payment: row.is_statement_payment === true,
   };
 }
 
@@ -47,7 +48,7 @@ export async function fetchMovementsByPeriod(period: string, userId: string): Pr
              c.name AS category_name,
              m.description, m.status, m.amount_pesos, m.amount_dollars,
              m.payment_date, m.dollar_rate, m.exchange_rate, m.comment,
-             m.created_at, m.user_id, m.source
+             m.created_at, m.user_id, m.source, m.is_statement_payment
       FROM movements m
       LEFT JOIN categories c ON m.category_id = c.id
       WHERE m.period = ${period}
@@ -66,7 +67,7 @@ export async function fetchMovementsByFinancialPeriod(financialPeriodId: string,
              c.name AS category_name,
              m.description, m.status, m.amount_pesos, m.amount_dollars,
              m.payment_date, m.dollar_rate, m.exchange_rate, m.comment,
-             m.created_at, m.user_id, m.source
+             m.created_at, m.user_id, m.source, m.is_statement_payment
       FROM movements m
       LEFT JOIN categories c ON m.category_id = c.id
       WHERE m.financial_period_id = ${financialPeriodId}
@@ -88,7 +89,7 @@ export async function fetchMovementsByPeriodAndType(
              c.name AS category_name,
              m.description, m.status, m.amount_pesos, m.amount_dollars,
              m.payment_date, m.dollar_rate, m.exchange_rate, m.comment,
-             m.created_at, m.user_id, m.source
+             m.created_at, m.user_id, m.source, m.is_statement_payment
       FROM movements m
       LEFT JOIN categories c ON m.category_id = c.id
       WHERE m.period = ${period} AND m.record_type = ${recordType}
@@ -106,7 +107,7 @@ export async function fetchMovementById(id: string, userId: string): Promise<Mov
              c.name AS category_name,
              m.description, m.status, m.amount_pesos, m.amount_dollars,
              m.payment_date, m.dollar_rate, m.exchange_rate, m.comment,
-             m.created_at, m.user_id, m.source, m.installment_id
+             m.created_at, m.user_id, m.source, m.installment_id, m.is_statement_payment
       FROM movements m
       LEFT JOIN categories c ON m.category_id = c.id
       WHERE m.id = ${id}
@@ -198,7 +199,7 @@ export async function createMovement(
       RETURNING id, period, financial_period_id, record_type, account_id, credit_card_id, statement_id,
                 category_id, description, status,
                 amount_pesos, amount_dollars, payment_date, dollar_rate, exchange_rate,
-                comment, created_at, user_id, source
+                comment, created_at, user_id, source, is_statement_payment
     `;
 
     if (data.credit_card_id) {
@@ -321,7 +322,7 @@ export async function updateMovement(
       RETURNING id, period, financial_period_id, record_type, account_id, credit_card_id, statement_id,
                 category_id, description, status,
                 amount_pesos, amount_dollars, payment_date, dollar_rate, exchange_rate,
-                comment, created_at, user_id, source, installment_id
+                comment, created_at, user_id, source, installment_id, is_statement_payment
     `;
     return rowToMovement((row ?? {}) as Record<string, unknown>);
   });
