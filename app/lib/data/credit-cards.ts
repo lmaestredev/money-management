@@ -205,15 +205,6 @@ export async function fetchUnpaidStatements(userId: string): Promise<CardStateme
   });
 }
 
-export async function fetchStatementPaymentIds(userId: string): Promise<Set<string>> {
-  return withAuthenticatedTx(userId, async (tx) => {
-    const rows = (await tx`
-      SELECT paid_movement_id FROM credit_card_statements WHERE paid_movement_id IS NOT NULL
-    `) as { paid_movement_id: string }[];
-    return new Set(rows.map((r) => r.paid_movement_id));
-  });
-}
-
 export async function fetchStatementsByCard(cardId: string, userId: string): Promise<CardStatement[]> {
   return withAuthenticatedTx(userId, async (tx) => {
     const rows = await tx`

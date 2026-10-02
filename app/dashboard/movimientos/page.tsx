@@ -5,6 +5,7 @@ import { fetchAccounts } from '@/app/lib/data/accounts';
 import { fetchMovementsByFinancialPeriod } from '@/app/lib/data/movements';
 import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
 import { currentPeriodAR } from '@/app/lib/dates';
+import { computeSummary } from '@/app/lib/summary';
 import { fetchActiveInstallments, fetchInstallmentPaidIds } from '@/app/lib/data/installments';
 import { fetchActiveRecurringExpenses, fetchRecurringPaidIds } from '@/app/lib/data/recurring';
 import {
@@ -13,61 +14,12 @@ import {
 } from '@/app/lib/data/recurring-incomes';
 import { getEffectiveRate } from '@/app/lib/data/exchange-rates';
 import { createClient } from '@/app/lib/supabase/server';
-import type { Movement } from '@/app/lib/definitions';
 import PeriodBadge from '@/app/ui/financial-periods/PeriodBadge';
-import MovementsPageClient, { type MovementSummary } from '@/app/ui/movements/MovementsPageClient';
+import MovementsPageClient from '@/app/ui/movements/MovementsPageClient';
 import MonthlyInstallmentsSection from '@/app/ui/installments/MonthlyInstallmentsSection';
 import MonthlyFixedExpensesSection from '@/app/ui/recurring/MonthlyFixedExpensesSection';
 import MonthlyIncomesSection from '@/app/ui/recurring-incomes/MonthlyIncomesSection';
 import styles from './page.module.css';
-
-/**
- * Valor del movimiento en USD. Los importes en dólares se toman directo; los de
- * pesos se convierten con la tasa efectiva. Si no hay tasa, el monto en pesos no
- * puede convertirse y aporta 0.
- */
-function toUsd(m: Movement, rate: number | null): number {
-  const pesosUsd = rate && rate > 0 ? m.amount_pesos / rate : 0;
-  return m.amount_dollars + pesosUsd;
-}
-
-function computeSummary(movements: Movement[], rate: number | null): MovementSummary {
-  let totalIncome = 0;       // USD (convertido)
-  let totalExpense = 0;      // USD (convertido)
-  let totalIncomePesos = 0;  // ARS crudo
-  let totalExpensePesos = 0; // ARS crudo
-  let incomeCount = 0;
-  let expenseCount = 0;
-
-  for (const m of movements) {
-    if (m.record_type === 'income') {
-      totalIncome += toUsd(m, rate);
-      totalIncomePesos += m.amount_pesos;
-      incomeCount += 1;
-    } else if (
-      m.record_type === 'variable_payment' ||
-      m.record_type === 'fixed_payment'
-    ) {
-      if (m.status === true) {
-        totalExpense += toUsd(m, rate);
-        totalExpensePesos += m.amount_pesos;
-      }
-      expenseCount += 1;
-    }
-  }
-
-  const balance = totalIncome - totalExpense;
-
-  return {
-    balance,
-    totalIncome,
-    totalExpense,
-    totalIncomePesos,
-    totalExpensePesos,
-    incomeCount,
-    expenseCount,
-  };
-}
 
 export default async function MovimientosPage() {
   const supabase = await createClient();
