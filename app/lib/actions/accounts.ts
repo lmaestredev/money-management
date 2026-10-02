@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { createAccount, deleteAccount, updateAccount } from '@/app/lib/data/accounts';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
 import { createClient } from '@/app/lib/supabase/server';
+import { formSignedAmount } from '@/app/lib/validation';
 import type { AccountCurrency } from '@/app/lib/definitions';
 
 async function requireUser() {
@@ -28,9 +29,9 @@ const ownerSchema = z
   .transform((v) => (v ? v : null));
 
 const createAccountFormSchema = z.object({
-  bank: z.string().min(1, 'Indica el banco o institución'),
+  bank: z.string().trim().min(1, 'Indica el banco o institución').max(200),
   currency: currencySchema,
-  balance: z.string().transform((s) => parseFloat(s) || 0),
+  balance: formSignedAmount,
   owner_id: ownerSchema,
 });
 
@@ -96,9 +97,9 @@ export async function deleteAccountAction(formData: FormData) {
 
 const updateAccountFormSchema = z.object({
   id: z.string().uuid(),
-  bank: z.string().min(1, 'Indica el banco o institución'),
+  bank: z.string().trim().min(1, 'Indica el banco o institución').max(200),
   currency: currencySchema,
-  balance: z.string().transform((s) => parseFloat(s) || 0),
+  balance: formSignedAmount,
   owner_id: ownerSchema,
 });
 

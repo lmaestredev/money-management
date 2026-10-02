@@ -11,6 +11,7 @@ import {
 } from '@/app/lib/data/credit-cards';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
 import { createClient } from '@/app/lib/supabase/server';
+import { formAmount, formOptionalDay } from '@/app/lib/validation';
 import type { AccountCurrency, CardBrand } from '@/app/lib/definitions';
 
 async function requireUser() {
@@ -31,23 +32,14 @@ const ownerSchema = z
   .optional()
   .transform((v) => (v ? v : null));
 
-const daySchema = z
-  .union([z.string(), z.literal('')])
-  .optional()
-  .transform((v) => {
-    if (!v) return null;
-    const n = parseInt(v, 10);
-    return Number.isFinite(n) && n >= 1 && n <= 31 ? n : null;
-  });
-
 const cardFormSchema = z.object({
-  name: z.string().min(1, 'Indica un nombre para la tarjeta'),
-  bank: z.string().optional().transform((v) => (v?.trim() ? v.trim() : null)),
+  name: z.string().trim().min(1, 'Indica un nombre para la tarjeta').max(255),
+  bank: z.string().max(255).optional().transform((v) => (v?.trim() ? v.trim() : null)),
   brand: brandSchema,
   currency: currencySchema,
-  credit_limit: z.string().optional().transform((s) => parseFloat(s ?? '') || 0),
-  closing_day: daySchema,
-  due_day: daySchema,
+  credit_limit: formAmount,
+  closing_day: formOptionalDay,
+  due_day: formOptionalDay,
   owner_id: ownerSchema,
 });
 

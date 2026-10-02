@@ -41,7 +41,7 @@ Leyenda: 🟢 fácil · 🟡 media · 🔴 difícil · 🛑 requiere decisión d
 - Reemplazar en: `data/credit-cards.ts:82-84,263` (`resolveCycle`), `data/movements.ts:166,283`, `actions/financial-periods.ts:63-74,198`, `actions/movements.ts:92,192`, `MovementForm.tsx:13`, `movimientos/nuevo/page.tsx:16-18`, `MovementList.tsx:26-31`, `InstallmentForm.tsx:9-11`, `dashboard/page.tsx:36-41`, `PayStatementForm.tsx:31-36` (vencimiento se ve un día antes: formatear con `timeZone:'UTC'`), `data/recurring.ts:517`.
 - Hecho cuando: test unitario de `resolveCycle` con compra 15/10 22:00 ART y cierre día 15; vencimiento 10/10 se muestra "10 oct".
 
-**E05 — Validación de servidor unificada (zod)** 🟢 ⏱3
+**E05 — Validación de servidor unificada (zod)** 🟢 ⏱3 ✅ 2026-10-02
 - Un módulo `app/lib/validation.ts` con `amount = z.coerce.number().finite().min(0)`, `dayOfMonth 1..31`, `isoDate = z.string().date()`, `rate > 0`.
 - Reglas: exactamente UNA moneda con importe > 0 en movimientos/recurrentes/cuotas (hoy dos importes suman doble en el resumen USD); `NaN`/negativos rechazados.
 - Aplicar en: `actions/movements.ts:122-133`, `actions/installments.ts:25-29,166-167`, `actions/recurring.ts:24-47`, `actions/recurring-incomes.ts:23-40`, `actions/accounts.ts:33,101`, `actions/credit-cards.ts:48`, `app/api/movements/route.ts:14-27` (acotar magnitud y largo de `description`).
