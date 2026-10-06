@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import type { Movement } from '@/app/lib/definitions';
+import type { UsdIncomplete } from '@/app/lib/summary';
 import SummaryCards from './SummaryCards';
 import MovementsFiltersBar, { type TypeFilter } from './MovementsFiltersBar';
 import MovementList from './MovementList';
@@ -15,6 +16,8 @@ export type MovementSummary = {
   totalExpensePesos?: number;
   incomeCount: number;
   expenseCount: number;
+  /** USD incompletos por falta de cotización (ver lib/summary). */
+  incomplete?: UsdIncomplete;
 };
 
 type Props = {
@@ -83,6 +86,7 @@ export default function MovementsPageClient({
           rate={rate}
           incomeCount={summary.incomeCount}
           expenseCount={summary.expenseCount}
+          incomplete={summary.incomplete}
         />
       )}
 

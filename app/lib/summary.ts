@@ -9,6 +9,19 @@ import type { Movement } from './definitions';
 
 export type CategoryTotal = { name: string; amount: number };
 
+/**
+ * true cuando el importe en USD está INCOMPLETO: no hay cotización válida y hay pesos
+ * que no se pudieron convertir. Con tasa nula esos pesos aportan 0 y la cifra queda
+ * subestimada, así que la UI muestra "—" en lugar de un número engañoso.
+ */
+export type UsdIncomplete = {
+  income: boolean;
+  expense: boolean;
+  variable: boolean;
+  fixed: boolean;
+  balance: boolean;
+};
+
 export type Summary = {
   /** Ingresos − gastos, en USD. */
   balance: number;
@@ -23,6 +36,7 @@ export type Summary = {
   variableTotal: number; // USD, gastos variables
   variableTotalPesos: number; // ARS crudo, gastos variables
   categoryTotals: CategoryTotal[];
+  incomplete: UsdIncomplete;
 };
 
 type AmountFields = Pick<Movement, 'amount_pesos' | 'amount_dollars'>;
@@ -94,6 +108,16 @@ export function computeSummary(movements: Movement[], rate: number | null): Summ
     .map(([name, amount]) => ({ name, amount }))
     .sort((a, b) => b.amount - a.amount);
 
+  const rateMissing = !(rate && rate > 0);
+  const fixedTotalPesos = totalExpensePesos - variableTotalPesos;
+  const incomplete: UsdIncomplete = {
+    income: rateMissing && totalIncomePesos > 0,
+    expense: rateMissing && totalExpensePesos > 0,
+    variable: rateMissing && variableTotalPesos > 0,
+    fixed: rateMissing && fixedTotalPesos > 0,
+    balance: rateMissing && (totalIncomePesos > 0 || totalExpensePesos > 0),
+  };
+
   return {
     balance: totalIncome - totalExpense,
     totalIncome,
@@ -106,5 +130,6 @@ export function computeSummary(movements: Movement[], rate: number | null): Summ
     variableTotal,
     variableTotalPesos,
     categoryTotals,
+    incomplete,
   };
 }

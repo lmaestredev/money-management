@@ -24,6 +24,11 @@ export function arsEquivalent(usdAmount: number, rawPesos: number, rate: number 
   return rate ? usdAmount * rate : rawPesos;
 }
 
+/** USD formateado, o "—" si el importe está incompleto (faltan pesos por convertir). */
+export function formatUsdOrDash(amount: number, incomplete: boolean | undefined): string {
+  return incomplete ? '—' : formatUsd(amount);
+}
+
 /**
  * Formatea un monto en pesos argentinos.
  * Ej: 150000 → "$ 150.000"

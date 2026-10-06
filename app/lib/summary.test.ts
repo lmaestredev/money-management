@@ -114,3 +114,42 @@ test('las conversiones no son ni ingreso ni gasto', () => {
   const s = computeSummary([mv({ record_type: 'conversion', amount_pesos: 100_000, amount_dollars: 100 })], RATE);
   assert.equal(s.totalIncome + s.totalExpense + s.incomeCount + s.expenseCount, 0);
 });
+
+test('sin cotización: el USD con pesos queda marcado como incompleto', () => {
+  const s = computeSummary(
+    [
+      mv({ record_type: 'income', amount_pesos: 1_000_000 }),
+      mv({ status: true, amount_pesos: 600_000 }), // variable en pesos
+      mv({ record_type: 'fixed_payment', status: true, amount_pesos: 100_000 }), // fijo en pesos
+    ],
+    null
+  );
+  assert.deepEqual(s.incomplete, { income: true, expense: true, variable: true, fixed: true, balance: true });
+  assert.equal(s.totalIncome, 0, 'los pesos no se convirtieron');
+});
+
+test('sin cotización pero todo en dólares: el USD es exacto y NO se marca incompleto', () => {
+  const s = computeSummary(
+    [mv({ record_type: 'income', amount_dollars: 5000 }), mv({ status: true, amount_dollars: 200 })],
+    null
+  );
+  assert.deepEqual(s.incomplete, { income: false, expense: false, variable: false, fixed: false, balance: false });
+  assert.equal(s.balance, 4800);
+});
+
+test('con cotización válida nada queda incompleto aunque haya pesos', () => {
+  const s = computeSummary([mv({ record_type: 'income', amount_pesos: 1_000_000 }), mv({ status: true, amount_pesos: 1000 })], 1500);
+  assert.equal(Object.values(s.incomplete).some(Boolean), false);
+  for (const bad of [0, -5, Number.NaN]) {
+    assert.equal(computeSummary([mv({ status: true, amount_pesos: 10 })], bad as number).incomplete.expense, true, `tasa ${bad}`);
+  }
+});
+
+test('sin cotización: solo se marca lo que realmente tiene pesos', () => {
+  const s = computeSummary([mv({ record_type: 'income', amount_dollars: 100 }), mv({ status: true, amount_pesos: 50_000 })], null);
+  assert.equal(s.incomplete.income, false);
+  assert.equal(s.incomplete.expense, true);
+  assert.equal(s.incomplete.variable, true);
+  assert.equal(s.incomplete.fixed, false);
+  assert.equal(s.incomplete.balance, true);
+});

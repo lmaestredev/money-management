@@ -1,4 +1,5 @@
-import { formatUsd, formatArs, arsEquivalent } from '@/app/lib/utils';
+import type { UsdIncomplete } from '@/app/lib/summary';
+import { formatUsd, formatUsdOrDash, formatArs, arsEquivalent } from '@/app/lib/utils';
 import styles from './SummaryCards.module.css';
 
 
@@ -18,6 +19,8 @@ export type SummaryCardsProps = {
   expensePercent?: number;
   balanceLabel?: string;
   balanceMeta?: React.ReactNode;
+  /** USD incompletos por falta de cotización: se muestra "—" en vez de una cifra subestimada. */
+  incomplete?: UsdIncomplete;
 };
 
 export default function SummaryCards({
@@ -33,6 +36,7 @@ export default function SummaryCards({
   expensePercent = 0,
   balanceLabel = 'Balance del mes',
   balanceMeta,
+  incomplete,
 }: SummaryCardsProps) {
   const incomePct = totalIncome > 0 ? Math.min(100, (balance / totalIncome) * 100) : 0;
   const displayBalancePct = balancePercent ?? incomePct;
@@ -56,20 +60,24 @@ export default function SummaryCards({
           <span className={styles.summaryCardLabel}>{balanceLabel}</span>
           <div className={`${styles.summaryCardIcon} ${styles.summaryCardIconBalance}`}>💼</div>
         </div>
-        <div className={styles.summaryCardAmount}>{formatUsd(balance)}</div>
-        {balanceArs !== null && (
+        <div className={styles.summaryCardAmount}>{formatUsdOrDash(balance, incomplete?.balance)}</div>
+        {balanceArs !== null && !incomplete?.balance && (
           <div className={styles.summaryCardSecondary}>≈ {formatArs(balanceArs)}</div>
         )}
         <div className={styles.summaryCardProgress}>
           <div className={styles.summaryCardProgressTrack}>
             <div
               className={`${styles.summaryCardProgressFill} ${styles.summaryCardProgressFillBalance}`}
-              style={{ width: `${Math.min(100, Math.max(0, displayBalancePct))}%` }}
+              style={{ width: `${incomplete?.balance ? 0 : Math.min(100, Math.max(0, displayBalancePct))}%` }}
             />
           </div>
         </div>
         <div className={styles.summaryCardMeta}>
-          {balanceMeta !== undefined
+          {incomplete?.balance
+            ? (
+                <span className={styles.summaryCardTag}>Sin cotización del dólar</span>
+              )
+            : balanceMeta !== undefined
             ? balanceMeta
             : totalIncome > 0
               ? (
@@ -93,7 +101,7 @@ export default function SummaryCards({
           <div className={`${styles.summaryCardIcon} ${styles.summaryCardIconIncome}`}>📈</div>
         </div>
         <div className={`${styles.summaryCardAmount} ${styles.summaryCardAmountIncome}`}>
-          {formatUsd(totalIncome)}
+          {formatUsdOrDash(totalIncome, incomplete?.income)}
         </div>
         {incomeArs !== null && (
           <div className={styles.summaryCardSecondary}>≈ {formatArs(incomeArs)}</div>
@@ -121,13 +129,13 @@ export default function SummaryCards({
         <div className={`${styles.summaryCardAmount} ${styles.summaryCardAmountExpense}`}>
           {formatArs(expenseArs)}
         </div>
-        <div className={styles.summaryCardSecondary}>≈ {formatUsd(totalExpense)}</div>
+        <div className={styles.summaryCardSecondary}>≈ {formatUsdOrDash(totalExpense, incomplete?.expense)}</div>
         <div className={styles.summaryCardProgress}>
           <div className={styles.summaryCardProgressTrack}>
             <div
               className={`${styles.summaryCardProgressFill} ${styles.summaryCardProgressFillExpense}`}
               style={{
-                width: `${Math.min(100, expensePercent || (totalIncome > 0 ? (totalExpense / totalIncome) * 100 : 0))}%`,
+                width: `${incomplete?.expense || incomplete?.income ? 0 : Math.min(100, expensePercent || (totalIncome > 0 ? (totalExpense / totalIncome) * 100 : 0))}%`,
               }}
             />
           </div>

@@ -95,7 +95,7 @@ export default async function DashboardPage() {
   const totalSpent = summary.totalExpense;
   const totalAvailable = Math.max(0, budgetTotalLimit - totalSpent);
   const totalPercentUsed = budgetTotalLimit > 0 ? (totalSpent / budgetTotalLimit) * 100 : 0;
-  const showTotalWarning = totalPercentUsed >= 80;
+  const showTotalWarning = !summary.incomplete.expense && totalPercentUsed >= 80;
 
   // Presupuesto de gastos variables. Foco en pesos (gasto del día a día),
   // con el USD como referencia. El % usado se calcula en USD (fuente única)
@@ -104,7 +104,7 @@ export default async function DashboardPage() {
   const varSpent = summary.variableTotal;
   const varAvailable = Math.max(0, budgetVarLimit - varSpent);
   const varPercentUsed = budgetVarLimit > 0 ? (varSpent / budgetVarLimit) * 100 : 0;
-  const showVarWarning = varPercentUsed >= 80;
+  const showVarWarning = !summary.incomplete.variable && varPercentUsed >= 80;
 
   const budgetVarLimitArs = rate ? budgetVarLimit * rate : null;
   // Preferimos el equivalente ARS de lo convertido a USD (incluye montos
@@ -138,6 +138,7 @@ export default async function DashboardPage() {
         totalIncomeUsd={summary.totalIncome}
         totalIncomePesos={summary.totalIncomePesos}
         rate={rate}
+        incomplete={summary.incomplete}
       />
 
       {noRate && (
@@ -189,6 +190,7 @@ export default async function DashboardPage() {
           spent={totalSpent}
           percentUsed={totalPercentUsed}
           showWarning={showTotalWarning}
+          unavailable={summary.incomplete.expense}
         />
         <BudgetCard
           title="Presupuesto variables"
@@ -202,6 +204,7 @@ export default async function DashboardPage() {
           secondarySpent={varSpent}
           percentUsed={varPercentUsed}
           showWarning={showVarWarning}
+          unavailable={noRate}
         />
       </div>
 
@@ -210,6 +213,8 @@ export default async function DashboardPage() {
           periodLabel={periodLabel}
           fixedTotal={summary.fixedTotal}
           variableTotal={summary.variableTotal}
+          fixedIncomplete={summary.incomplete.fixed}
+          variableIncomplete={summary.incomplete.variable}
         />
         <RateInfoCard effective={effectiveRate} gapPercent={gapPercent} />
       </div>

@@ -15,6 +15,8 @@ type Props = {
   showWarning?: boolean;
   title?: string;
   subtitle?: string;
+  /** Sin cotización: no se puede calcular. Muestra "—" y oculta la barra y las alertas. */
+  unavailable?: boolean;
 };
 
 function formatPrimary(amount: number, currency: 'usd' | 'ars'): string {
@@ -38,9 +40,12 @@ export default function BudgetCard({
   showWarning = false,
   title = 'Presupuesto variables',
   subtitle = 'Límite mensual establecido',
+  unavailable = false,
 }: Props) {
   const pct = total > 0 ? Math.min(100, (spent / total) * 100) : 0;
-  const displayPct = percentUsed || pct;
+  const displayPct = unavailable ? 0 : percentUsed || pct;
+  const money = (amount: number, currency: 'usd' | 'ars') =>
+    unavailable ? '—' : formatPrimary(amount, currency);
 
   return (
     <section className={styles.card}>
@@ -54,8 +59,8 @@ export default function BudgetCard({
         <div className={styles.budgetRow}>
           <span className={styles.budgetLabel}>Disponible</span>
           <span className={styles.budgetAmountGroup}>
-            <span className={styles.budgetAmount}>{formatPrimary(available, primaryCurrency)}</span>
-            {secondaryAvailable != null && (
+            <span className={styles.budgetAmount}>{money(available, primaryCurrency)}</span>
+            {!unavailable && secondaryAvailable != null && (
               <span className={styles.budgetAmountSecondary}>
                 ≈ {formatSecondary(secondaryAvailable, primaryCurrency)}
               </span>
@@ -70,7 +75,10 @@ export default function BudgetCard({
             />
           </div>
         </div>
-        {showWarning && (
+        {unavailable && (
+          <p className={styles.budgetStatus}>Sin cotización del dólar: no se puede calcular.</p>
+        )}
+        {!unavailable && showWarning && (
           <p className={styles.budgetStatus}>
             ⚠️ {Math.round(displayPct)}% del presupuesto utilizado
           </p>
@@ -80,8 +88,8 @@ export default function BudgetCard({
         <div className={styles.detailRow}>
           <span className={styles.detailLabel}>Presupuesto total:</span>
           <span className={styles.detailValueGroup}>
-            <span className={styles.detailValue}>{formatPrimary(total, primaryCurrency)}</span>
-            {secondaryTotal != null && (
+            <span className={styles.detailValue}>{money(total, primaryCurrency)}</span>
+            {!unavailable && secondaryTotal != null && (
               <span className={styles.detailValueSecondary}>
                 ≈ {formatSecondary(secondaryTotal, primaryCurrency)}
               </span>
@@ -91,8 +99,8 @@ export default function BudgetCard({
         <div className={styles.detailRow}>
           <span className={styles.detailLabel}>Gastado:</span>
           <span className={styles.detailValueGroup}>
-            <span className={styles.detailValueExpense}>{formatPrimary(spent, primaryCurrency)}</span>
-            {secondarySpent != null && (
+            <span className={styles.detailValueExpense}>{money(spent, primaryCurrency)}</span>
+            {!unavailable && secondarySpent != null && (
               <span className={styles.detailValueSecondary}>
                 ≈ {formatSecondary(secondarySpent, primaryCurrency)}
               </span>

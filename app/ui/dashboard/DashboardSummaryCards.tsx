@@ -1,4 +1,5 @@
-import { formatUsd, formatArs, arsEquivalent } from '@/app/lib/utils';
+import type { UsdIncomplete } from '@/app/lib/summary';
+import { formatUsd, formatUsdOrDash, formatArs, arsEquivalent } from '@/app/lib/utils';
 import styles from './DashboardSummaryCards.module.css';
 
 export type DashboardSummaryCardsProps = {
@@ -13,6 +14,8 @@ export type DashboardSummaryCardsProps = {
   totalIncomeUsd: number;
   totalIncomePesos: number;
   rate: number | null;
+  /** USD incompletos por falta de cotización: se muestra "—" en vez de una cifra subestimada. */
+  incomplete?: UsdIncomplete;
 };
 
 export default function DashboardSummaryCards({
@@ -24,6 +27,7 @@ export default function DashboardSummaryCards({
   totalIncomeUsd,
   totalIncomePesos,
   rate,
+  incomplete,
 }: DashboardSummaryCardsProps) {
   const balanceArs = rate ? balanceUsd * rate : null;
   // Preferimos el equivalente ARS de lo convertido a USD (incluye montos
@@ -45,7 +49,7 @@ export default function DashboardSummaryCards({
         <div className={`${styles.summaryCardAmount} ${styles.summaryCardAmountExpense}`}>
           {formatArs(variableExpenseArs)}
         </div>
-        <div className={styles.summaryCardSecondary}>≈ {formatUsd(variableExpenseUsd)}</div>
+        <div className={styles.summaryCardSecondary}>≈ {formatUsdOrDash(variableExpenseUsd, incomplete?.variable)}</div>
         <div className={styles.summaryCardMeta}>
           <span className={styles.summaryCardTag}>Día a día</span>
           {' '}compras, supermercado, salidas, etc.
@@ -61,7 +65,7 @@ export default function DashboardSummaryCards({
         <div className={`${styles.summaryCardAmount} ${styles.summaryCardAmountExpense}`}>
           {formatArs(totalExpenseArs)}
         </div>
-        <div className={styles.summaryCardSecondary}>≈ {formatUsd(totalExpenseUsd)}</div>
+        <div className={styles.summaryCardSecondary}>≈ {formatUsdOrDash(totalExpenseUsd, incomplete?.expense)}</div>
         <div className={styles.summaryCardMeta}>
           <span className={styles.summaryCardTag}>Variados + fijos + cuotas</span>
         </div>
@@ -74,9 +78,9 @@ export default function DashboardSummaryCards({
           <div className={`${styles.summaryCardIcon} ${styles.summaryCardIconBalance}`}>💼</div>
         </div>
         <div className={styles.summaryCardAmount}>
-          {balancePositive ? '+' : ''}{formatUsd(balanceUsd)}
+          {incomplete?.balance ? '—' : <>{balancePositive ? '+' : ''}{formatUsd(balanceUsd)}</>}
         </div>
-        {balanceArs !== null && (
+        {balanceArs !== null && !incomplete?.balance && (
           <div className={styles.summaryCardSecondary}>
             ≈ {balancePositive ? '+' : ''}{formatArs(balanceArs)}
           </div>
@@ -93,7 +97,7 @@ export default function DashboardSummaryCards({
           <div className={`${styles.summaryCardIcon} ${styles.summaryCardIconIncome}`}>📈</div>
         </div>
         <div className={`${styles.summaryCardAmount} ${styles.summaryCardAmountIncome}`}>
-          {formatUsd(totalIncomeUsd)}
+          {formatUsdOrDash(totalIncomeUsd, incomplete?.income)}
         </div>
         {incomeArs !== null && (
           <div className={styles.summaryCardSecondary}>≈ {formatArs(incomeArs)}</div>

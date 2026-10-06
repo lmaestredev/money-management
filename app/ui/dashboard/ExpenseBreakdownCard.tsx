@@ -1,19 +1,25 @@
-import { formatUsd } from '@/app/lib/utils';
+import { formatUsdOrDash } from '@/app/lib/utils';
 import styles from './ExpenseBreakdownCard.module.css';
 
 export type ExpenseBreakdownCardProps = {
   periodLabel: string;
   fixedTotal: number;
   variableTotal: number;
+  /** Sin cotización y con pesos sin convertir: se muestra "—" en esa línea. */
+  fixedIncomplete?: boolean;
+  variableIncomplete?: boolean;
 };
 
 export default function ExpenseBreakdownCard({
   periodLabel,
   fixedTotal,
   variableTotal,
+  fixedIncomplete,
+  variableIncomplete,
 }: ExpenseBreakdownCardProps) {
   const total = fixedTotal + variableTotal;
-  const fixedPct = total > 0 ? (fixedTotal / total) * 100 : 0;
+  const anyIncomplete = Boolean(fixedIncomplete || variableIncomplete);
+  const fixedPct = total > 0 && !anyIncomplete ? (fixedTotal / total) * 100 : 0;
 
   return (
     <section className={styles.card}>
@@ -31,7 +37,7 @@ export default function ExpenseBreakdownCard({
             <span className={styles.expenseStatus}>Alquiler, servicios, etc.</span>
           </div>
         </div>
-        <span className={styles.expenseAmount}>−{formatUsd(fixedTotal)}</span>
+        <span className={styles.expenseAmount}>−{formatUsdOrDash(fixedTotal, fixedIncomplete)}</span>
       </div>
       <div className={styles.expenseRow}>
         <div className={styles.expenseInfo}>
@@ -41,7 +47,7 @@ export default function ExpenseBreakdownCard({
             <span className={styles.expenseStatus}>Comida, entretenimiento, etc.</span>
           </div>
         </div>
-        <span className={styles.expenseAmount}>−{formatUsd(variableTotal)}</span>
+        <span className={styles.expenseAmount}>−{formatUsdOrDash(variableTotal, variableIncomplete)}</span>
       </div>
       <div className={styles.progressWrap}>
         <div className={styles.progressTrack}>
@@ -52,7 +58,7 @@ export default function ExpenseBreakdownCard({
         </div>
       </div>
       <div className={styles.meta}>
-        <span className={styles.tag}>Total: {formatUsd(total)}</span>
+        <span className={styles.tag}>Total: {formatUsdOrDash(total, anyIncomplete)}</span>
       </div>
     </section>
   );
