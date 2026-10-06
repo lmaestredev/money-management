@@ -122,6 +122,8 @@ export type EffectiveRate = {
   rate: number; // pesos por USD
   source: 'manual' | RateSource;
   updatedAt: string | null;
+  /** Cuándo la app guardó la cotización por última vez (null si es tasa manual). */
+  fetchedAt: string | null;
 };
 
 /**
@@ -136,7 +138,7 @@ export async function getEffectiveRate(userId: string): Promise<EffectiveRate | 
     settings.manual_rate_value != null &&
     settings.manual_rate_value > 0
   ) {
-    return { rate: settings.manual_rate_value, source: 'manual', updatedAt: null };
+    return { rate: settings.manual_rate_value, source: 'manual', updatedAt: null, fetchedAt: null };
   }
 
   const rate = await fetchExchangeRate(settings.rate_source);
@@ -145,5 +147,6 @@ export async function getEffectiveRate(userId: string): Promise<EffectiveRate | 
     rate: rate.venta,
     source: settings.rate_source,
     updatedAt: rate.source_updated_at ?? rate.updated_at,
+    fetchedAt: rate.updated_at,
   };
 }

@@ -65,6 +65,8 @@ export type PeriodWithSummary = FinancialPeriod & {
   total_income_pesos: number;
   total_expense_pesos: number;
   balance_dollars: number;
+  /** USD incompletos: sin cotización y con pesos sin convertir (la UI muestra "—"). */
+  incomplete: { income: boolean; expense: boolean; balance: boolean };
 };
 
 export async function fetchClosedPeriodsWithSummary(
@@ -98,6 +100,7 @@ export async function fetchClosedPeriodsWithSummary(
     return rows.map((r) => {
       const incomePesos = Number(r.income_pesos);
       const expensePesos = Number(r.expense_pesos);
+      const rateMissing = !(rate && rate > 0);
       const income = toUsd({ amount_pesos: incomePesos, amount_dollars: Number(r.income_dollars) }, rate);
       const expense = toUsd({ amount_pesos: expensePesos, amount_dollars: Number(r.expense_dollars) }, rate);
       return {
@@ -108,6 +111,11 @@ export async function fetchClosedPeriodsWithSummary(
         total_income_pesos: incomePesos,
         total_expense_pesos: expensePesos,
         balance_dollars: income - expense,
+        incomplete: {
+          income: rateMissing && incomePesos > 0,
+          expense: rateMissing && expensePesos > 0,
+          balance: rateMissing && (incomePesos > 0 || expensePesos > 0),
+        },
       };
     });
   });

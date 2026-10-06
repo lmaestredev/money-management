@@ -76,7 +76,7 @@ Leyenda: 🟢 fácil · 🟡 media · 🔴 difícil · 🛑 requiere decisión d
 - Extraer `computeSummary` a `app/lib/` con el predicado `(credit_card_id IS NOT NULL OR status = true) AND NOT is_statement_payment`, usarlo en dashboard, movimientos, historial y en el SQL de períodos.
 - Hecho cuando: los tres lugares dan el mismo número para el mismo período; tests unitarios con: cargo tarjeta sin status, pago de resumen, gasto en pesos, ingreso en pesos.
 
-**E10 — Cotización: datos válidos y sin totales engañosos** 🟢 ⏱3
+**E10 — Cotización: datos válidos y sin totales engañosos** 🟢 ⏱3 ✅ 2026-10-05
 - `data/exchange-rates.ts:80-104`: `Number(null)===0` pasa `isFinite` y pisa la cotización buena con 0. Exigir `> 0`; usar `Promise.allSettled`; `AbortSignal.timeout(3000)`; conservar la última buena.
 - Sin cotización (`rate == null`) `toUsd` aporta 0 por los pesos (`dashboard/page.tsx:47-50`, `movimientos/page.tsx:35-38`, `historial/[id]/page.tsx:21-24`): mostrar "—" en los importes USD/presupuestos en vez de cifras subestimadas.
 - Mover `refreshExchangeRatesIfStale` fuera del render (`after()` o solo cron).

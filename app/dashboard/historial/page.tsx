@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { getEffectiveRate } from '@/app/lib/data/exchange-rates';
 import { fetchClosedPeriodsWithSummary } from '@/app/lib/data/financial-periods';
 import { createClient } from '@/app/lib/supabase/server';
-import { formatUsd, formatArs } from '@/app/lib/utils';
+import { formatUsdOrDash, formatArs } from '@/app/lib/utils';
 import { formatShortDate } from '@/app/ui/financial-periods/PeriodBadge';
 import styles from './page.module.css';
 
@@ -54,7 +54,7 @@ export default async function HistorialPage() {
                   <div className={styles.statBlock}>
                     <span className={styles.statLabel}>Ingresos</span>
                     <span className={styles.statValueIncome}>
-                      {formatUsd(p.total_income_dollars)}
+                      {formatUsdOrDash(p.total_income_dollars, p.incomplete.income)}
                     </span>
                     {p.total_income_pesos > 0 && (
                       <span className={styles.statSecondary}>
@@ -69,14 +69,14 @@ export default async function HistorialPage() {
                       {formatArs(p.total_expense_pesos)}
                     </span>
                     <span className={styles.statSecondary}>
-                      ≈ {formatUsd(p.total_expense_dollars)}
+                      ≈ {formatUsdOrDash(p.total_expense_dollars, p.incomplete.expense)}
                     </span>
                   </div>
 
                   <div className={styles.statBlock}>
                     <span className={styles.statLabel}>Balance</span>
                     <span className={balancePositive ? styles.statValuePositive : styles.statValueNegative}>
-                      {balancePositive ? '+' : ''}{formatUsd(p.balance_dollars)}
+                      {p.incomplete.balance ? '—' : <>{balancePositive ? '+' : ''}{formatUsdOrDash(p.balance_dollars, false)}</>}
                     </span>
                   </div>
                 </div>

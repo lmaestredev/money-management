@@ -16,6 +16,7 @@ import {
   getEffectiveRate,
   refreshExchangeRatesIfStale,
 } from '@/app/lib/data/exchange-rates';
+import { isRateOld, rateAgeLabel } from '@/app/lib/rates-refresh';
 import { createClient } from '@/app/lib/supabase/server';
 import { arsEquivalent } from '@/app/lib/utils';
 import DashboardSummaryCards from '@/app/ui/dashboard/DashboardSummaryCards';
@@ -114,6 +115,9 @@ export default async function DashboardPage() {
     budgetVarLimitArs != null ? Math.max(0, budgetVarLimitArs - varSpentArs) : null;
 
   const noRate = rate == null;
+  // La app conserva la última cotización buena si dolarapi falla: avisamos si quedó vieja.
+  const nowMs = Date.now();
+  const rateOld = isRateOld(effectiveRate?.fetchedAt ?? null, nowMs);
 
   return (
     <div className={styles.page}>
@@ -149,6 +153,22 @@ export default async function DashboardPage() {
               convirtiendo a USD.{' '}
               <Link href="/dashboard/configuracion" className={styles.alertLink}>
                 Actualizá la tasa en Configuración
+              </Link>
+              .
+            </>
+          }
+        />
+      )}
+
+      {rateOld && effectiveRate?.fetchedAt && (
+        <DashboardAlert
+          message={
+            <>
+              <strong>Cotización desactualizada:</strong> la última se guardó{' '}
+              {rateAgeLabel(effectiveRate.fetchedAt, nowMs)}, así que las conversiones a USD
+              pueden no reflejar el dólar de hoy.{' '}
+              <Link href="/dashboard/configuracion" className={styles.alertLink}>
+                Actualizala en Configuración
               </Link>
               .
             </>

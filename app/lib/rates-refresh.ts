@@ -6,6 +6,7 @@ import type { RateFailure } from './dolarapi';
 
 export const STALE_MS = 6 * 60 * 60 * 1000; // 6 horas
 export const REFRESH_COOLDOWN_MS = 60 * 1000; // 1 actualización manual por minuto
+export const RATE_OLD_MS = 24 * 60 * 60 * 1000; // más de 24 h sin actualizarse: se avisa
 const EXPECTED_RATES = 2; // blue y oficial
 
 type Timestamp = string | Date;
@@ -63,4 +64,29 @@ export function refreshToast(
     };
   }
   return { message: 'Cotizaciones actualizadas.', type: 'success' };
+}
+
+/**
+ * ¿La cotización que se usa lleva demasiado sin actualizarse? `fetchedAt` es cuándo la
+ * APP la guardó por última vez (no la fecha de la fuente, que en fin de semana puede no
+ * cambiar). null = tasa manual: no envejece.
+ */
+export function isRateOld(
+  fetchedAt: Timestamp | null,
+  nowMs: number,
+  maxAgeMs: number = RATE_OLD_MS
+): boolean {
+  if (fetchedAt == null) return false;
+  return nowMs - new Date(fetchedAt).getTime() > maxAgeMs;
+}
+
+/** "hace instantes", "hace 5 min", "hace 3 h", "hace 2 días". */
+export function rateAgeLabel(fetchedAt: Timestamp, nowMs: number): string {
+  const min = Math.max(0, Math.floor((nowMs - new Date(fetchedAt).getTime()) / 60_000));
+  if (min < 1) return 'hace instantes';
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.floor(h / 24);
+  return `hace ${d} ${d === 1 ? 'día' : 'días'}`;
 }

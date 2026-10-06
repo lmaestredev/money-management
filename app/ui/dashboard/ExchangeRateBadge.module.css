@@ -22,3 +22,13 @@
   font-weight: 600;
   color: var(--color-on-surface);
 }
+
+.age {
+  font-size: 0.6875rem;
+  color: var(--color-on-surface-variant);
+}
+
+.ageOld {
+  font-weight: 600;
+  color: var(--color-expense);
+}

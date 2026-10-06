@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cooldownSecondsLeft, cooldownToast, isStale, refreshToast, STALE_MS } from './rates-refresh';
+import { cooldownSecondsLeft, cooldownToast, isRateOld, isStale, rateAgeLabel, refreshToast, RATE_OLD_MS, STALE_MS } from './rates-refresh';
 
 const NOW = Date.parse('2026-10-05T12:00:00Z');
 const ago = (ms: number) => new Date(NOW - ms).toISOString();
@@ -43,4 +43,20 @@ test('mensajes: éxito completo, éxito parcial, falla total y límite', () => {
   const lim = cooldownToast(42);
   assert.equal(lim.type, 'error');
   assert.match(lim.message, /42 s/);
+});
+
+test('isRateOld: avisa pasadas 24 h, no antes, y la tasa manual nunca envejece', () => {
+  assert.equal(isRateOld(ago(RATE_OLD_MS - 1000), NOW), false);
+  assert.equal(isRateOld(ago(RATE_OLD_MS + 1000), NOW), true);
+  assert.equal(isRateOld(null, NOW), false);
+  assert.equal(isRateOld(new Date(NOW - RATE_OLD_MS - 5000), NOW), true);
+});
+
+test('rateAgeLabel: instantes, minutos, horas y días', () => {
+  assert.equal(rateAgeLabel(ago(10_000), NOW), 'hace instantes');
+  assert.equal(rateAgeLabel(ago(5 * 60_000), NOW), 'hace 5 min');
+  assert.equal(rateAgeLabel(ago(3 * 3_600_000 + 10_000), NOW), 'hace 3 h');
+  assert.equal(rateAgeLabel(ago(24 * 3_600_000), NOW), 'hace 1 día');
+  assert.equal(rateAgeLabel(ago(50 * 3_600_000), NOW), 'hace 2 días');
+  assert.equal(rateAgeLabel(new Date(NOW + 60_000), NOW), 'hace instantes', 'una fecha futura no da negativo');
 });
