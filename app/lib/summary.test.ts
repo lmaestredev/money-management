@@ -104,9 +104,9 @@ test('separa fijos y variables y agrupa por categoría ordenado por monto', () =
   assert.equal(s.fixedTotal, 300);
   assert.equal(s.variableTotal, 150);
   assert.deepEqual(s.categoryTotals, [
-    { name: 'Vivienda', amount: 300 },
-    { name: 'Hogar', amount: 100 },
-    { name: 'Sin categoría', amount: 50 },
+    { name: 'Vivienda', amount: 300, incomplete: false },
+    { name: 'Hogar', amount: 100, incomplete: false },
+    { name: 'Sin categoría', amount: 50, incomplete: false },
   ]);
 });
 
@@ -152,4 +152,35 @@ test('sin cotización: solo se marca lo que realmente tiene pesos', () => {
   assert.equal(s.incomplete.variable, true);
   assert.equal(s.incomplete.fixed, false);
   assert.equal(s.incomplete.balance, true);
+});
+
+test('sin cotización: los PESOS con dólares sin convertir quedan marcados como incompletos', () => {
+  const s = computeSummary(
+    [
+      mv({ record_type: 'income', amount_pesos: 1_000_000 }), // ingreso solo en pesos
+      mv({ status: true, amount_dollars: 300 }), // variable en dólares
+      mv({ record_type: 'fixed_payment', status: true, amount_pesos: 50_000 }), // fijo en pesos
+    ],
+    null
+  );
+  assert.deepEqual(s.incompleteArs, { income: false, expense: true, variable: true });
+});
+
+test('con cotización o sin dólares, las cifras en pesos no se marcan', () => {
+  const conTasa = computeSummary([mv({ record_type: 'income', amount_dollars: 100 }), mv({ status: true, amount_dollars: 50 })], 1500);
+  assert.deepEqual(conTasa.incompleteArs, { income: false, expense: false, variable: false });
+  const soloPesos = computeSummary([mv({ record_type: 'income', amount_pesos: 1000 }), mv({ status: true, amount_pesos: 500 })], null);
+  assert.deepEqual(soloPesos.incompleteArs, { income: false, expense: false, variable: false });
+});
+
+test('sin cotización: cada categoría se marca según tenga pesos o no', () => {
+  const s = computeSummary(
+    [
+      mv({ status: true, amount_pesos: 90_000, category_name: 'Hogar' }), // pesos: incompleta
+      mv({ status: true, amount_dollars: 40, category_name: 'Educación' }), // solo dólares: exacta
+    ],
+    null
+  );
+  const byName = Object.fromEntries(s.categoryTotals.map((c) => [c.name, c.incomplete]));
+  assert.deepEqual(byName, { Hogar: true, Educación: false });
 });

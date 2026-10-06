@@ -7,7 +7,12 @@
  */
 import type { Movement } from './definitions';
 
-export type CategoryTotal = { name: string; amount: number };
+export type CategoryTotal = {
+  name: string;
+  amount: number;
+  /** USD incompleto: sin cotización y la categoría tiene pesos sin convertir. */
+  incomplete?: boolean;
+};
 
 /**
  * true cuando el importe en USD está INCOMPLETO: no hay cotización válida y hay pesos
@@ -21,6 +26,12 @@ export type UsdIncomplete = {
   fixed: boolean;
   balance: boolean;
 };
+
+/**
+ * Lo mismo pero para las cifras en PESOS: sin cotización, los montos cargados en
+ * dólares no se pueden pasar a pesos y esa cifra queda subestimada.
+ */
+export type ArsIncomplete = { income: boolean; expense: boolean; variable: boolean };
 
 export type Summary = {
   /** Ingresos − gastos, en USD. */
@@ -37,6 +48,7 @@ export type Summary = {
   variableTotalPesos: number; // ARS crudo, gastos variables
   categoryTotals: CategoryTotal[];
   incomplete: UsdIncomplete;
+  incompleteArs: ArsIncomplete;
 };
 
 type AmountFields = Pick<Movement, 'amount_pesos' | 'amount_dollars'>;
@@ -77,12 +89,17 @@ export function computeSummary(movements: Movement[], rate: number | null): Summ
   let fixedTotal = 0;
   let variableTotal = 0;
   let variableTotalPesos = 0;
+  let totalIncomeDollars = 0;
+  let totalExpenseDollars = 0;
+  let variableDollars = 0;
   const categoryMap = new Map<string, number>();
+  const categoryPesos = new Map<string, number>();
 
   for (const m of movements) {
     if (m.record_type === 'income') {
       totalIncome += toUsd(m, rate);
       totalIncomePesos += m.amount_pesos;
+      totalIncomeDollars += m.amount_dollars;
       incomeCount += 1;
       continue;
     }
@@ -94,21 +111,27 @@ export function computeSummary(movements: Movement[], rate: number | null): Summ
     const usd = toUsd(m, rate);
     totalExpense += usd;
     totalExpensePesos += m.amount_pesos;
+    totalExpenseDollars += m.amount_dollars;
     if (m.record_type === 'fixed_payment') {
       fixedTotal += usd;
     } else {
       variableTotal += usd;
       variableTotalPesos += m.amount_pesos;
+      variableDollars += m.amount_dollars;
     }
     const category = m.category_name?.trim() || 'Sin categoría';
     categoryMap.set(category, (categoryMap.get(category) ?? 0) + usd);
+    categoryPesos.set(category, (categoryPesos.get(category) ?? 0) + m.amount_pesos);
   }
 
-  const categoryTotals = Array.from(categoryMap.entries())
-    .map(([name, amount]) => ({ name, amount }))
-    .sort((a, b) => b.amount - a.amount);
-
   const rateMissing = !(rate && rate > 0);
+  const categoryTotals: CategoryTotal[] = Array.from(categoryMap.entries())
+    .map(([name, amount]) => ({
+      name,
+      amount,
+      incomplete: rateMissing && (categoryPesos.get(name) ?? 0) > 0,
+    }))
+    .sort((a, b) => b.amount - a.amount);
   const fixedTotalPesos = totalExpensePesos - variableTotalPesos;
   const incomplete: UsdIncomplete = {
     income: rateMissing && totalIncomePesos > 0,
@@ -131,5 +154,10 @@ export function computeSummary(movements: Movement[], rate: number | null): Summ
     variableTotalPesos,
     categoryTotals,
     incomplete,
+    incompleteArs: {
+      income: rateMissing && totalIncomeDollars > 0,
+      expense: rateMissing && totalExpenseDollars > 0,
+      variable: rateMissing && variableDollars > 0,
+    },
   };
 }

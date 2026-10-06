@@ -66,7 +66,7 @@ export type PeriodWithSummary = FinancialPeriod & {
   total_expense_pesos: number;
   balance_dollars: number;
   /** USD incompletos: sin cotización y con pesos sin convertir (la UI muestra "—"). */
-  incomplete: { income: boolean; expense: boolean; balance: boolean };
+  incomplete: { income: boolean; expense: boolean; balance: boolean; expenseArs: boolean };
 };
 
 export async function fetchClosedPeriodsWithSummary(
@@ -115,6 +115,8 @@ export async function fetchClosedPeriodsWithSummary(
           income: rateMissing && incomePesos > 0,
           expense: rateMissing && expensePesos > 0,
           balance: rateMissing && (incomePesos > 0 || expensePesos > 0),
+          // En pesos: los gastos cargados en dólares no se pueden pasar a pesos sin cotización.
+          expenseArs: rateMissing && Number(r.expense_dollars) > 0,
         },
       };
     });

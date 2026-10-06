@@ -143,6 +143,7 @@ export default async function DashboardPage() {
         totalIncomePesos={summary.totalIncomePesos}
         rate={rate}
         incomplete={summary.incomplete}
+        incompleteArs={summary.incompleteArs}
       />
 
       {noRate && (

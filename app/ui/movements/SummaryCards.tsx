@@ -1,4 +1,4 @@
-import type { UsdIncomplete } from '@/app/lib/summary';
+import type { ArsIncomplete, UsdIncomplete } from '@/app/lib/summary';
 import { formatUsd, formatUsdOrDash, formatArs, arsEquivalent } from '@/app/lib/utils';
 import styles from './SummaryCards.module.css';
 
@@ -21,6 +21,8 @@ export type SummaryCardsProps = {
   balanceMeta?: React.ReactNode;
   /** USD incompletos por falta de cotización: se muestra "—" en vez de una cifra subestimada. */
   incomplete?: UsdIncomplete;
+  /** Pesos incompletos (hay dólares sin convertir por falta de cotización): se muestra "—". */
+  incompleteArs?: ArsIncomplete;
 };
 
 export default function SummaryCards({
@@ -37,6 +39,7 @@ export default function SummaryCards({
   balanceLabel = 'Balance del mes',
   balanceMeta,
   incomplete,
+  incompleteArs,
 }: SummaryCardsProps) {
   const incomePct = totalIncome > 0 ? Math.min(100, (balance / totalIncome) * 100) : 0;
   const displayBalancePct = balancePercent ?? incomePct;
@@ -103,7 +106,7 @@ export default function SummaryCards({
         <div className={`${styles.summaryCardAmount} ${styles.summaryCardAmountIncome}`}>
           {formatUsdOrDash(totalIncome, incomplete?.income)}
         </div>
-        {incomeArs !== null && (
+        {incomeArs !== null && !incompleteArs?.income && (
           <div className={styles.summaryCardSecondary}>≈ {formatArs(incomeArs)}</div>
         )}
         <div className={styles.summaryCardProgress}>
@@ -127,7 +130,7 @@ export default function SummaryCards({
           <div className={`${styles.summaryCardIcon} ${styles.summaryCardIconExpense}`}>📉</div>
         </div>
         <div className={`${styles.summaryCardAmount} ${styles.summaryCardAmountExpense}`}>
-          {formatArs(expenseArs)}
+          {incompleteArs?.expense ? '—' : formatArs(expenseArs)}
         </div>
         <div className={styles.summaryCardSecondary}>≈ {formatUsdOrDash(totalExpense, incomplete?.expense)}</div>
         <div className={styles.summaryCardProgress}>

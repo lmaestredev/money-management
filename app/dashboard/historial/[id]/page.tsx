@@ -73,6 +73,7 @@ export default async function HistorialDetailPage({ params }: Props) {
         expenseCount={summary.expenseCount}
         balanceLabel="Balance del período"
         incomplete={summary.incomplete}
+        incompleteArs={summary.incompleteArs}
       />
 
       <MovementsPageClient

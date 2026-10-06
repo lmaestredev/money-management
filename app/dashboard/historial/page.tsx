@@ -66,7 +66,7 @@ export default async function HistorialPage() {
                   <div className={styles.statBlock}>
                     <span className={styles.statLabel}>Egresos</span>
                     <span className={styles.statValueExpense}>
-                      {formatArs(p.total_expense_pesos)}
+                      {p.incomplete.expenseArs ? '—' : formatArs(p.total_expense_pesos)}
                     </span>
                     <span className={styles.statSecondary}>
                       ≈ {formatUsdOrDash(p.total_expense_dollars, p.incomplete.expense)}

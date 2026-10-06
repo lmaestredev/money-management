@@ -1,4 +1,4 @@
-import { formatUsd } from '@/app/lib/utils';
+import { formatUsdOrDash } from '@/app/lib/utils';
 import styles from './CategoryBreakdownCard.module.css';
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -24,6 +24,8 @@ function getCategoryIcon(name: string): string {
 export type CategoryTotal = {
   name: string;
   amount: number;
+  /** USD incompleto (sin cotización y con pesos sin convertir): se muestra "—". */
+  incomplete?: boolean;
 };
 
 type Props = {
@@ -32,6 +34,7 @@ type Props = {
 
 export default function CategoryBreakdownCard({ items }: Props) {
   const total = items.reduce((sum, i) => sum + i.amount, 0);
+  const anyIncomplete = items.some((i) => i.incomplete);
 
   return (
     <section className={styles.card}>
@@ -50,14 +53,14 @@ export default function CategoryBreakdownCard({ items }: Props) {
               </span>
               <span className={styles.categoryName}>{item.name}</span>
             </div>
-            <span className={styles.categoryAmount}>{formatUsd(item.amount)}</span>
+            <span className={styles.categoryAmount}>{formatUsdOrDash(item.amount, item.incomplete)}</span>
           </div>
         ))}
       </div>
       <div className={styles.footer}>
         <div className={styles.categoryItem}>
           <span className={styles.totalLabel}>Total</span>
-          <span className={styles.totalAmount}>{formatUsd(total)}</span>
+          <span className={styles.totalAmount}>{formatUsdOrDash(total, anyIncomplete)}</span>
         </div>
       </div>
     </section>
