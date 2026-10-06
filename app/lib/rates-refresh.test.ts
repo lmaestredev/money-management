@@ -35,13 +35,13 @@ test('cooldownSecondsLeft: cuenta lo que falta, redondeando hacia arriba', () =>
 test('mensajes: éxito completo, éxito parcial, falla total y límite', () => {
   assert.deepEqual(refreshToast({ ok: true, failed: [] }), { message: 'Cotizaciones actualizadas.', type: 'success' });
   const parcial = refreshToast({ ok: true, failed: [{ source: 'oficial', error: 'x' }] });
-  assert.equal(parcial.type, 'error');
+  assert.equal(parcial.type, 'warning', 'éxito parcial: aviso, no error');
   assert.match(parcial.message, /Oficial sigue con su última cotización/);
   const total = refreshToast({ ok: false, failed: [{ source: 'blue', error: 'a' }, { source: 'oficial', error: 'b' }] });
   assert.equal(total.type, 'error');
   assert.match(total.message, /Se mantiene la última guardada/);
   const lim = cooldownToast(42);
-  assert.equal(lim.type, 'error');
+  assert.equal(lim.type, 'warning', 'límite: aviso, no error');
   assert.match(lim.message, /42 s/);
 });
 

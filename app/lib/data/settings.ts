@@ -60,3 +60,26 @@ export async function updateSettings(userId: string, update: SettingsUpdate): Pr
     }
   });
 }
+
+// Último intento de actualizar la cotización a mano, por usuario. Se guarda ANTES de
+// llamar a la API para que el límite de 1 por minuto también frene los reintentos
+// cuando la API está caída (el updated_at de las cotizaciones solo cambia si sale bien).
+const RATES_ATTEMPT_KEY = 'rates_last_refresh_attempt';
+
+export async function getLastRefreshAttempt(userId: string): Promise<string | null> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const [row] = await tx`SELECT value FROM settings WHERE key = ${RATES_ATTEMPT_KEY}`;
+    return (row?.value as string | null) ?? null;
+  });
+}
+
+export async function recordRefreshAttempt(userId: string): Promise<void> {
+  const now = new Date().toISOString();
+  await withAuthenticatedTx(userId, async (tx) => {
+    await tx`
+      INSERT INTO settings (key, value, user_id, updated_at)
+      VALUES (${RATES_ATTEMPT_KEY}, ${now}, ${userId}, NOW())
+      ON CONFLICT (key, user_id) DO UPDATE SET value = ${now}, updated_at = NOW()
+    `;
+  });
+}

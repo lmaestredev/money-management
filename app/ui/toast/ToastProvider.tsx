@@ -10,10 +10,14 @@ import {
   useState,
 } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/solid';
+import {
+  CheckCircleIcon,
+  ExclamationCircleIcon,
+  ExclamationTriangleIcon,
+} from '@heroicons/react/24/solid';
 import styles from './ToastProvider.module.css';
 
-type ToastType = 'success' | 'error';
+type ToastType = 'success' | 'error' | 'warning';
 
 type ToastItem = {
   id: number;
@@ -59,7 +63,8 @@ function ToastFromParams() {
     if (lastKey.current === key) return;
     lastKey.current = key;
 
-    const type = params.get('toastType') === 'error' ? 'error' : 'success';
+    const rawType = params.get('toastType');
+    const type: ToastType = rawType === 'error' || rawType === 'warning' ? rawType : 'success';
     toast(message, type);
 
     const next = new URLSearchParams(params.toString());
@@ -108,6 +113,8 @@ export default function ToastProvider({ children }: { children: React.ReactNode 
           >
             {t.type === 'success' ? (
               <CheckCircleIcon className={`${styles.icon} ${styles.iconSuccess}`} aria-hidden />
+            ) : t.type === 'warning' ? (
+              <ExclamationTriangleIcon className={`${styles.icon} ${styles.iconWarning}`} aria-hidden />
             ) : (
               <ExclamationCircleIcon className={`${styles.icon} ${styles.iconError}`} aria-hidden />
             )}

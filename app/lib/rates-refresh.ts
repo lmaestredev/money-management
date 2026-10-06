@@ -35,14 +35,14 @@ export function cooldownSecondsLeft(
   return left > 0 ? Math.ceil(left / 1000) : 0;
 }
 
-export type RefreshToast = { message: string; type: 'success' | 'error' };
+export type RefreshToast = { message: string; type: 'success' | 'error' | 'warning' };
 
 const LABELS: Record<string, string> = { blue: 'Blue', oficial: 'Oficial' };
 
 export function cooldownToast(secondsLeft: number): RefreshToast {
   return {
-    message: `Las cotizaciones se actualizaron hace instantes. Probá de nuevo en ${secondsLeft} s.`,
-    type: 'error',
+    message: `Ya se intentó actualizar hace instantes. Probá de nuevo en ${secondsLeft} s.`,
+    type: 'warning',
   };
 }
 
@@ -60,7 +60,7 @@ export function refreshToast(
     const names = result.failed.map((f) => LABELS[f.source] ?? f.source).join(' y ');
     return {
       message: `Se actualizó solo una casa. ${names} sigue con su última cotización.`,
-      type: 'error',
+      type: 'warning',
     };
   }
   return { message: 'Cotizaciones actualizadas.', type: 'success' };

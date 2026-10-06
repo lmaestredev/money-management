@@ -4,9 +4,14 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { refreshCooldownSeconds, refreshExchangeRates } from '@/app/lib/data/exchange-rates';
-import { cooldownToast, refreshToast, type RefreshToast } from '@/app/lib/rates-refresh';
+import {
+  cooldownSecondsLeft,
+  cooldownToast,
+  refreshToast,
+  type RefreshToast,
+} from '@/app/lib/rates-refresh';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
-import { updateSettings } from '@/app/lib/data/settings';
+import { getLastRefreshAttempt, recordRefreshAttempt, updateSettings } from '@/app/lib/data/settings';
 import { createClient } from '@/app/lib/supabase/server';
 import type { RateSource } from '@/app/lib/definitions';
 
@@ -18,13 +23,24 @@ async function requireUser() {
 }
 
 export async function refreshRatesAction() {
-  await requireUser();
+  const user = await requireUser();
 
   // Siempre termina con un toast: éxito, éxito parcial, falla o límite de 1 por minuto.
   let toast: RefreshToast;
   try {
-    const wait = await refreshCooldownSeconds();
-    toast = wait > 0 ? cooldownToast(wait) : refreshToast(await refreshExchangeRates());
+    // Espera = lo que falte desde la última actualización exitosa O desde el último intento
+    // de este usuario (así un fallo de la API tampoco permite reintentar sin límite).
+    const lastAttempt = await getLastRefreshAttempt(user.id);
+    const wait = Math.max(
+      await refreshCooldownSeconds(),
+      cooldownSecondsLeft(lastAttempt ? [lastAttempt] : [], Date.now())
+    );
+    if (wait > 0) {
+      toast = cooldownToast(wait);
+    } else {
+      await recordRefreshAttempt(user.id);
+      toast = refreshToast(await refreshExchangeRates());
+    }
   } catch (err) {
     console.error('[rates] falló la actualización manual:', err);
     toast = refreshToast({ ok: false, failed: [] });

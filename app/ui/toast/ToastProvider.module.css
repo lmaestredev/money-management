@@ -37,6 +37,7 @@
 
 .iconSuccess { color: var(--color-income); }
 .iconError   { color: var(--color-error); }
+.iconWarning { color: var(--color-warning); }
 
 .message { flex: 1; }
 
