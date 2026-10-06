@@ -12,6 +12,8 @@ async function handle(request: Request): Promise<Response> {
   const denied = requireBearerSecret(request, process.env.CRON_SECRET);
   if (denied) return denied;
 
+  // Éxito parcial (una casa falló): responde 200 con `failed` y deja el detalle en los
+  // logs (console.error en refreshExchangeRates). Solo es 502 si fallan las dos casas.
   const result = await refreshExchangeRates();
   if (!result.ok) {
     return Response.json(result, { status: 502 });
