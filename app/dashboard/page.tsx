@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { after } from 'next/server';
 import { fetchAccounts } from '@/app/lib/data/accounts';
 import { fetchMovementsByFinancialPeriod } from '@/app/lib/data/movements';
 import { fetchInstallments } from '@/app/lib/data/installments';
@@ -41,7 +42,15 @@ export default async function DashboardPage() {
 
   const period = currentPeriodAR();
 
-  await refreshExchangeRatesIfStale();
+  // Fuera del render: se responde con la cotización guardada y se actualiza por detrás
+  // (si quedó vieja). Un fallo acá no debe afectar la página, solo se registra.
+  after(async () => {
+    try {
+      await refreshExchangeRatesIfStale();
+    } catch (err) {
+      console.error('[rates] falló el refresco en segundo plano:', err);
+    }
+  });
 
   const currentFinancialPeriod = await fetchCurrentPeriod(userId);
   const currentFinancialPeriodId = currentFinancialPeriod?.id ?? '';

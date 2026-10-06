@@ -1,5 +1,6 @@
 import { sql } from '../db';
 import { fetchDolarApiQuote, settleQuotes, type RateFailure } from '../dolarapi';
+import { isStale, cooldownSecondsLeft, STALE_MS } from '../rates-refresh';
 import { getSettings } from './settings';
 import type { ExchangeRate, RateSource } from '../definitions';
 
@@ -103,18 +104,18 @@ export async function refreshExchangeRates(): Promise<RefreshRatesResult> {
   }
 }
 
-const STALE_MS = 6 * 60 * 60 * 1000; // 6 horas
-
 /** Refresca solo si faltan cotizaciones o la última quedó vieja (red de seguridad sin cron). */
 export async function refreshExchangeRatesIfStale(maxAgeMs: number = STALE_MS): Promise<void> {
   const rates = await fetchExchangeRates();
-  const newest = rates.reduce(
-    (acc, r) => Math.max(acc, new Date(r.updated_at).getTime()),
-    0
-  );
-  if (rates.length < 2 || Date.now() - newest > maxAgeMs) {
+  if (isStale(rates.map((r) => r.updated_at), Date.now(), maxAgeMs)) {
     await refreshExchangeRates();
   }
+}
+
+/** Segundos que faltan para permitir otra actualización manual (0 = ya se puede). */
+export async function refreshCooldownSeconds(): Promise<number> {
+  const rates = await fetchExchangeRates();
+  return cooldownSecondsLeft(rates.map((r) => r.updated_at), Date.now());
 }
 
 export type EffectiveRate = {

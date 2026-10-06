@@ -1,7 +1,7 @@
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { AR_TIME_ZONE } from '@/app/lib/dates';
 import { formatUsd } from '@/app/lib/utils';
 import { refreshRatesAction } from '@/app/lib/actions/settings';
+import RefreshRatesButton from './RefreshRatesButton';
 import type { ExchangeRate } from '@/app/lib/definitions';
 import styles from './RatesPanel.module.css';
 
@@ -51,10 +51,7 @@ export default function RatesPanel({ rates }: Props) {
           <p className={styles.subtitle}>Fuente: dolarapi.com</p>
         </div>
         <form action={refreshRatesAction}>
-          <button type="submit" className={styles.refreshBtn}>
-            <ArrowPathIcon className={styles.refreshIcon} aria-hidden />
-            Actualizar ahora
-          </button>
+          <RefreshRatesButton />
         </form>
       </div>
 
