@@ -98,6 +98,8 @@ export type FinancialPeriod = {
   end_date: string | null;
   status: FinancialPeriodStatus;
   closed_at: string | null;
+  /** Cotización (pesos por USD) congelada al cerrar el período; null si no tiene. */
+  closing_rate: number | null;
   created_at: string;
   user_id: string;
 };

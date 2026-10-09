@@ -82,9 +82,10 @@ Leyenda: 🟢 fácil · 🟡 media · 🔴 difícil · 🛑 requiere decisión d
 - Mover `refreshExchangeRatesIfStale` fuera del render (`after()` o solo cron).
 - `refreshRatesAction`: devolver resultado, toast, pending y límite de 1 por minuto.
 
-**E11 — Tasa de cierre del período** 🟡 ⏱4 🛑
+**E11 — Tasa de cierre del período** 🟡 ⏱4 🛑 ✅ 2026-10-09
 - `historial/[id]/page.tsx:74-86` convierte períodos cerrados con la cotización de hoy; el total de un mes cerrado cambia todos los días.
 - Agregar `financial_periods.closing_rate`, guardarla en `closePeriodRecord`, usarla en historial. **Decidir con Luis** qué tasa usar para períodos ya cerrados (backfill).
+- *Decisión de Luis (2026-10-09):* backfill con cotizaciones reales del dólar blue (venta) del día de cierre: período 1/5/2025 → 1/6/2026 = **1435** y período 1/6/2026 → 5/8/2026 = **1540**. Se cargaron con un script puntual (respaldo previo, una transacción). Al cerrar se guarda la tasa en uso (blue, oficial o manual); sin cotización se cierra igual y el historial usa la actual aclarándolo. Un período cerrado con tasa errónea no se puede corregir desde la app (ticket aparte si hace falta).
 
 **E12 — Mostrar ambas monedas donde hoy se oculta una** 🟢 ⏱3
 - Ingresos recurrentes solo en pesos figuran `+US$0,00` (`MonthlyIncomesSection.tsx:25-27,59`, `ingresos/page.tsx:37`).

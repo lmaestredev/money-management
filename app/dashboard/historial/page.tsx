@@ -84,6 +84,10 @@ export default async function HistorialPage() {
                 <div className={styles.cardFooter}>
                   <span className={styles.movCount}>
                     {p.movement_count} movimiento{p.movement_count !== 1 ? 's' : ''}
+                    {' · '}
+                    {p.closing_rate != null
+                      ? `cotización de cierre ${formatArs(p.closing_rate)}`
+                      : 'cotización actual'}
                   </span>
                   <Link
                     href={`/dashboard/historial/${p.id}`}

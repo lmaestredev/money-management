@@ -10,6 +10,7 @@ import { formatUsd, formatArs } from '@/app/lib/utils';
 import { formatShortDate } from '@/app/ui/financial-periods/PeriodBadge';
 import SummaryCards from '@/app/ui/movements/SummaryCards';
 import MovementsPageClient from '@/app/ui/movements/MovementsPageClient';
+import { periodRate } from '@/app/lib/period-rate';
 import { computeSummary } from '@/app/lib/summary';
 import styles from './page.module.css';
 
@@ -34,7 +35,8 @@ export default async function HistorialDetailPage({ params }: Props) {
 
   const movements = await fetchMovementsByFinancialPeriod(id, userId);
   const accountNames = new Map(accounts.map((a) => [a.id, a.name]));
-  const rate = effectiveRate?.rate ?? null;
+  // Un período cerrado se convierte con la tasa congelada al cerrarlo (no la de hoy).
+  const { rate, frozen } = periodRate(period.closing_rate, effectiveRate?.rate ?? null);
   const summary = computeSummary(movements, rate);
 
   const dateRange = `${formatShortDate(period.start_date)} → ${
@@ -60,6 +62,12 @@ export default async function HistorialDetailPage({ params }: Props) {
 
       <p className={styles.readonlyNote}>
         Este período está cerrado. Los movimientos son de solo lectura.
+        {' '}
+        {frozen && rate != null
+          ? `Los importes en dólares se calcularon con la cotización de cierre: ${formatArs(rate)} por dólar.`
+          : rate != null
+            ? `Este período no tiene cotización de cierre guardada: se usa la cotización actual (${formatArs(rate)} por dólar), así que sus totales pueden variar.`
+            : 'Este período no tiene cotización de cierre y hoy tampoco hay una cotización disponible.'}
       </p>
 
       <SummaryCards

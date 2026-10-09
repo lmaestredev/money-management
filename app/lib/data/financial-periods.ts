@@ -1,5 +1,6 @@
 import { withAuthenticatedTx } from '../db';
 import { currentPeriodAR } from '../dates';
+import { periodRate } from '../period-rate';
 import { toUsd } from '../summary';
 import type { FinancialPeriod, FinancialPeriodStatus } from '../definitions';
 
@@ -23,6 +24,7 @@ function rowToPeriod(row: Record<string, unknown>): FinancialPeriod {
     end_date: row.end_date ? toDateStr(row.end_date) : null,
     status: (['open', 'closed'].includes(status) ? status : 'open') as FinancialPeriodStatus,
     closed_at: toTsStr(row.closed_at),
+    closing_rate: row.closing_rate != null ? Number(row.closing_rate) : null,
     created_at: toTsStr(row.created_at) ?? '',
     user_id: row.user_id as string,
   };
@@ -31,7 +33,7 @@ function rowToPeriod(row: Record<string, unknown>): FinancialPeriod {
 export async function fetchCurrentPeriod(userId: string): Promise<FinancialPeriod | null> {
   return withAuthenticatedTx(userId, async (tx) => {
     const [row] = await tx`
-      SELECT id, start_date, end_date, status, closed_at, created_at, user_id
+      SELECT id, start_date, end_date, status, closed_at, closing_rate, created_at, user_id
       FROM financial_periods
       WHERE status = 'open'
       ORDER BY created_at DESC
@@ -45,7 +47,7 @@ export async function fetchCurrentPeriod(userId: string): Promise<FinancialPerio
 export async function fetchClosedPeriods(userId: string): Promise<FinancialPeriod[]> {
   return withAuthenticatedTx(userId, async (tx) => {
     const rows = await tx`
-      SELECT id, start_date, end_date, status, closed_at, created_at, user_id
+      SELECT id, start_date, end_date, status, closed_at, closing_rate, created_at, user_id
       FROM financial_periods
       WHERE status = 'closed'
       ORDER BY start_date DESC
@@ -78,7 +80,7 @@ export async function fetchClosedPeriodsWithSummary(
     // egreso con tarjeta o pagado, y que NO sea el pago de un resumen.
     const rows = await tx`
       SELECT
-        fp.id, fp.start_date, fp.end_date, fp.status, fp.closed_at, fp.created_at, fp.user_id,
+        fp.id, fp.start_date, fp.end_date, fp.status, fp.closed_at, fp.closing_rate, fp.created_at, fp.user_id,
         COUNT(m.id)::int AS movement_count,
         COALESCE(SUM(CASE WHEN m.record_type = 'income' THEN m.amount_dollars ELSE 0 END), 0) AS income_dollars,
         COALESCE(SUM(CASE WHEN m.record_type = 'income' THEN m.amount_pesos ELSE 0 END), 0) AS income_pesos,
@@ -100,9 +102,14 @@ export async function fetchClosedPeriodsWithSummary(
     return rows.map((r) => {
       const incomePesos = Number(r.income_pesos);
       const expensePesos = Number(r.expense_pesos);
-      const rateMissing = !(rate && rate > 0);
-      const income = toUsd({ amount_pesos: incomePesos, amount_dollars: Number(r.income_dollars) }, rate);
-      const expense = toUsd({ amount_pesos: expensePesos, amount_dollars: Number(r.expense_dollars) }, rate);
+      // Cada período se convierte con su tasa congelada; si no la tiene, con la actual.
+      const { rate: pRate } = periodRate(
+        r.closing_rate != null ? Number(r.closing_rate) : null,
+        rate
+      );
+      const rateMissing = !(pRate && pRate > 0);
+      const income = toUsd({ amount_pesos: incomePesos, amount_dollars: Number(r.income_dollars) }, pRate);
+      const expense = toUsd({ amount_pesos: expensePesos, amount_dollars: Number(r.expense_dollars) }, pRate);
       return {
         ...rowToPeriod(r as Record<string, unknown>),
         movement_count: Number(r.movement_count),
@@ -126,7 +133,7 @@ export async function fetchClosedPeriodsWithSummary(
 export async function fetchPeriodById(id: string, userId: string): Promise<FinancialPeriod | null> {
   return withAuthenticatedTx(userId, async (tx) => {
     const [row] = await tx`
-      SELECT id, start_date, end_date, status, closed_at, created_at, user_id
+      SELECT id, start_date, end_date, status, closed_at, closing_rate, created_at, user_id
       FROM financial_periods
       WHERE id = ${id}
     `;
@@ -152,7 +159,7 @@ export async function ensureCurrentPeriod(userId: string): Promise<FinancialPeri
       ON CONFLICT (user_id) WHERE status = 'open' DO NOTHING
     `;
     const [row] = await tx`
-      SELECT id, start_date, end_date, status, closed_at, created_at, user_id
+      SELECT id, start_date, end_date, status, closed_at, closing_rate, created_at, user_id
       FROM financial_periods
       WHERE status = 'open'
       ORDER BY created_at DESC
@@ -167,7 +174,7 @@ export async function createNextPeriod(startDate: string, userId: string): Promi
     const [row] = await tx`
       INSERT INTO financial_periods (start_date, status, user_id)
       VALUES (${startDate}, 'open', ${userId})
-      RETURNING id, start_date, end_date, status, closed_at, created_at, user_id
+      RETURNING id, start_date, end_date, status, closed_at, closing_rate, created_at, user_id
     `;
     return rowToPeriod(row as Record<string, unknown>);
   });
@@ -177,14 +184,16 @@ export async function closePeriodRecord(
   periodId: string,
   endDate: string,
   nextStartDate: string,
-  userId: string
+  userId: string,
+  /** Cotización en uso al cerrar (pesos por USD); se congela en el período. null si no hay. */
+  closingRate: number | null = null
 ): Promise<{ closed: FinancialPeriod; next: FinancialPeriod }> {
   return withAuthenticatedTx(userId, async (tx) => {
     const [closedRow] = await tx`
       UPDATE financial_periods
-      SET status = 'closed', end_date = ${endDate}, closed_at = NOW()
+      SET status = 'closed', end_date = ${endDate}, closed_at = NOW(), closing_rate = ${closingRate}
       WHERE id = ${periodId} AND status = 'open'
-      RETURNING id, start_date, end_date, status, closed_at, created_at, user_id
+      RETURNING id, start_date, end_date, status, closed_at, closing_rate, created_at, user_id
     `;
     if (!closedRow) {
       throw new Error('El período ya fue cerrado o no existe.');
@@ -193,7 +202,7 @@ export async function closePeriodRecord(
     const [nextRow] = await tx`
       INSERT INTO financial_periods (start_date, status, user_id)
       VALUES (${nextStartDate}, 'open', ${userId})
-      RETURNING id, start_date, end_date, status, closed_at, created_at, user_id
+      RETURNING id, start_date, end_date, status, closed_at, closing_rate, created_at, user_id
     `;
 
     return {

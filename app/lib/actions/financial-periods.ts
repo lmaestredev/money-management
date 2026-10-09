@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { currentPeriodAR, todayAR } from '@/app/lib/dates';
+import { getEffectiveRate } from '@/app/lib/data/exchange-rates';
 import {
   fetchCurrentPeriod,
   closePeriodRecord,
@@ -183,8 +184,11 @@ export async function closePeriodAction(): Promise<ClosePeriodResult> {
       }
     }
 
+    // Se congela la cotización en uso para que el total del período no cambie después.
+    // Sin cotización se cierra igual (queda sin tasa y el historial usa la actual).
+    const closingRate = (await getEffectiveRate(userId))?.rate ?? null;
     const today = todayAR();
-    const { closed, next } = await closePeriodRecord(fpId, today, today, userId);
+    const { closed, next } = await closePeriodRecord(fpId, today, today, userId, closingRate);
 
     revalidatePath('/dashboard');
     revalidatePath('/dashboard/movimientos');
