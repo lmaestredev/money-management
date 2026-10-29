@@ -1,5 +1,4 @@
 .panel {
-  max-width: 40rem;
   background: var(--color-surface-container);
   border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-card);
