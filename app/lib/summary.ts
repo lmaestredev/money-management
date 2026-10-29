@@ -24,6 +24,10 @@ export type UsdIncomplete = {
   expense: boolean;
   variable: boolean;
   fixed: boolean;
+  /** Solo las cuotas (subconjunto de los fijos). */
+  installments: boolean;
+  /** Fijos sin cuotas (alquiler, servicios, etc.). */
+  fixedExpenses: boolean;
   balance: boolean;
 };
 
@@ -46,6 +50,14 @@ export type Summary = {
   fixedTotal: number; // USD, gastos fijos
   variableTotal: number; // USD, gastos variables
   variableTotalPesos: number; // ARS crudo, gastos variables
+  /**
+   * Los pagos de cuotas se guardan como gastos fijos (con installment_id). Acá se
+   * separan: `installmentsTotal` + `fixedExpensesTotal` = `fixedTotal`.
+   */
+  installmentsTotal: number; // USD, cuotas pagadas
+  installmentsTotalPesos: number; // ARS crudo
+  fixedExpensesTotal: number; // USD, gastos fijos sin cuotas
+  fixedExpensesTotalPesos: number; // ARS crudo
   categoryTotals: CategoryTotal[];
   incomplete: UsdIncomplete;
   incompleteArs: ArsIncomplete;
@@ -89,6 +101,8 @@ export function computeSummary(movements: Movement[], rate: number | null): Summ
   let fixedTotal = 0;
   let variableTotal = 0;
   let variableTotalPesos = 0;
+  let installmentsTotal = 0;
+  let installmentsTotalPesos = 0;
   let totalIncomeDollars = 0;
   let totalExpenseDollars = 0;
   let variableDollars = 0;
@@ -114,6 +128,10 @@ export function computeSummary(movements: Movement[], rate: number | null): Summ
     totalExpenseDollars += m.amount_dollars;
     if (m.record_type === 'fixed_payment') {
       fixedTotal += usd;
+      if (m.installment_id) {
+        installmentsTotal += usd;
+        installmentsTotalPesos += m.amount_pesos;
+      }
     } else {
       variableTotal += usd;
       variableTotalPesos += m.amount_pesos;
@@ -133,11 +151,14 @@ export function computeSummary(movements: Movement[], rate: number | null): Summ
     }))
     .sort((a, b) => b.amount - a.amount);
   const fixedTotalPesos = totalExpensePesos - variableTotalPesos;
+  const fixedExpensesTotalPesos = fixedTotalPesos - installmentsTotalPesos;
   const incomplete: UsdIncomplete = {
     income: rateMissing && totalIncomePesos > 0,
     expense: rateMissing && totalExpensePesos > 0,
     variable: rateMissing && variableTotalPesos > 0,
     fixed: rateMissing && fixedTotalPesos > 0,
+    installments: rateMissing && installmentsTotalPesos > 0,
+    fixedExpenses: rateMissing && fixedExpensesTotalPesos > 0,
     balance: rateMissing && (totalIncomePesos > 0 || totalExpensePesos > 0),
   };
 
@@ -152,6 +173,10 @@ export function computeSummary(movements: Movement[], rate: number | null): Summ
     fixedTotal,
     variableTotal,
     variableTotalPesos,
+    installmentsTotal,
+    installmentsTotalPesos,
+    fixedExpensesTotal: fixedTotal - installmentsTotal,
+    fixedExpensesTotalPesos,
     categoryTotals,
     incomplete,
     incompleteArs: {

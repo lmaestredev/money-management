@@ -124,7 +124,7 @@ test('sin cotización: el USD con pesos queda marcado como incompleto', () => {
     ],
     null
   );
-  assert.deepEqual(s.incomplete, { income: true, expense: true, variable: true, fixed: true, balance: true });
+  assert.deepEqual(s.incomplete, { income: true, expense: true, variable: true, fixed: true, installments: false, fixedExpenses: true, balance: true });
   assert.equal(s.totalIncome, 0, 'los pesos no se convirtieron');
 });
 
@@ -133,7 +133,7 @@ test('sin cotización pero todo en dólares: el USD es exacto y NO se marca inco
     [mv({ record_type: 'income', amount_dollars: 5000 }), mv({ status: true, amount_dollars: 200 })],
     null
   );
-  assert.deepEqual(s.incomplete, { income: false, expense: false, variable: false, fixed: false, balance: false });
+  assert.deepEqual(s.incomplete, { income: false, expense: false, variable: false, fixed: false, installments: false, fixedExpenses: false, balance: false });
   assert.equal(s.balance, 4800);
 });
 
@@ -183,4 +183,33 @@ test('sin cotización: cada categoría se marca según tenga pesos o no', () => 
   );
   const byName = Object.fromEntries(s.categoryTotals.map((c) => [c.name, c.incomplete]));
   assert.deepEqual(byName, { Hogar: true, Educación: false });
+});
+
+test('las cuotas se separan de los gastos fijos y suman igual que fixedTotal', () => {
+  const s = computeSummary(
+    [
+      mv({ record_type: 'fixed_payment', status: true, amount_dollars: 300 }), // alquiler
+      mv({ record_type: 'fixed_payment', status: true, amount_dollars: 80, installment_id: 'inst' }), // cuota
+      mv({ record_type: 'fixed_payment', status: true, amount_pesos: 50_000, installment_id: 'inst2' }), // cuota en pesos
+      mv({ status: true, amount_dollars: 20 }), // variable: no es fijo ni cuota
+    ],
+    RATE
+  );
+  assert.equal(s.installmentsTotal, 130);
+  assert.equal(s.installmentsTotalPesos, 50_000);
+  assert.equal(s.fixedExpensesTotal, 300);
+  assert.equal(s.fixedTotal, s.installmentsTotal + s.fixedExpensesTotal);
+  assert.equal(s.variableTotal, 20);
+});
+
+test('sin cotización: las cuotas en pesos se marcan incompletas y los fijos en dólares no', () => {
+  const s = computeSummary(
+    [
+      mv({ record_type: 'fixed_payment', status: true, amount_pesos: 50_000, installment_id: 'i' }),
+      mv({ record_type: 'fixed_payment', status: true, amount_dollars: 300 }),
+    ],
+    null
+  );
+  assert.equal(s.incomplete.installments, true);
+  assert.equal(s.incomplete.fixedExpenses, false);
 });
