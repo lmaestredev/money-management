@@ -7,10 +7,9 @@ import styles from './DeleteRecurringButton.module.css';
 type Props = {
   id: string;
   name: string;
-  redirectTo?: string;
 };
 
-export default function DeleteRecurringButton({ id, name, redirectTo }: Props) {
+export default function DeleteRecurringButton({ id, name }: Props) {
   return (
     <form
       action={deleteRecurringExpenseAction}
@@ -25,7 +24,6 @@ export default function DeleteRecurringButton({ id, name, redirectTo }: Props) {
       }}
     >
       <input type="hidden" name="id" value={id} />
-      {redirectTo && <input type="hidden" name="redirect_to" value={redirectTo} />}
       <button
         type="submit"
         className={styles.deleteBtn}

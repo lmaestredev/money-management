@@ -1,17 +1,54 @@
 'use server';
 
+import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { refreshExchangeRates } from '@/app/lib/data/exchange-rates';
-import { updateSettings, getSettings } from '@/app/lib/data/settings';
+import { refreshCooldownSeconds, refreshExchangeRates } from '@/app/lib/data/exchange-rates';
+import {
+  cooldownSecondsLeft,
+  cooldownToast,
+  refreshToast,
+  type RefreshToast,
+} from '@/app/lib/rates-refresh';
+import { redirectWithToast } from '@/app/lib/toast-redirect';
+import { getLastRefreshAttempt, recordRefreshAttempt, updateSettings } from '@/app/lib/data/settings';
+import { createClient } from '@/app/lib/supabase/server';
 import type { RateSource } from '@/app/lib/definitions';
 
-/** Botón "Actualizar ahora": refresca las cotizaciones contra dolarapi. */
+async function requireUser() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  return user;
+}
+
 export async function refreshRatesAction() {
-  await refreshExchangeRates();
+  const user = await requireUser();
+
+  // Siempre termina con un toast: éxito, éxito parcial, falla o límite de 1 por minuto.
+  let toast: RefreshToast;
+  try {
+    // Espera = lo que falte desde la última actualización exitosa O desde el último intento
+    // de este usuario (así un fallo de la API tampoco permite reintentar sin límite).
+    const lastAttempt = await getLastRefreshAttempt(user.id);
+    const wait = Math.max(
+      await refreshCooldownSeconds(),
+      cooldownSecondsLeft(lastAttempt ? [lastAttempt] : [], Date.now())
+    );
+    if (wait > 0) {
+      toast = cooldownToast(wait);
+    } else {
+      await recordRefreshAttempt(user.id);
+      toast = refreshToast(await refreshExchangeRates());
+    }
+  } catch (err) {
+    console.error('[rates] falló la actualización manual:', err);
+    toast = refreshToast({ ok: false, failed: [] });
+  }
+
   revalidatePath('/dashboard/configuracion');
   revalidatePath('/dashboard');
-  revalidatePath('/dashboard/movimientos');
+  redirectWithToast('/dashboard/configuracion', toast.message, toast.type);
 }
 
 const nonNegativeNumber = z
@@ -41,13 +78,13 @@ const settingsFormSchema = z.object({
     }),
 });
 
-// Estado que devuelve la action a useActionState (para disparar el toast).
 export type SettingsActionState = { ok: boolean; message: string } | null;
 
 export async function updateSettingsAction(
   _prevState: SettingsActionState,
   formData: FormData
 ): Promise<SettingsActionState> {
+  const user = await requireUser();
   const parsed = settingsFormSchema.safeParse({
     budget_total_usd: formData.get('budget_total_usd') ?? undefined,
     budget_variable_usd: formData.get('budget_variable_usd') ?? undefined,
@@ -60,17 +97,14 @@ export async function updateSettingsAction(
   }
 
   const d = parsed.data;
-  const current = await getSettings();
-  await updateSettings({
+  await updateSettings(user.id, {
     budget_total_usd: d.budget_total_usd,
     budget_variable_usd: d.budget_variable_usd,
     rate_source: d.rate_source as RateSource,
     manual_rate_enabled: d.manual_rate_enabled,
-    manual_rate_value: d.manual_rate_enabled ? d.manual_rate_value : current.manual_rate_value,
+    manual_rate_value: d.manual_rate_value,
   });
 
-  // Sin redirect: revalidamos para refrescar los datos en la misma pantalla y
-  // devolvemos el estado para que el cliente muestre el toast de confirmación.
   revalidatePath('/dashboard/configuracion');
   revalidatePath('/dashboard');
   return { ok: true, message: 'Configuración guardada.' };

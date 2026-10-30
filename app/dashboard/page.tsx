@@ -1,118 +1,68 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { after } from 'next/server';
 import { fetchAccounts } from '@/app/lib/data/accounts';
-import { computeMovementSummary } from '@/app/lib/data/movement-summary';
 import { fetchMovementsByFinancialPeriod } from '@/app/lib/data/movements';
-import { fetchInstallments } from '@/app/lib/data/installments';
-import { fetchRecurringExpenses } from '@/app/lib/data/recurring';
-import { fetchRecurringIncomes } from '@/app/lib/data/recurring-incomes';
-import { fetchCreditCards, fetchStatementPaymentIds } from '@/app/lib/data/credit-cards';
+import { fetchCreditCards } from '@/app/lib/data/credit-cards';
 import { fetchCurrentPeriod } from '@/app/lib/data/financial-periods';
+import { computeSummary } from '@/app/lib/summary';
 import { getSettings } from '@/app/lib/data/settings';
-import {
-  fetchExchangeRates,
-  getEffectiveRate,
-  refreshExchangeRatesIfStale,
-} from '@/app/lib/data/exchange-rates';
-import SummaryCards from '@/app/ui/movements/SummaryCards';
+import { getEffectiveRate, refreshExchangeRatesIfStale } from '@/app/lib/data/exchange-rates';
+import { isRateOld, rateAgeLabel } from '@/app/lib/rates-refresh';
+import { createClient } from '@/app/lib/supabase/server';
+import ExchangeRateBadge from '@/app/ui/dashboard/ExchangeRateBadge';
 import DashboardAlert from '@/app/ui/dashboard/DashboardAlert';
-import PeriodBadge, { formatPeriodRange } from '@/app/ui/financial-periods/PeriodBadge';
-import ExpenseBreakdownCard from '@/app/ui/dashboard/ExpenseBreakdownCard';
-import BudgetCard from '@/app/ui/dashboard/BudgetCard';
-import DashboardAccountList from '@/app/ui/dashboard/DashboardAccountList';
-import InstallmentsCard from '@/app/ui/installments/InstallmentsCard';
-import RecurringExpensesCard from '@/app/ui/recurring/RecurringExpensesCard';
-import RecurringIncomesCard from '@/app/ui/recurring-incomes/RecurringIncomesCard';
-import CategoryBreakdownCard from '@/app/ui/dashboard/CategoryBreakdownCard';
-import CreditCardsCard from '@/app/ui/dashboard/CreditCardsCard';
-import RateInfoCard from '@/app/ui/dashboard/RateInfoCard';
+import PeriodBadge from '@/app/ui/financial-periods/PeriodBadge';
+import MonthOverview from '@/app/ui/dashboard/MonthOverview';
+import ExpenseSplit from '@/app/ui/dashboard/ExpenseSplit';
+import QuickGlance from '@/app/ui/dashboard/QuickGlance';
 import ClosePeriodButton from '@/app/ui/financial-periods/ClosePeriodButton';
 import styles from './page.module.css';
 
-function getCurrentPeriod(): string {
-  const now = new Date();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  return `${now.getFullYear()}-${mm}`;
-}
-
 export default async function DashboardPage() {
-  // Período YYYY-MM del mes actual: se usa como campo secundario en movimientos
-  // (el filtro principal ya es financial_period_id).
-  const period = getCurrentPeriod();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  const userId = user.id;
 
-  // Red de seguridad: si las cotizaciones quedaron viejas, refrescamos antes de leer.
-  await refreshExchangeRatesIfStale();
+  // Fuera del render: se responde con la cotización guardada y se actualiza por detrás
+  // (si quedó vieja). Un fallo acá no debe afectar la página, solo se registra.
+  after(async () => {
+    try {
+      await refreshExchangeRatesIfStale();
+    } catch (err) {
+      console.error('[rates] falló el refresco en segundo plano:', err);
+    }
+  });
 
-  const currentFinancialPeriod = await fetchCurrentPeriod();
+  const currentFinancialPeriod = await fetchCurrentPeriod(userId);
   const currentFinancialPeriodId = currentFinancialPeriod?.id ?? '';
 
-  const [
-    accounts,
-    movements,
-    installments,
-    recurringExpenses,
-    recurringIncomes,
-    creditCards,
-    statementPaymentIds,
-    settings,
-    effectiveRate,
-    rates,
-  ] = await Promise.all([
-    fetchAccounts(),
-    fetchMovementsByFinancialPeriod(currentFinancialPeriodId),
-    fetchInstallments(),
-    fetchRecurringExpenses(),
-    fetchRecurringIncomes(),
-    fetchCreditCards(),
-    fetchStatementPaymentIds(),
-    getSettings(),
-    getEffectiveRate(),
-    fetchExchangeRates(),
+  const [accounts, movements, creditCards, settings, effectiveRate] = await Promise.all([
+    fetchAccounts(userId),
+    fetchMovementsByFinancialPeriod(currentFinancialPeriodId, userId),
+    fetchCreditCards(userId),
+    getSettings(userId),
+    getEffectiveRate(userId),
   ]);
 
   const rate = effectiveRate?.rate ?? null;
-  const activeInstallments = installments.filter(
-    (i) => i.status === 'active' && i.paid_installments < i.total_installments
-  );
-  const summary = computeMovementSummary(movements, rate, {
-    statementPaymentIds,
-    cards: creditCards,
-    installments: activeInstallments,
-  });
-  // Label del período para las cards (rango de fechas del período financiero).
-  const periodLabel = formatPeriodRange(currentFinancialPeriod);
-
-  // Brecha blue / oficial (sobre venta), para mostrar en el dashboard.
-  const blue = rates.find((r) => r.source === 'blue');
-  const oficial = rates.find((r) => r.source === 'oficial');
-  const gapPercent =
-    blue && oficial && oficial.venta > 0
-      ? ((blue.venta - oficial.venta) / oficial.venta) * 100
-      : null;
-
-  // Presupuesto total (todos los gastos).
-  const budgetTotalLimit = settings.budget_total_usd;
-  const totalSpent = summary.totalExpense;
-  const totalAvailable = Math.max(0, budgetTotalLimit - totalSpent);
-  const totalPercentUsed = budgetTotalLimit > 0 ? (totalSpent / budgetTotalLimit) * 100 : 0;
-  const showTotalWarning = totalPercentUsed >= 80;
-
-  // Presupuesto de gastos variables.
-  const budgetVarLimit = settings.budget_variable_usd;
-  const varSpent = summary.variableTotal;
-  const varAvailable = Math.max(0, budgetVarLimit - varSpent);
-  const varPercentUsed = budgetVarLimit > 0 ? (varSpent / budgetVarLimit) * 100 : 0;
-  const showVarWarning = varPercentUsed >= 80;
+  const summary = computeSummary(movements, rate);
 
   const noRate = rate == null;
+  // La app conserva la última cotización buena si dolarapi falla: avisamos si quedó vieja.
+  const nowMs = Date.now();
+  const rateOld = isRateOld(effectiveRate?.fetchedAt ?? null, nowMs);
 
   return (
     <div className={styles.page}>
       <header className={styles.pageHeader}>
         <div className={styles.pageTitleGroup}>
-          <h1 className={styles.pageTitle}>Dashboard</h1>
-          <p className={styles.pageSubtitle}>Resumen de tu situación financiera</p>
+          <h1 className={styles.pageTitle}>Inicio</h1>
+          <p className={styles.pageSubtitle}>Cómo vas este mes</p>
         </div>
         <div className={styles.headerActions}>
+          <ExchangeRateBadge effective={effectiveRate} />
           <PeriodBadge period={currentFinancialPeriod} />
           <ClosePeriodButton />
         </div>
@@ -122,10 +72,10 @@ export default async function DashboardPage() {
         <DashboardAlert
           message={
             <>
-              <strong>Sin cotización del dólar:</strong> los gastos en pesos no se están
-              convirtiendo a USD.{' '}
+              <strong>Falta la cotización del dólar:</strong> los montos en pesos no se pueden
+              pasar a dólares.{' '}
               <Link href="/dashboard/configuracion" className={styles.alertLink}>
-                Actualizá la tasa en Configuración
+                Actualizala en Configuración
               </Link>
               .
             </>
@@ -133,87 +83,44 @@ export default async function DashboardPage() {
         />
       )}
 
-      {showTotalWarning && (
+      {rateOld && effectiveRate?.fetchedAt && (
         <DashboardAlert
           message={
             <>
-              <strong>Presupuesto total casi agotado:</strong> llevás gastados $
-              {totalSpent.toFixed(2)} de ${budgetTotalLimit.toFixed(2)} este mes (
-              {Math.round(totalPercentUsed)}%).
+              <strong>Cotización vieja:</strong> la última se guardó{' '}
+              {rateAgeLabel(effectiveRate.fetchedAt, nowMs)}, así que los montos en dólares pueden
+              no coincidir con el dólar de hoy.{' '}
+              <Link href="/dashboard/configuracion" className={styles.alertLink}>
+                Actualizala en Configuración
+              </Link>
+              .
             </>
           }
         />
       )}
 
-      {showVarWarning && (
-        <DashboardAlert
-          message={
-            <>
-              <strong>Presupuesto de variables casi agotado:</strong> $
-              {varSpent.toFixed(2)} de ${budgetVarLimit.toFixed(2)} este mes (
-              {Math.round(varPercentUsed)}%).
-            </>
-          }
-        />
-      )}
-
-      <SummaryCards
-        balance={summary.balance}
-        totalIncome={summary.totalIncome}
-        totalExpense={summary.totalExpense}
-        totalExpensePesos={summary.totalExpensePesos}
-        totalIncomePesos={summary.totalIncomePesos}
+      <MonthOverview
+        incomeUsd={summary.totalIncome}
+        expenseUsd={summary.totalExpense}
+        budgetUsd={settings.budget_total_usd}
         rate={rate}
-        incomeCount={summary.incomeCount}
-        expenseCount={summary.expenseCount}
-        balanceLabel="Balance neto"
-        balanceMeta={<span className={styles.balanceMetaTag}>Ingresos − Egresos</span>}
+        incomeIncomplete={summary.incomplete.income}
+        expenseIncomplete={summary.incomplete.expense}
       />
 
-      <div className={styles.grid2}>
-        <BudgetCard
-          title="Presupuesto total"
-          subtitle="Todos los gastos del mes"
-          available={totalAvailable}
-          total={budgetTotalLimit}
-          spent={totalSpent}
-          percentUsed={totalPercentUsed}
-          showWarning={showTotalWarning}
-        />
-        <BudgetCard
-          title="Presupuesto variables"
-          subtitle="Tarjeta + efectivo/cuentas"
-          available={varAvailable}
-          total={budgetVarLimit}
-          spent={varSpent}
-          percentUsed={varPercentUsed}
-          showWarning={showVarWarning}
-        />
-      </div>
+      <ExpenseSplit
+        installments={{ usd: summary.installmentsTotal, incomplete: summary.incomplete.installments }}
+        fixed={{ usd: summary.fixedExpensesTotal, incomplete: summary.incomplete.fixedExpenses }}
+        other={{ usd: summary.variableTotal, incomplete: summary.incomplete.variable }}
+        rate={rate}
+      />
 
-      <div className={styles.grid2}>
-        <ExpenseBreakdownCard
-          periodLabel={periodLabel}
-          fixedTotal={summary.fixedTotal}
-          variableTotal={summary.variableTotal}
-        />
-        <RateInfoCard effective={effectiveRate} gapPercent={gapPercent} />
-      </div>
-
-      <div className={styles.grid2}>
-        <DashboardAccountList accounts={accounts} />
-        <InstallmentsCard installments={installments} rate={rate} />
-      </div>
-
-      <div className={styles.grid2}>
-        <CreditCardsCard cards={creditCards} installments={activeInstallments} rate={rate} />
-        <CategoryBreakdownCard items={summary.categoryTotals} />
-      </div>
-
-      <div className={styles.grid2}>
-        <RecurringIncomesCard incomes={recurringIncomes} rate={rate} />
-        <RecurringExpensesCard expenses={recurringExpenses} rate={rate} />
-      </div>
+      <QuickGlance
+        accounts={accounts}
+        creditCards={creditCards}
+        categories={summary.categoryTotals}
+        rate={rate}
+      />
     </div>
   );
 }

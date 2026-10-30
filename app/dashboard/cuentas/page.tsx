@@ -1,6 +1,9 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { fetchAccounts, getAccountBalance } from '@/app/lib/data/accounts';
+import { createClient } from '@/app/lib/supabase/server';
+import type { AccountCurrency } from '@/app/lib/definitions';
 import CuentasPageInfoBox from '@/app/ui/accounts/CuentasPageInfoBox';
 import CuentasSummaryCards from '@/app/ui/accounts/CuentasSummaryCards';
 import AccountCard from '@/app/ui/accounts/AccountCard';
@@ -12,6 +15,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   notfound: 'La cuenta no existe o ya fue eliminada.',
   delete: 'No se pudo eliminar la cuenta. Intenta de nuevo.',
   validation: 'Solicitud inválida.',
+  duplicate:
+    'Ya existe una cuenta con ese banco y moneda. Usa otro nombre de banco o edita la existente.',
 };
 
 type Props = {
@@ -19,24 +24,21 @@ type Props = {
 };
 
 export default async function CuentasPage({ searchParams }: Props) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
   const { error } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] ?? null : null;
-  const accounts = await fetchAccounts();
+  const accounts = await fetchAccounts(user.id);
 
-  const totalPesos = accounts.reduce((sum, a) => {
-    if (a.currency === 'peso') return sum + getAccountBalance(a);
-    if (a.currency === 'dual') return sum + a.balance_pesos;
-    return sum;
-  }, 0);
-  const totalDollars = accounts.reduce((sum, a) => {
-    if (a.currency === 'dollar' || a.currency === 'crypto') return sum + getAccountBalance(a);
-    if (a.currency === 'dual') return sum + a.balance_dollars;
-    return sum;
-  }, 0);
-  const countPesos = accounts.filter((a) => a.currency === 'peso' || a.currency === 'dual').length;
-  const countDollars = accounts.filter(
-    (a) => a.currency === 'dollar' || a.currency === 'crypto' || a.currency === 'dual'
-  ).length;
+  const totalPesos = accounts
+    .filter((a) => a.currency === 'peso')
+    .reduce((sum, a) => sum + getAccountBalance(a), 0);
+  const totalDollars = accounts
+    .filter((a) => a.currency === 'dollar' || a.currency === 'crypto')
+    .reduce((sum, a) => sum + getAccountBalance(a), 0);
+  const countPesos = accounts.filter((a) => a.currency === 'peso').length;
+  const countDollars = accounts.filter((a) => a.currency === 'dollar' || a.currency === 'crypto').length;
 
   return (
     <div className={styles.page}>

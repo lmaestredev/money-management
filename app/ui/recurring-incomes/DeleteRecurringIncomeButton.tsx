@@ -7,10 +7,9 @@ import styles from './DeleteRecurringIncomeButton.module.css';
 type Props = {
   id: string;
   name: string;
-  redirectTo?: string;
 };
 
-export default function DeleteRecurringIncomeButton({ id, name, redirectTo }: Props) {
+export default function DeleteRecurringIncomeButton({ id, name }: Props) {
   return (
     <form
       action={deleteRecurringIncomeAction}
@@ -25,7 +24,6 @@ export default function DeleteRecurringIncomeButton({ id, name, redirectTo }: Pr
       }}
     >
       <input type="hidden" name="id" value={id} />
-      {redirectTo && <input type="hidden" name="redirect_to" value={redirectTo} />}
       <button
         type="submit"
         className={styles.deleteBtn}

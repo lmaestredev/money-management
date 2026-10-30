@@ -1,10 +1,7 @@
 import type { Account, RecurringExpense } from '@/app/lib/definitions';
-import { amountsToUsd } from '@/app/lib/utils/currency';
-import { recurringExpensePaymentLabel } from '@/app/lib/utils/installment-display';
 import { formatUsd } from '@/app/lib/utils';
 import { payRecurringExpenseAction } from '@/app/lib/actions/recurring';
-import DeleteRecurringButton from '@/app/ui/recurring/DeleteRecurringButton';
-import ItemActions from '@/app/ui/movements/ItemActions';
+import PayRecurringButton from './PayRecurringButton';
 import styles from './MonthlyFixedExpensesSection.module.css';
 
 function formatPesos(amount: number): string {
@@ -18,31 +15,23 @@ function formatPesos(amount: number): string {
 
 type Props = {
   expenses: RecurringExpense[];
-  pendingExpenses: RecurringExpense[];
   paidIds: Set<string>;
   period: string;
   accounts: Account[];
-  rate: number | null;
 };
 
 export default function MonthlyFixedExpensesSection({
   expenses,
-  pendingExpenses,
   paidIds,
   period,
   accounts,
-  rate,
 }: Props) {
-  if (pendingExpenses.length === 0) return null;
+  if (expenses.length === 0) return null;
 
-  const pending = pendingExpenses;
-  const doneCount = expenses.filter((e) => paidIds.has(e.id)).length;
-  const totalCount = expenses.length;
-
-  const pendingTotal = pending.reduce(
-    (sum, e) => sum + amountsToUsd(e.amount_pesos, e.amount_dollars, rate),
-    0
-  );
+  const pendingExpenses = expenses.filter((e) => !paidIds.has(e.id));
+  const pendingTotalPesos = pendingExpenses.reduce((sum, e) => sum + e.amount_pesos, 0);
+  const pendingTotalDollars = pendingExpenses.reduce((sum, e) => sum + e.amount_dollars, 0);
+  const paidCount = expenses.filter((e) => paidIds.has(e.id)).length;
 
   return (
     <section className={styles.section} aria-labelledby="gastos-fijos-mes">
@@ -50,15 +39,19 @@ export default function MonthlyFixedExpensesSection({
         <h2 id="gastos-fijos-mes" className={styles.sectionTitle}>
           Gastos fijos del mes
           <span className={styles.countBadge}>
-            {doneCount}/{totalCount} pendiente
+            {paidCount}/{expenses.length} pagados
           </span>
         </h2>
-        <span className={styles.pendingTotal}>Pendiente: {formatUsd(pendingTotal)}</span>
+        <span className={styles.pendingTotal}>
+          Pendiente: {formatPesos(pendingTotalPesos)}
+          {pendingTotalDollars > 0 && ` (${formatUsd(pendingTotalDollars)})`}
+        </span>
       </div>
 
       <div className={styles.list}>
-        {pending.map((e) => {
-          const hasPresetPayment = !!(e.account_id || e.credit_card_id);
+        {expenses.map((e) => {
+          const isPaid = paidIds.has(e.id);
+          const hasPresetAccount = !!e.account_id;
           return (
             <div key={e.id} className={styles.row}>
               <div className={styles.icon} aria-hidden>
@@ -71,25 +64,26 @@ export default function MonthlyFixedExpensesSection({
                 </div>
                 <div className={styles.meta}>
                   <span>{e.category_name ?? 'Sin categoría'}</span>
-                  <span>🏦 {recurringExpensePaymentLabel(e)}</span>
+                  <span>🏦 {e.account_name ?? (e.is_cash ? 'Se elige al pagar' : 'Sin cuenta')}</span>
                 </div>
               </div>
               <div className={styles.amounts}>
-                <div className={styles.amountPrimary}>
-                  −{formatUsd(amountsToUsd(e.amount_pesos, e.amount_dollars, rate))}
-                </div>
-                {e.amount_pesos > 0 && (
-                  <div className={styles.amountSecondary}>{formatPesos(e.amount_pesos)}</div>
+                <div className={styles.amountPrimary}>−{formatPesos(e.amount_pesos)}</div>
+                {e.amount_dollars > 0 && (
+                  <div className={styles.amountSecondary}>{formatUsd(e.amount_dollars)}</div>
                 )}
               </div>
               <div className={styles.action}>
-                {hasPresetPayment ? (
+                {isPaid ? (
+                  <span className={styles.statusPaid}>
+                    <span className={styles.statusDot} />
+                    Pagado
+                  </span>
+                ) : hasPresetAccount ? (
                   <form action={payRecurringExpenseAction}>
                     <input type="hidden" name="recurring_expense_id" value={e.id} />
                     <input type="hidden" name="period" value={period} />
-                    <button type="submit" className={styles.payBtn}>
-                      Registrar pago
-                    </button>
+                    <PayRecurringButton />
                   </form>
                 ) : accounts.length === 0 ? (
                   <span
@@ -112,23 +106,10 @@ export default function MonthlyFixedExpensesSection({
                         </option>
                       ))}
                     </select>
-                    <button type="submit" className={styles.payBtn}>
-                      Confirmar
-                    </button>
+                    <PayRecurringButton label="Confirmar" />
                   </form>
                 )}
               </div>
-              <ItemActions
-                editHref={`/dashboard/gastos-fijos/editar/${e.id}?return=/dashboard/movimientos`}
-                editLabel={`Editar ${e.name}`}
-                deleteSlot={
-                  <DeleteRecurringButton
-                    id={e.id}
-                    name={e.name}
-                    redirectTo="/dashboard/movimientos"
-                  />
-                }
-              />
             </div>
           );
         })}

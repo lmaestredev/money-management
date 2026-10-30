@@ -1,8 +1,8 @@
 import postgres from 'postgres';
-import { sql } from '../db';
-import { getAccountBalanceDeltas } from './movements';
+import { sql, withAuthenticatedTx } from '../db';
+import { getBalanceDeltas } from './movements';
 import { fetchCurrentPeriod } from './financial-periods';
-import { getEffectiveRate } from './exchange-rates';
+import { resolveCycle } from '../billing-cycle';
 import type {
   AccountCurrency,
   CardBrand,
@@ -34,7 +34,7 @@ function rowToCard(row: Record<string, unknown>): CreditCard {
     owner_id: (row.owner_id as string) ?? null,
     owner_name: (row.owner_name as string) ?? null,
     active: Boolean(row.active),
-    user_id: (row.user_id as string) ?? null,
+    user_id: row.user_id as string,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
   };
@@ -61,81 +61,14 @@ function rowToStatement(row: Record<string, unknown>): CardStatement {
 // Lógica de ciclo de facturación
 // ---------------------------------------------------------------------------
 
-function clampDay(year: number, month0: number, day: number): number {
-  const daysInMonth = new Date(year, month0 + 1, 0).getDate();
-  return Math.min(day, daysInMonth);
-}
-
-function toISODate(year: number, month0: number, day: number): string {
-  const d = clampDay(year, month0, day);
-  const mm = String(month0 + 1).padStart(2, '0');
-  const dd = String(d).padStart(2, '0');
-  return `${year}-${mm}-${dd}`;
-}
-
-export type Cycle = { period: string; closingDate: string | null; dueDate: string | null };
-
-/**
- * Resuelve a qué resumen (ciclo) pertenece un cargo hecho en `chargeDate`.
- * - El cargo cae en el resumen que cierra el próximo closing_day >= fecha del cargo.
- * - El vencimiento es el due_day del mes correspondiente (mes siguiente al cierre
- *   si due_day <= closing_day).
- * - Sin closing_day: el resumen es el mes calendario del cargo.
- */
-export function resolveCycle(
-  chargeDate: Date,
-  closingDay: number | null,
-  dueDay: number | null
-): Cycle {
-  const year = chargeDate.getFullYear();
-  const month0 = chargeDate.getMonth();
-  const day = chargeDate.getDate();
-
-  if (!closingDay) {
-    const period = `${year}-${String(month0 + 1).padStart(2, '0')}`;
-    return { period, closingDate: null, dueDate: null };
-  }
-
-  // Si el cargo es posterior al cierre de este mes, cierra el mes siguiente.
-  let closingYear = year;
-  let closingMonth0 = month0;
-  if (day > clampDay(year, month0, closingDay)) {
-    closingMonth0 += 1;
-    if (closingMonth0 > 11) {
-      closingMonth0 = 0;
-      closingYear += 1;
-    }
-  }
-
-  const closingDate = toISODate(closingYear, closingMonth0, closingDay);
-  const period = `${closingYear}-${String(closingMonth0 + 1).padStart(2, '0')}`;
-
-  let dueDate: string | null = null;
-  if (dueDay) {
-    let dueYear = closingYear;
-    let dueMonth0 = closingMonth0;
-    if (dueDay <= closingDay) {
-      dueMonth0 += 1;
-      if (dueMonth0 > 11) {
-        dueMonth0 = 0;
-        dueYear += 1;
-      }
-    }
-    dueDate = toISODate(dueYear, dueMonth0, dueDay);
-  }
-
-  return { period, closingDate, dueDate };
-}
-
 // ---------------------------------------------------------------------------
 // Helpers transaccionales: cargar / revertir un cargo a la tarjeta
 // ---------------------------------------------------------------------------
 
-/** Encuentra (o crea) el resumen abierto al que pertenece un cargo, dentro de una tx. */
 export async function resolveOrCreateStatement(
   tx: Tx,
   cardId: string,
-  chargeDate: Date
+  chargeDate: string
 ): Promise<{ id: string; period: string }> {
   const [card] = await tx`
     SELECT closing_day, due_day FROM credit_cards WHERE id = ${cardId}
@@ -159,7 +92,6 @@ export async function resolveOrCreateStatement(
   return { id: created.id as string, period };
 }
 
-/** Suma un cargo a la deuda de la tarjeta y al total del resumen (dentro de una tx). */
 export async function applyCardCharge(
   tx: Tx,
   cardId: string,
@@ -184,7 +116,6 @@ export async function applyCardCharge(
   `;
 }
 
-/** Revierte un cargo de la deuda de la tarjeta y del total de su resumen (dentro de una tx). */
 export async function reverseCardCharge(
   tx: Tx,
   cardId: string,
@@ -223,96 +154,100 @@ const SELECT_COLUMNS = sql`
   cc.created_at, cc.updated_at
 `;
 
-export async function fetchCreditCards(): Promise<CreditCard[]> {
-  const rows = await sql`
-    SELECT ${SELECT_COLUMNS}
-    FROM credit_cards cc
-    LEFT JOIN people p ON p.id = cc.owner_id
-    ORDER BY cc.active DESC, cc.name ASC
-  `;
-  return rows.map((r) => rowToCard(r as Record<string, unknown>));
+export async function fetchCreditCards(userId: string): Promise<CreditCard[]> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const rows = await tx`
+      SELECT ${SELECT_COLUMNS}
+      FROM credit_cards cc
+      LEFT JOIN people p ON p.id = cc.owner_id
+      ORDER BY cc.active DESC, cc.name ASC
+    `;
+    return rows.map((r) => rowToCard(r as Record<string, unknown>));
+  });
 }
 
-export async function fetchActiveCreditCards(): Promise<CreditCard[]> {
-  const rows = await sql`
-    SELECT ${SELECT_COLUMNS}
-    FROM credit_cards cc
-    LEFT JOIN people p ON p.id = cc.owner_id
-    WHERE cc.active = true
-    ORDER BY cc.name ASC
-  `;
-  return rows.map((r) => rowToCard(r as Record<string, unknown>));
+export async function fetchActiveCreditCards(userId: string): Promise<CreditCard[]> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const rows = await tx`
+      SELECT ${SELECT_COLUMNS}
+      FROM credit_cards cc
+      LEFT JOIN people p ON p.id = cc.owner_id
+      WHERE cc.active = true
+      ORDER BY cc.name ASC
+    `;
+    return rows.map((r) => rowToCard(r as Record<string, unknown>));
+  });
 }
 
-export async function fetchCreditCardById(id: string): Promise<CreditCard | null> {
-  const [row] = await sql`
-    SELECT ${SELECT_COLUMNS}
-    FROM credit_cards cc
-    LEFT JOIN people p ON p.id = cc.owner_id
-    WHERE cc.id = ${id}
-  `;
-  if (!row) return null;
-  return rowToCard(row as Record<string, unknown>);
+export async function fetchCreditCardById(id: string, userId: string): Promise<CreditCard | null> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const [row] = await tx`
+      SELECT ${SELECT_COLUMNS}
+      FROM credit_cards cc
+      LEFT JOIN people p ON p.id = cc.owner_id
+      WHERE cc.id = ${id}
+    `;
+    if (!row) return null;
+    return rowToCard(row as Record<string, unknown>);
+  });
 }
 
-/** Resúmenes con deuda pendiente (no pagados y con total > 0), de todas las tarjetas. */
-export async function fetchUnpaidStatements(): Promise<CardStatement[]> {
-  const rows = await sql`
-    SELECT id, credit_card_id, period, closing_date, due_date,
-           total_pesos, total_dollars, status, paid_movement_id, created_at, updated_at
-    FROM credit_card_statements
-    WHERE status <> 'paid' AND (total_pesos <> 0 OR total_dollars <> 0)
-    ORDER BY period ASC
-  `;
-  return rows.map((r) => rowToStatement(r as Record<string, unknown>));
+export async function fetchUnpaidStatements(userId: string): Promise<CardStatement[]> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const rows = await tx`
+      SELECT id, credit_card_id, period, closing_date, due_date,
+             total_pesos, total_dollars, status, paid_movement_id, created_at, updated_at
+      FROM credit_card_statements
+      WHERE status <> 'paid' AND (total_pesos <> 0 OR total_dollars <> 0)
+      ORDER BY period ASC
+    `;
+    return rows.map((r) => rowToStatement(r as Record<string, unknown>));
+  });
 }
 
-/** IDs de los movimientos que son pago de resumen (liquidación, no gasto nuevo). */
-export async function fetchStatementPaymentIds(): Promise<Set<string>> {
-  const rows = (await sql`
-    SELECT paid_movement_id FROM credit_card_statements WHERE paid_movement_id IS NOT NULL
-  `) as { paid_movement_id: string }[];
-  return new Set(rows.map((r) => r.paid_movement_id));
-}
-
-export async function fetchStatementsByCard(cardId: string): Promise<CardStatement[]> {
-  const rows = await sql`
-    SELECT id, credit_card_id, period, closing_date, due_date,
-           total_pesos, total_dollars, status, paid_movement_id, created_at, updated_at
-    FROM credit_card_statements
-    WHERE credit_card_id = ${cardId}
-    ORDER BY period DESC
-  `;
-  return rows.map((r) => rowToStatement(r as Record<string, unknown>));
+export async function fetchStatementsByCard(cardId: string, userId: string): Promise<CardStatement[]> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const rows = await tx`
+      SELECT id, credit_card_id, period, closing_date, due_date,
+             total_pesos, total_dollars, status, paid_movement_id, created_at, updated_at
+      FROM credit_card_statements
+      WHERE credit_card_id = ${cardId}
+      ORDER BY period DESC
+    `;
+    return rows.map((r) => rowToStatement(r as Record<string, unknown>));
+  });
 }
 
 // ---------------------------------------------------------------------------
 // Escrituras
 // ---------------------------------------------------------------------------
 
-export async function createCreditCard(data: CreditCardInsert): Promise<CreditCard> {
-  const [row] = await sql`
-    INSERT INTO credit_cards (
-      name, bank, brand, currency, credit_limit, closing_day, due_day,
-      current_balance_pesos, current_balance_dollars, owner_id, active, user_id
-    )
-    VALUES (
-      ${data.name},
-      ${data.bank ?? null},
-      ${data.brand ?? null},
-      ${data.currency ?? 'peso'},
-      ${data.credit_limit ?? 0},
-      ${data.closing_day ?? null},
-      ${data.due_day ?? null},
-      ${data.current_balance_pesos ?? 0},
-      ${data.current_balance_dollars ?? 0},
-      ${data.owner_id ?? null},
-      ${data.active ?? true},
-      ${data.user_id ?? null}
-    )
-    RETURNING id
-  `;
-  const created = await fetchCreditCardById((row as { id: string }).id);
+export async function createCreditCard(data: CreditCardInsert, userId: string): Promise<CreditCard> {
+  const insertedId = await withAuthenticatedTx(userId, async (tx) => {
+    const [row] = await tx`
+      INSERT INTO credit_cards (
+        name, bank, brand, currency, credit_limit, closing_day, due_day,
+        current_balance_pesos, current_balance_dollars, owner_id, active, user_id
+      )
+      VALUES (
+        ${data.name},
+        ${data.bank ?? null},
+        ${data.brand ?? null},
+        ${data.currency ?? 'peso'},
+        ${data.credit_limit ?? 0},
+        ${data.closing_day ?? null},
+        ${data.due_day ?? null},
+        ${data.current_balance_pesos ?? 0},
+        ${data.current_balance_dollars ?? 0},
+        ${data.owner_id ?? null},
+        ${data.active ?? true},
+        ${userId}
+      )
+      RETURNING id
+    `;
+    return (row as { id: string }).id;
+  });
+  const created = await fetchCreditCardById(insertedId, userId);
   return created!;
 }
 
@@ -330,38 +265,37 @@ export type CreditCardUpdate = {
 
 export async function updateCreditCard(
   id: string,
-  data: CreditCardUpdate
+  data: CreditCardUpdate,
+  userId: string
 ): Promise<CreditCard | null> {
-  const [row] = await sql`
-    UPDATE credit_cards SET
-      name = ${data.name},
-      bank = ${data.bank ?? null},
-      brand = ${data.brand ?? null},
-      currency = ${data.currency},
-      credit_limit = ${data.credit_limit},
-      closing_day = ${data.closing_day ?? null},
-      due_day = ${data.due_day ?? null},
-      owner_id = ${data.owner_id ?? null},
-      active = ${data.active ?? true},
-      updated_at = NOW()
-    WHERE id = ${id}
-    RETURNING id
-  `;
-  if (!row) return null;
-  return fetchCreditCardById((row as { id: string }).id);
+  const updatedId = await withAuthenticatedTx(userId, async (tx) => {
+    const [row] = await tx`
+      UPDATE credit_cards SET
+        name = ${data.name},
+        bank = ${data.bank ?? null},
+        brand = ${data.brand ?? null},
+        currency = ${data.currency},
+        credit_limit = ${data.credit_limit},
+        closing_day = ${data.closing_day ?? null},
+        due_day = ${data.due_day ?? null},
+        owner_id = ${data.owner_id ?? null},
+        active = ${data.active ?? true},
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING id
+    `;
+    return row ? (row as { id: string }).id : null;
+  });
+  if (!updatedId) return null;
+  return fetchCreditCardById(updatedId, userId);
 }
 
 export type DeleteCreditCardResult =
   | { ok: true }
   | { ok: false; reason: 'not_found' | 'has_movements' };
 
-/**
- * Elimina una tarjeta. Se bloquea si tiene movimientos asociados (no se puede
- * orfanar el historial). Las cuotas y gastos fijos que la referencian se
- * desvinculan; sus resúmenes se borran en cascada.
- */
-export async function deleteCreditCard(id: string): Promise<DeleteCreditCardResult> {
-  return sql.begin(async (tx) => {
+export async function deleteCreditCard(id: string, userId: string): Promise<DeleteCreditCardResult> {
+  return withAuthenticatedTx(userId, async (tx) => {
     const [card] = await tx`SELECT id FROM credit_cards WHERE id = ${id} FOR UPDATE`;
     if (!card) return { ok: false, reason: 'not_found' as const };
 
@@ -385,18 +319,19 @@ export type PayStatementResult =
   | { ok: true }
   | { ok: false; reason: 'not_found' | 'already_paid' | 'empty' | 'no_account' };
 
-/**
- * Paga el resumen de una tarjeta: crea un movimiento que debita la cuenta
- * bancaria elegida por el total del resumen, baja la deuda de la tarjeta y marca
- * el resumen como pagado. Atómico.
- */
 export async function payStatement(
   statementId: string,
-  accountId: string | null
+  accountId: string | null,
+  userId: string
 ): Promise<PayStatementResult> {
   if (!accountId) return { ok: false, reason: 'no_account' };
 
-  return sql.begin(async (tx) => {
+  // fetchCurrentPeriod crea su propia transacción; debe llamarse ANTES de withAuthenticatedTx.
+  const currentPeriod = await fetchCurrentPeriod(userId);
+  const financialPeriodId = currentPeriod?.id;
+  if (!financialPeriodId) throw new Error('No hay período financiero abierto');
+
+  return withAuthenticatedTx(userId, async (tx) => {
     const [st] = await tx`
       SELECT id, credit_card_id, period, total_pesos, total_dollars, status
       FROM credit_card_statements
@@ -416,32 +351,23 @@ export async function payStatement(
     const cardName = (card?.name as string) ?? 'Tarjeta';
     const description = `Pago resumen ${cardName} (${st.period})`;
 
-    const currentPeriod = await fetchCurrentPeriod();
-    const financialPeriodId = currentPeriod?.id;
-    if (!financialPeriodId) throw new Error('No hay período financiero abierto');
-
-    const rate = (await getEffectiveRate())?.rate ?? null;
-    const [account] = await tx`SELECT currency FROM accounts WHERE id = ${accountId}`;
-
     const [mov] = await tx`
       INSERT INTO movements (
         period, financial_period_id, record_type, account_id, description, status,
-        amount_pesos, amount_dollars, payment_date, source
+        amount_pesos, amount_dollars, payment_date, source, user_id, is_statement_payment
       )
       VALUES (
         ${st.period}, ${financialPeriodId}, 'fixed_payment', ${accountId}, ${description}, true,
-        ${totalPesos}, ${totalDollars}, NULL, 'app'
+        ${totalPesos}, ${totalDollars}, NULL, 'app', ${userId}, true
       )
       RETURNING id
     `;
 
-    const { deltaPesos, deltaDollars } = getAccountBalanceDeltas(
-      (account?.currency as AccountCurrency) ?? null,
+    const { deltaPesos, deltaDollars } = getBalanceDeltas(
       'fixed_payment',
       true,
       totalPesos,
-      totalDollars,
-      rate
+      totalDollars
     );
     if (deltaPesos !== 0 || deltaDollars !== 0) {
       await tx`
@@ -466,65 +392,6 @@ export async function payStatement(
       SET status = 'paid', paid_movement_id = ${(mov as { id: string }).id}, updated_at = NOW()
       WHERE id = ${statementId}
     `;
-
-    return { ok: true as const };
-  });
-}
-
-export type SetCardStatementTotalResult =
-  | { ok: true }
-  | { ok: false; reason: 'not_found' | 'below_cuota_minimum' | 'validation' };
-
-/**
- * Fija el total del resumen del ciclo actual (reemplaza el total del período).
- * Ajusta la deuda de la tarjeta por la diferencia respecto al total anterior del resumen.
- */
-export async function setCardStatementTotal(
-  cardId: string,
-  totalPesos: number,
-  totalDollars: number,
-  minPesos = 0,
-  minDollars = 0
-): Promise<SetCardStatementTotalResult> {
-  if (totalPesos < 0 || totalDollars < 0) {
-    return { ok: false, reason: 'validation' };
-  }
-  if (totalPesos < minPesos || totalDollars < minDollars) {
-    return { ok: false, reason: 'below_cuota_minimum' };
-  }
-
-  const card = await fetchCreditCardById(cardId);
-  if (!card) return { ok: false, reason: 'not_found' };
-
-  return sql.begin(async (tx) => {
-    const st = await resolveOrCreateStatement(tx, cardId, new Date());
-    const [current] = await tx`
-      SELECT total_pesos, total_dollars FROM credit_card_statements WHERE id = ${st.id}
-    `;
-    if (!current) return { ok: false, reason: 'not_found' as const };
-
-    const oldPesos = Number(current.total_pesos);
-    const oldDollars = Number(current.total_dollars);
-    const deltaPesos = totalPesos - oldPesos;
-    const deltaDollars = totalDollars - oldDollars;
-
-    await tx`
-      UPDATE credit_card_statements
-      SET total_pesos = ${totalPesos},
-          total_dollars = ${totalDollars},
-          updated_at = NOW()
-      WHERE id = ${st.id}
-    `;
-
-    if (deltaPesos !== 0 || deltaDollars !== 0) {
-      await tx`
-        UPDATE credit_cards
-        SET current_balance_pesos = current_balance_pesos + ${deltaPesos},
-            current_balance_dollars = current_balance_dollars + ${deltaDollars},
-            updated_at = NOW()
-        WHERE id = ${cardId}
-      `;
-    }
 
     return { ok: true as const };
   });

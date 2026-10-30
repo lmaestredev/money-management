@@ -4,9 +4,12 @@
     "build": "next build",
     "dev": "npm run db:migrate && next dev --turbopack",
     "start": "next start",
-    "db:migrate": "tsx scripts/migrate.ts"
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "test": "node --import tsx --test \"app/**/*.test.ts\""
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "@heroicons/react": "^2.2.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",

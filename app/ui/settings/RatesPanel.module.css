@@ -1,5 +1,4 @@
 .panel {
-  max-width: 40rem;
   background: var(--color-surface-container);
   border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-card);
@@ -38,7 +37,15 @@
 
 .refreshBtn:hover { background: var(--color-primary-dim); }
 
+.refreshBtn:disabled { opacity: 0.6; cursor: progress; }
+
 .refreshIcon { width: 1rem; height: 1rem; }
+
+.spinning { animation: spin 1s linear infinite; }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 
 .grid {
   display: grid;

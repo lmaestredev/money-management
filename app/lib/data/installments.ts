@@ -1,10 +1,8 @@
-import { sql } from '../db';
-import { fetchCurrentPeriod } from './financial-periods';
-import { getEffectiveRate } from './exchange-rates';
-import { syncInstallmentLinkedMovements } from './sync-template-movements';
-import type { AccountCurrency, InstallmentInsert, InstallmentPurchase, InstallmentStatus } from '../definitions';
+import { sql, withAuthenticatedTx } from '../db';
+import { todayAR } from '../dates';
+import { getBalanceDeltas, getCardDeltas } from './movements';
 import { applyCardCharge, resolveOrCreateStatement } from './credit-cards';
-import { getAccountBalanceDeltas, getCardChargeDeltas } from './movements';
+import type { InstallmentInsert, InstallmentPurchase, InstallmentStatus, InstallmentUpdate } from '../definitions';
 
 function rowToInstallment(row: Record<string, unknown>): InstallmentPurchase {
   const total = Number(row.total_installments);
@@ -32,7 +30,7 @@ function rowToInstallment(row: Record<string, unknown>): InstallmentPurchase {
     pay_before_day: row.pay_before_day != null ? Number(row.pay_before_day) : null,
     start_period: (row.start_period as string) ?? null,
     status: status as InstallmentStatus,
-    user_id: (row.user_id as string) ?? null,
+    user_id: row.user_id as string,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
     remaining_installments: remaining,
@@ -52,134 +50,132 @@ const SELECT_COLUMNS = sql`
   i.created_at, i.updated_at
 `;
 
-export async function fetchInstallments(): Promise<InstallmentPurchase[]> {
-  const rows = await sql`
-    SELECT ${SELECT_COLUMNS}
-    FROM installment_purchases i
-    LEFT JOIN accounts a ON i.account_id = a.id
-    LEFT JOIN credit_cards cc ON i.credit_card_id = cc.id
-    LEFT JOIN categories c ON i.category_id = c.id
-    ORDER BY (i.status = 'active') DESC, i.name ASC
-  `;
-  return rows.map((r) => rowToInstallment(r as Record<string, unknown>));
+export async function fetchInstallments(userId: string): Promise<InstallmentPurchase[]> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const rows = await tx`
+      SELECT ${SELECT_COLUMNS}
+      FROM installment_purchases i
+      LEFT JOIN accounts a ON i.account_id = a.id
+      LEFT JOIN credit_cards cc ON i.credit_card_id = cc.id
+      LEFT JOIN categories c ON i.category_id = c.id
+      ORDER BY (i.status = 'active') DESC, i.name ASC
+    `;
+    return rows.map((r) => rowToInstallment(r as Record<string, unknown>));
+  });
 }
 
-export async function fetchActiveInstallments(): Promise<InstallmentPurchase[]> {
-  const rows = await sql`
-    SELECT ${SELECT_COLUMNS}
-    FROM installment_purchases i
-    LEFT JOIN accounts a ON i.account_id = a.id
-    LEFT JOIN credit_cards cc ON i.credit_card_id = cc.id
-    LEFT JOIN categories c ON i.category_id = c.id
-    WHERE i.status = 'active' AND i.paid_installments < i.total_installments
-    ORDER BY i.name ASC
-  `;
-  return rows.map((r) => rowToInstallment(r as Record<string, unknown>));
+export async function fetchActiveInstallments(userId: string): Promise<InstallmentPurchase[]> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const rows = await tx`
+      SELECT ${SELECT_COLUMNS}
+      FROM installment_purchases i
+      LEFT JOIN accounts a ON i.account_id = a.id
+      LEFT JOIN credit_cards cc ON i.credit_card_id = cc.id
+      LEFT JOIN categories c ON i.category_id = c.id
+      WHERE i.status = 'active' AND i.paid_installments < i.total_installments
+      ORDER BY i.name ASC
+    `;
+    return rows.map((r) => rowToInstallment(r as Record<string, unknown>));
+  });
 }
 
-export async function fetchInstallmentById(id: string): Promise<InstallmentPurchase | null> {
-  const [row] = await sql`
-    SELECT ${SELECT_COLUMNS}
-    FROM installment_purchases i
-    LEFT JOIN accounts a ON i.account_id = a.id
-    LEFT JOIN credit_cards cc ON i.credit_card_id = cc.id
-    LEFT JOIN categories c ON i.category_id = c.id
-    WHERE i.id = ${id}
-  `;
-  if (!row) return null;
-  return rowToInstallment(row as Record<string, unknown>);
+export async function fetchInstallmentById(id: string, userId: string): Promise<InstallmentPurchase | null> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const [row] = await tx`
+      SELECT ${SELECT_COLUMNS}
+      FROM installment_purchases i
+      LEFT JOIN accounts a ON i.account_id = a.id
+      LEFT JOIN credit_cards cc ON i.credit_card_id = cc.id
+      LEFT JOIN categories c ON i.category_id = c.id
+      WHERE i.id = ${id}
+    `;
+    if (!row) return null;
+    return rowToInstallment(row as Record<string, unknown>);
+  });
 }
 
-/** IDs de cuotas ya pagadas en el período financiero dado. */
-export async function fetchInstallmentPaidIds(financialPeriodId: string): Promise<Set<string>> {
-  const rows = (await sql`
-    SELECT DISTINCT installment_id
-    FROM movements
-    WHERE financial_period_id = ${financialPeriodId} AND installment_id IS NOT NULL
-  `) as { installment_id: string }[];
-  return new Set(rows.map((r) => r.installment_id));
+export async function fetchInstallmentPaidIds(financialPeriodId: string, userId: string): Promise<Set<string>> {
+  if (!financialPeriodId) return new Set();
+  return withAuthenticatedTx(userId, async (tx) => {
+    const rows = (await tx`
+      SELECT DISTINCT installment_id
+      FROM movements
+      WHERE financial_period_id = ${financialPeriodId} AND installment_id IS NOT NULL
+    `) as { installment_id: string }[];
+    return new Set(rows.map((r) => r.installment_id));
+  });
 }
 
 export async function createInstallment(
-  data: InstallmentInsert
+  data: InstallmentInsert,
+  userId: string
 ): Promise<InstallmentPurchase> {
-  const [row] = await sql`
-    INSERT INTO installment_purchases (
-      name, account_id, credit_card_id, category_id, total_installments, paid_installments,
-      monthly_amount_pesos, monthly_amount_dollars,
-      total_amount_pesos, total_amount_dollars,
-      pay_before_day, start_period, user_id
-    )
-    VALUES (
-      ${data.name},
-      ${data.account_id ?? null},
-      ${data.credit_card_id ?? null},
-      ${data.category_id ?? null},
-      ${data.total_installments},
-      ${data.paid_installments ?? 0},
-      ${data.monthly_amount_pesos ?? 0},
-      ${data.monthly_amount_dollars ?? 0},
-      ${data.total_amount_pesos ?? 0},
-      ${data.total_amount_dollars ?? 0},
-      ${data.pay_before_day ?? null},
-      ${data.start_period ?? null},
-      ${data.user_id ?? null}
-    )
-    RETURNING id
-  `;
-  const created = await fetchInstallmentById((row as { id: string }).id);
+  const insertedId = await withAuthenticatedTx(userId, async (tx) => {
+    const [row] = await tx`
+      INSERT INTO installment_purchases (
+        name, account_id, credit_card_id, category_id, total_installments, paid_installments,
+        monthly_amount_pesos, monthly_amount_dollars,
+        total_amount_pesos, total_amount_dollars,
+        pay_before_day, start_period, user_id
+      )
+      VALUES (
+        ${data.name},
+        ${data.account_id ?? null},
+        ${data.credit_card_id ?? null},
+        ${data.category_id ?? null},
+        ${data.total_installments},
+        ${data.paid_installments ?? 0},
+        ${data.monthly_amount_pesos ?? 0},
+        ${data.monthly_amount_dollars ?? 0},
+        ${data.total_amount_pesos ?? 0},
+        ${data.total_amount_dollars ?? 0},
+        ${data.pay_before_day ?? null},
+        ${data.start_period ?? null},
+        ${userId}
+      )
+      RETURNING id
+    `;
+    return (row as { id: string }).id;
+  });
+  const created = await fetchInstallmentById(insertedId, userId);
   return created!;
 }
 
 export async function updateInstallment(
   id: string,
-  data: InstallmentInsert
+  data: InstallmentUpdate,
+  userId: string
 ): Promise<InstallmentPurchase | null> {
-  const [currentPeriod, effectiveRate] = await Promise.all([
-    fetchCurrentPeriod(),
-    getEffectiveRate(),
-  ]);
-  const rate = effectiveRate?.rate ?? null;
+  const status: InstallmentStatus = data.paid_installments >= data.total_installments ? 'finished' : 'active';
 
-  const updated = await sql.begin(async (tx) => {
-    const [row] = await tx`
-      UPDATE installment_purchases
-      SET
+  const updated = await withAuthenticatedTx(userId, async (tx) => {
+    const rows = await tx`
+      UPDATE installment_purchases SET
         name = ${data.name},
         account_id = ${data.account_id ?? null},
         credit_card_id = ${data.credit_card_id ?? null},
         category_id = ${data.category_id ?? null},
         total_installments = ${data.total_installments},
-        paid_installments = ${data.paid_installments ?? 0},
+        paid_installments = ${data.paid_installments},
         monthly_amount_pesos = ${data.monthly_amount_pesos ?? 0},
         monthly_amount_dollars = ${data.monthly_amount_dollars ?? 0},
         total_amount_pesos = ${data.total_amount_pesos ?? 0},
         total_amount_dollars = ${data.total_amount_dollars ?? 0},
         pay_before_day = ${data.pay_before_day ?? null},
         start_period = ${data.start_period ?? null},
+        status = ${status},
         updated_at = NOW()
       WHERE id = ${id}
       RETURNING id
     `;
-    if (!row) return false;
-
-    await syncInstallmentLinkedMovements(tx, id, data, {
-      financialPeriodId: currentPeriod?.id ?? null,
-      rate,
-    });
-    return true;
+    return rows.length > 0;
   });
-
   if (!updated) return null;
-  return fetchInstallmentById(id);
+  return fetchInstallmentById(id, userId);
 }
 
-/**
- * Elimina una compra en cuotas. Preserva el historial: desvincula los pagos ya
- * registrados (quedan como movimientos normales) antes de borrar la plantilla.
- */
-export async function deleteInstallment(id: string): Promise<boolean> {
-  return sql.begin(async (tx) => {
+export async function deleteInstallment(id: string, userId: string): Promise<boolean> {
+  return withAuthenticatedTx(userId, async (tx) => {
     await tx`
       UPDATE movements SET installment_id = NULL
       WHERE installment_id = ${id}
@@ -192,23 +188,47 @@ export async function deleteInstallment(id: string): Promise<boolean> {
   });
 }
 
+export type CompleteInstallmentResult =
+  | { ok: true }
+  | { ok: false; reason: 'not_found' | 'already_finished' };
+
+export async function completeInstallment(
+  installmentId: string,
+  userId: string
+): Promise<CompleteInstallmentResult> {
+  return withAuthenticatedTx(userId, async (tx) => {
+    const [inst] = await tx`
+      SELECT id, total_installments, status
+      FROM installment_purchases
+      WHERE id = ${installmentId}
+      FOR UPDATE
+    `;
+    if (!inst) return { ok: false, reason: 'not_found' as const };
+    if (inst.status === 'finished') return { ok: false, reason: 'already_finished' as const };
+
+    await tx`
+      UPDATE installment_purchases
+      SET paid_installments = ${Number(inst.total_installments)},
+          status = 'finished',
+          updated_at = NOW()
+      WHERE id = ${installmentId}
+    `;
+
+    return { ok: true as const };
+  });
+}
+
 export type PayInstallmentResult =
   | { ok: true }
   | { ok: false; reason: 'not_found' | 'completed' | 'already_paid' | 'no_account' };
 
-/**
- * @deprecated Las cuotas ya no generan movimientos. Actualizá paid_installments en el formulario de edición.
- * Se conserva por compatibilidad con datos legacy.
- */
 export async function payInstallment(
   installmentId: string,
   period: string,
-  financialPeriodId: string
+  financialPeriodId: string,
+  userId: string
 ): Promise<PayInstallmentResult> {
-  const effectiveRate = await getEffectiveRate();
-  const rate = effectiveRate?.rate ?? null;
-
-  return sql.begin(async (tx) => {
+  return withAuthenticatedTx(userId, async (tx) => {
     const [inst] = await tx`
       SELECT id, name, account_id, credit_card_id, category_id,
              total_installments, paid_installments,
@@ -241,59 +261,39 @@ export async function payInstallment(
     const description = `${inst.name} (cuota ${nextNumber}/${total})`;
 
     if (inst.credit_card_id) {
-      const st = await resolveOrCreateStatement(tx, inst.credit_card_id as string, new Date());
+      const st = await resolveOrCreateStatement(tx, inst.credit_card_id as string, todayAR());
       await tx`
         INSERT INTO movements (
           period, financial_period_id, record_type, credit_card_id, statement_id, category_id,
           description, status,
-          amount_pesos, amount_dollars, payment_date, comment, source, installment_id
+          amount_pesos, amount_dollars, payment_date, comment, source, installment_id, user_id
         )
         VALUES (
           ${period}, ${financialPeriodId}, 'fixed_payment', ${inst.credit_card_id}, ${st.id}, ${inst.category_id ?? null},
           ${description}, true, ${amountPesos}, ${amountDollars}, NULL, NULL, 'app',
-          ${installmentId}
+          ${installmentId}, ${userId}
         )
       `;
-      const [card] = await tx`
-        SELECT currency FROM credit_cards WHERE id = ${inst.credit_card_id}
-      `;
-      const cardDelta = getCardChargeDeltas(
-        (card?.currency as AccountCurrency) ?? null,
-        'fixed_payment',
-        amountPesos,
-        amountDollars,
-        rate
-      );
-      await applyCardCharge(
-        tx,
-        inst.credit_card_id as string,
-        st.id,
-        cardDelta.deltaPesos,
-        cardDelta.deltaDollars
-      );
+      const card = getCardDeltas('fixed_payment', amountPesos, amountDollars);
+      await applyCardCharge(tx, inst.credit_card_id as string, st.id, card.deltaPesos, card.deltaDollars);
     } else {
       await tx`
         INSERT INTO movements (
           period, financial_period_id, record_type, account_id, category_id, description, status,
-          amount_pesos, amount_dollars, payment_date, comment, source, installment_id
+          amount_pesos, amount_dollars, payment_date, comment, source, installment_id, user_id
         )
         VALUES (
           ${period}, ${financialPeriodId}, 'fixed_payment', ${inst.account_id}, ${inst.category_id ?? null},
           ${description}, true, ${amountPesos}, ${amountDollars}, NULL, NULL, 'app',
-          ${installmentId}
+          ${installmentId}, ${userId}
         )
       `;
 
-      const [account] = await tx`
-        SELECT currency FROM accounts WHERE id = ${inst.account_id}
-      `;
-      const { deltaPesos, deltaDollars } = getAccountBalanceDeltas(
-        (account?.currency as AccountCurrency) ?? null,
+      const { deltaPesos, deltaDollars } = getBalanceDeltas(
         'fixed_payment',
         true,
         amountPesos,
-        amountDollars,
-        rate
+        amountDollars
       );
       if (deltaPesos !== 0 || deltaDollars !== 0) {
         await tx`

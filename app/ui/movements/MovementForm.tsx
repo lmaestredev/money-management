@@ -3,15 +3,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { createMovementAction } from '@/app/lib/actions/movements';
+import { todayAR } from '@/app/lib/dates';
 import SubmitButton from '@/app/ui/SubmitButton';
 import PaymentSourceSelect, { type PaymentSource } from '@/app/ui/credit-cards/PaymentSourceSelect';
-import MovementAmountFields from './MovementAmountFields';
+import ReceiptScanner from './ReceiptScanner';
 import type { Account, AccountCurrency, Category, CreditCard } from '@/app/lib/definitions';
 import styles from './MovementForm.module.css';
-
-function getTodayISO(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 type Props = {
   period: string;
@@ -26,11 +23,14 @@ export default function MovementForm({
   accounts,
   cards,
   categories,
-  defaultPaymentDate = getTodayISO(),
+  defaultPaymentDate = todayAR(),
 }: Props) {
   const [source, setSource] = useState<PaymentSource>(null);
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [aiSourceValue, setAiSourceValue] = useState('');
+  const [aiSourceKey, setAiSourceKey] = useState(0);
   const currency: AccountCurrency | null = source?.currency ?? null;
-  const showSplitAmounts = currency === 'dual';
 
   const amountLabel =
     currency === 'peso'
@@ -42,16 +42,37 @@ export default function MovementForm({
   return (
     <form action={createMovementAction} className={styles.form}>
       <input type="hidden" name="period" value={period} />
+
+      <ReceiptScanner
+        accounts={accounts}
+        cards={cards}
+        onExtracted={(data) => {
+          if (data.amount != null) setAmount(String(data.amount));
+          if (data.description) setDescription(data.description);
+          if (data.paymentSource) {
+            setSource(data.paymentSource);
+            setAiSourceValue(
+              data.paymentSource.kind === 'account'
+                ? `acc:${data.paymentSource.id}`
+                : `card:${data.paymentSource.id}`
+            );
+            setAiSourceKey((k) => k + 1);
+          }
+        }}
+      />
+
       <div className={styles.field}>
         <label htmlFor="payment_source" className={styles.label}>
           Cuenta o tarjeta
         </label>
         <PaymentSourceSelect
+          key={aiSourceKey}
           accounts={accounts}
           cards={cards}
           className={styles.select}
           required
           noneLabel="Seleccionar cuenta o tarjeta"
+          defaultValue={aiSourceValue}
           onSelect={setSource}
         />
       </div>
@@ -59,10 +80,16 @@ export default function MovementForm({
         <label htmlFor="record_type" className={styles.label}>
           Tipo
         </label>
-        <select id="record_type" name="record_type" className={styles.select} required>
+        <select
+          id="record_type"
+          name="record_type"
+          className={styles.select}
+          required
+        >
           <option value="income">Ingreso</option>
           <option value="variable_payment">Egreso (pago varios)</option>
           <option value="fixed_payment">Egreso (gasto fijo)</option>
+          <option value="conversion">Conversión (dólar ↔ peso)</option>
         </select>
       </div>
       <div className={styles.field}>
@@ -88,13 +115,28 @@ export default function MovementForm({
           type="text"
           className={styles.input}
           placeholder="Ej. Sueldo, Alquiler..."
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
         />
       </div>
-      <MovementAmountFields
-        showSplitAmounts={showSplitAmounts}
-        amountLabel={amountLabel}
-        sourceSelected={!!source}
-      />
+      <div className={styles.field}>
+        <label htmlFor="amount" className={styles.label}>
+          {amountLabel}
+        </label>
+        <input
+          id="amount"
+          name="amount"
+          type="number"
+          step="0.01"
+          min="0"
+          className={styles.input}
+          required
+          disabled={!source}
+          placeholder={source ? '0' : 'Selecciona una cuenta o tarjeta'}
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+      </div>
       <div className={styles.field}>
         <label htmlFor="payment_date" className={styles.label}>
           Fecha de pago

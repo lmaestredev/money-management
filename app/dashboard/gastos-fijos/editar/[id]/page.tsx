@@ -1,48 +1,45 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { fetchRecurringExpenseById } from '@/app/lib/data/recurring';
 import { fetchAccounts } from '@/app/lib/data/accounts';
 import { fetchActiveCreditCards } from '@/app/lib/data/credit-cards';
 import { fetchCategories } from '@/app/lib/data/categories';
-import { fetchRecurringExpenseById } from '@/app/lib/data/recurring';
-import RecurringExpenseForm from '@/app/ui/recurring/RecurringExpenseForm';
-import FormValidationBanner from '@/app/ui/FormValidationBanner';
-import styles from '../../nuevo/page.module.css';
+import { createClient } from '@/app/lib/supabase/server';
+import EditRecurringExpenseForm from '@/app/ui/recurring/EditRecurringExpenseForm';
+import styles from './page.module.css';
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ return?: string; error?: string }>;
 };
 
-export default async function EditarGastoFijoPage({ params, searchParams }: Props) {
+export default async function EditarGastoFijoPage({ params }: Props) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
   const { id } = await params;
-  const { return: returnTo, error } = await searchParams;
   const [expense, accounts, cards, categories] = await Promise.all([
-    fetchRecurringExpenseById(id),
-    fetchAccounts(),
-    fetchActiveCreditCards(),
+    fetchRecurringExpenseById(id, user.id),
+    fetchAccounts(user.id),
+    fetchActiveCreditCards(user.id),
     fetchCategories(),
   ]);
-
   if (!expense) notFound();
 
-  const backHref = returnTo || '/dashboard/gastos-fijos';
-
   return (
-    <div>
-      <Link href={backHref} className={styles.backLink}>
-        <ArrowLeftIcon className={styles.backIcon} aria-hidden />
-        Volver
-      </Link>
+    <div className={styles.page}>
       <h1 className={styles.title}>Editar gasto fijo</h1>
-      <FormValidationBanner error={error} />
-      <RecurringExpenseForm
+      <p className={styles.subtitle}>Actualiza el monto u otros datos del gasto fijo.</p>
+      <EditRecurringExpenseForm
+        expense={expense}
         accounts={accounts}
         cards={cards}
         categories={categories}
-        expense={expense}
-        returnTo={returnTo}
       />
+      <Link href="/dashboard/gastos-fijos" className={styles.backLink}>
+        <ArrowLeftIcon className={styles.backIcon} aria-hidden />
+        Volver a Gastos fijos
+      </Link>
     </div>
   );
 }

@@ -1,39 +1,23 @@
-import { z } from 'zod';
+import { requireBearerSecret } from '@/app/lib/auth/bearer';
+import { movementApiSchema } from '@/app/lib/validation';
 import {
   createMovement,
   fetchMovementsByPeriod,
 } from '@/app/lib/data/movements';
 
-const recordTypeSchema = z.enum(['income', 'variable_payment', 'fixed_payment']);
+function getExpectedSecret(): string | undefined {
+  return process.env.TELEGRAM_BOT_SECRET || process.env.API_SECRET || undefined;
+}
 
-const createMovementSchema = z.object({
-  period: z.string().regex(/^\d{4}-\d{2}$/, 'period must be YYYY-MM'),
-  record_type: recordTypeSchema,
-  account_id: z.string().uuid(),
-  category_id: z.string().uuid().optional().nullable(),
-  description: z.string().optional().nullable(),
-  status: z.boolean().optional().nullable(),
-  amount_pesos: z.number(),
-  amount_dollars: z.number(),
-  payment_date: z.string().optional().nullable(),
-  dollar_rate: z.number().optional().nullable(),
-  exchange_rate: z.number().optional().nullable(),
-  comment: z.string().optional().nullable(),
-  user_id: z.string().uuid().optional().nullable(),
-});
-
-function getBearerToken(request: Request): string | null {
-  const auth = request.headers.get('Authorization');
-  if (!auth?.startsWith('Bearer ')) return null;
-  return auth.slice(7).trim() || null;
+function getBotUserId(): string {
+  const id = process.env.BOT_USER_ID;
+  if (!id) throw new Error('BOT_USER_ID env var not set');
+  return id;
 }
 
 export async function POST(request: Request) {
-  const token = getBearerToken(request);
-  const expectedToken = process.env.TELEGRAM_BOT_SECRET ?? process.env.API_SECRET;
-  if (expectedToken && token !== expectedToken) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = requireBearerSecret(request, getExpectedSecret());
+  if (denied) return denied;
 
   let body: unknown;
   try {
@@ -42,7 +26,7 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const parsed = createMovementSchema.safeParse(body);
+  const parsed = movementApiSchema.safeParse(body);
   if (!parsed.success) {
     return Response.json(
       { error: 'Validation failed', details: parsed.error.flatten() },
@@ -51,8 +35,10 @@ export async function POST(request: Request) {
   }
 
   try {
+    const botUserId = getBotUserId();
     const movement = await createMovement(
       { ...parsed.data, source: 'telegram' },
+      botUserId,
       'telegram'
     );
     return Response.json({ id: movement.id, movement }, { status: 201 });
@@ -66,11 +52,8 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const token = getBearerToken(request);
-  const expectedToken = process.env.TELEGRAM_BOT_SECRET ?? process.env.API_SECRET;
-  if (expectedToken && token !== expectedToken) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = requireBearerSecret(request, getExpectedSecret());
+  if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
   const period = searchParams.get('period');
@@ -85,7 +68,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const movements = await fetchMovementsByPeriod(period);
+    const botUserId = getBotUserId();
+    const movements = await fetchMovementsByPeriod(period, botUserId);
     return Response.json({ movements });
   } catch (err) {
     console.error('Fetch movements error:', err);

@@ -1,14 +1,10 @@
+import Link from 'next/link';
+import { dateOnly, formatDateAR, todayAR } from '@/app/lib/dates';
+import { countsAsExpense } from '@/app/lib/summary';
 import { formatUsd } from '@/app/lib/utils';
-import { movementToUsd } from '@/app/lib/utils/currency';
-import { movementPaymentLabel } from '@/app/lib/utils/installment-display';
-import { getMovementEditHref } from '@/app/lib/utils/movement-edit';
-import { getMovementStatus } from '@/app/lib/utils/movement-status';
 import type { Movement } from '@/app/lib/definitions';
-import ItemActions from './ItemActions';
 import DeleteMovementButton from './DeleteMovementButton';
 import styles from './MovementList.module.css';
-
-type AccountNames = Record<string, string>;
 
 function formatPesos(amount: number): string {
   return amount.toLocaleString('es-AR', {
@@ -30,24 +26,17 @@ function recordTypeLabel(type: string): string {
 }
 
 function getDayKey(m: Movement): string {
-  const dateStr = m.payment_date ?? m.created_at;
-  if (!dateStr) return 'unknown';
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  // payment_date es una columna DATE (fecha calendario); created_at es un instante
+  // y se pasa a fecha argentina.
+  if (m.payment_date) return dateOnly(m.payment_date);
+  if (m.created_at) return todayAR(new Date(m.created_at));
+  return 'unknown';
 }
 
 function formatDayLabel(dateStr: string): string {
-  const d = new Date(dateStr);
-  const today = new Date();
-  const isToday =
-    d.getDate() === today.getDate() &&
-    d.getMonth() === today.getMonth() &&
-    d.getFullYear() === today.getFullYear();
-  const formatted = d.toLocaleDateString('es-ES', {
-    day: 'numeric',
-    month: 'long',
-  });
-  return isToday ? `Hoy · ${formatted}` : formatted;
+  if (dateStr === 'unknown') return 'Sin fecha';
+  const formatted = formatDateAR(dateStr, { day: 'numeric', month: 'long' }, 'es-ES');
+  return dateStr === todayAR() ? `Hoy · ${formatted}` : formatted;
 }
 
 function getCategoryIcon(categoryName: string | null, recordType: string): string {
@@ -75,61 +64,48 @@ function getCategoryIcon(categoryName: string | null, recordType: string): strin
   }
 }
 
-function getDayTotal(movements: Movement[], rate: number | null): number {
-  let total = 0;
+/**
+ * Total neto del día POR MONEDA (sin convertir): ingresos − gastos, con la misma
+ * regla de gasto que el resto de las pantallas (los pagos de resumen no cuentan).
+ */
+function getDayTotals(movements: Movement[]): { pesos: number; dollars: number } {
+  let pesos = 0;
+  let dollars = 0;
   for (const m of movements) {
-    const usd = movementToUsd(m, rate);
     if (m.record_type === 'income') {
-      total += usd;
-    } else if (m.record_type === 'variable_payment' || m.record_type === 'fixed_payment') {
-      const counts = m.credit_card_id ? true : m.status === true;
-      if (counts) total -= usd;
+      pesos += m.amount_pesos;
+      dollars += m.amount_dollars;
+    } else if (countsAsExpense(m)) {
+      pesos -= m.amount_pesos;
+      dollars -= m.amount_dollars;
     }
   }
-  return total;
+  return { pesos, dollars };
 }
 
-function pesosSecondary(m: Movement, usdAmount: number, rate: number | null): string | null {
-  if (m.amount_pesos > 0) return formatPesos(m.amount_pesos);
-  if (rate && rate > 0) return `≈ ${formatPesos(usdAmount * rate)}`;
-  return null;
+function getStatusLabel(m: Movement): 'paid' | 'pending' | 'overdue' {
+  if (m.record_type === 'income') return 'paid';
+  if (m.status === true) return 'paid';
+  if (m.status === false && m.payment_date) {
+    // Strings YYYY-MM-DD: la comparación lexicográfica equivale a la de fechas.
+    if (dateOnly(m.payment_date) < todayAR()) return 'overdue';
+  }
+  return 'pending';
 }
 
 type Props = {
   movements: Movement[];
-  accountNames: AccountNames;
-  cardNames: AccountNames;
-  rate: number | null;
+  accountNames: Map<string, string>;
   readOnly?: boolean;
-  isFiltering?: boolean;
-  showFilterEmpty?: boolean;
 };
 
-export default function MovementList({
-  movements,
-  accountNames,
-  cardNames,
-  rate,
-  readOnly = false,
-  isFiltering = false,
-  showFilterEmpty = false,
-}: Props) {
+export default function MovementList({ movements, accountNames, readOnly = false }: Props) {
   if (movements.length === 0) {
-    if (isFiltering && !showFilterEmpty) return null;
-
     return (
       <div className={styles.emptyState}>
         <div className={styles.emptyIcon}>📋</div>
-        <p className={styles.emptyText}>
-          {isFiltering
-            ? 'Ningún movimiento coincide con el filtro.'
-            : 'No hay movimientos en este periodo.'}
-        </p>
-        <p className={styles.emptySub}>
-          {isFiltering
-            ? 'Probá con otro término o quitá los filtros.'
-            : 'Añade un movimiento o cambia el mes.'}
-        </p>
+        <p className={styles.emptyText}>No hay movimientos en este periodo.</p>
+        <p className={styles.emptySub}>Añade un movimiento o cambia el mes.</p>
       </div>
     );
   }
@@ -151,120 +127,131 @@ export default function MovementList({
           Listado
           <span className={styles.countBadge}>{movements.length} movimientos</span>
         </h2>
+        <div className={styles.sectionActions}>
+          <button type="button" className={styles.btnGhost} aria-label="Exportar">
+            ⬇ Exportar
+          </button>
+          <button type="button" className={styles.btnGhost} aria-label="Columnas">
+            ⚙ Columnas
+          </button>
+        </div>
       </div>
 
-      <div className={styles.listScroll}>
-        {sortedDays.map((dayKey) => {
-          const dayMovements = byDay.get(dayKey)!;
-          const dayTotal = getDayTotal(dayMovements, rate);
-          const firstDate = dayMovements[0]?.payment_date ?? dayMovements[0]?.created_at ?? dayKey;
+      {sortedDays.map((dayKey) => {
+        const dayMovements = byDay.get(dayKey)!;
+        const dayTotals = getDayTotals(dayMovements);
+        const dayParts = [
+          { value: dayTotals.pesos, format: formatPesos },
+          { value: dayTotals.dollars, format: formatUsd },
+        ].filter((p) => p.value !== 0);
+        if (dayParts.length === 0) dayParts.push({ value: 0, format: formatUsd });
+        const firstDate = dayMovements[0]?.payment_date ?? dayMovements[0]?.created_at ?? dayKey;
 
-          return (
-            <div key={dayKey} className={styles.dayGroup}>
-              <div className={styles.dayLabel}>
-                <span className={styles.dayLabelText}>
-                  {formatDayLabel(firstDate).charAt(0).toUpperCase() +
-                    formatDayLabel(firstDate).slice(1)}
-                </span>
-                <span
-                  className={
-                    dayTotal >= 0 ? styles.dayTotalPositive : styles.dayTotalNegative
-                  }
-                >
-                  {dayTotal >= 0 ? '+' : '−'}
-                  {formatUsd(Math.abs(dayTotal))}
-                </span>
-              </div>
+        return (
+          <div key={dayKey} className={styles.dayGroup}>
+            <div className={styles.dayLabel}>
+              <span className={styles.dayLabelText}>
+                {formatDayLabel(firstDate).charAt(0).toUpperCase() + formatDayLabel(firstDate).slice(1)}
+              </span>
+              <span className={styles.dayTotals}>
+                {dayParts.map((part, i) => (
+                  <span
+                    key={i}
+                    className={part.value >= 0 ? styles.dayTotalPositive : styles.dayTotalNegative}
+                  >
+                    {part.value >= 0 ? '+' : '−'}
+                    {part.format(Math.abs(part.value))}
+                  </span>
+                ))}
+              </span>
+            </div>
 
-              {dayMovements.map((m) => {
-                const isIncome = m.record_type === 'income';
-                const isExpense =
-                  m.record_type === 'variable_payment' || m.record_type === 'fixed_payment';
-                const isFixed = m.record_type === 'fixed_payment';
-                const iconClass = isIncome
-                  ? styles.movIconIncome
-                  : isFixed
-                    ? styles.movIconFixed
-                    : styles.movIconExpense;
-                const typeBadgeClass = isIncome
-                  ? styles.movTypeBadgeIncome
-                  : isFixed
-                    ? styles.movTypeBadgeFixed
-                    : styles.movTypeBadgeExpense;
-                const amountClass = isIncome
-                  ? styles.movAmountPrimaryIncome
-                  : styles.movAmountPrimaryExpense;
-                const status = getMovementStatus(m);
-                const usdAmount = movementToUsd(m, rate);
-                const arsLine = pesosSecondary(m, usdAmount, rate);
-                const accountLabel = movementPaymentLabel(m, cardNames, accountNames);
+            {dayMovements.map((m) => {
+              const isIncome = m.record_type === 'income';
+              const isExpense =
+                m.record_type === 'variable_payment' || m.record_type === 'fixed_payment';
+              const isFixed = m.record_type === 'fixed_payment';
+              const iconClass = isIncome
+                ? styles.movIconIncome
+                : isFixed
+                  ? styles.movIconFixed
+                  : styles.movIconExpense;
+              const typeBadgeClass = isIncome
+                ? styles.movTypeBadgeIncome
+                : isFixed
+                  ? styles.movTypeBadgeFixed
+                  : styles.movTypeBadgeExpense;
+              const amountClass = isIncome
+                ? styles.movAmountPrimaryIncome
+                : styles.movAmountPrimaryExpense;
+              const status = getStatusLabel(m);
 
-                return (
-                  <div key={m.id} className={styles.movementRow}>
-                    <div className={`${styles.movIcon} ${iconClass}`}>
-                      {getCategoryIcon(m.category_name ?? null, m.record_type)}
+              return (
+                <div key={m.id} className={styles.movementRow}>
+                  <div className={`${styles.movIcon} ${iconClass}`}>
+                    {getCategoryIcon(m.category_name ?? null, m.record_type)}
+                  </div>
+                  <div className={styles.movInfo}>
+                    <div className={styles.movDescription}>
+                      {m.description ?? '—'}
                     </div>
-                    <div className={styles.movInfo}>
-                      <div className={styles.movDescription}>
-                        {m.description ?? '—'}
-                      </div>
-                      <div className={styles.movMeta}>
-                        <span className={`${styles.movTypeBadge} ${typeBadgeClass}`}>
-                          {recordTypeLabel(m.record_type)}
-                        </span>
-                        <span className={styles.movAccount}>🏦 {accountLabel}</span>
-                      </div>
-                    </div>
-                    <div className={styles.movCategory}>
-                      {m.category_name ?? 'Sin categoría'}
-                    </div>
-                    <div className={styles.movAmounts}>
-                      <div className={`${styles.movAmountPrimary} ${amountClass}`}>
-                        {isIncome ? '+' : isExpense ? '−' : ''}
-                        {formatUsd(usdAmount)}
-                      </div>
-                      {arsLine && (
-                        <div className={styles.movAmountSecondary}>{arsLine}</div>
-                      )}
-                    </div>
-                    <div className={styles.movStatus}>
-                      <span
-                        className={
-                          status === 'paid'
-                            ? styles.statusPillPaid
-                            : status === 'overdue'
-                              ? styles.statusPillOverdue
-                              : styles.statusPillPending
-                        }
-                      >
-                        <span className={styles.statusDot} />
-                        {status === 'paid'
-                          ? 'Pagado'
-                          : status === 'overdue'
-                            ? 'Vencido'
-                            : 'Pendiente'}
+                    <div className={styles.movMeta}>
+                      <span className={`${styles.movTypeBadge} ${typeBadgeClass}`}>
+                        {recordTypeLabel(m.record_type)}
+                      </span>
+                      <span className={styles.movAccount}>
+                        🏦 {(m.account_id && (accountNames.get(m.account_id) ?? m.account_id)) ?? '—'}
                       </span>
                     </div>
-                    {!readOnly && (
-                      <ItemActions
-                        editHref={getMovementEditHref(m)}
-                        editLabel={`Editar ${m.description ?? 'movimiento'}`}
-                        deleteSlot={
-                          <DeleteMovementButton
-                            id={m.id}
-                            period={m.period}
-                            description={m.description}
-                          />
-                        }
-                      />
+                  </div>
+                  <div className={styles.movCategory}>
+                    {m.category_name ?? 'Sin categoría'}
+                  </div>
+                  <div className={styles.movAmounts}>
+                    <div className={`${styles.movAmountPrimary} ${amountClass}`}>
+                      {isIncome ? '+' : '−'}
+                      {/* Cada importe en su moneda: un gasto en pesos no se muestra como u$d 0,00. */}
+                      {m.amount_dollars !== 0 ? formatUsd(m.amount_dollars) : formatPesos(m.amount_pesos)}
+                    </div>
+                    {m.amount_dollars !== 0 && m.amount_pesos !== 0 && (
+                      <div className={styles.movAmountSecondary}>
+                        {formatPesos(m.amount_pesos)}
+                      </div>
                     )}
                   </div>
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
+                  <div className={styles.movStatus}>
+                    <span
+                      className={
+                        status === 'paid'
+                          ? styles.statusPillPaid
+                          : status === 'overdue'
+                            ? styles.statusPillOverdue
+                            : styles.statusPillPending
+                      }
+                    >
+                      <span className={styles.statusDot} />
+                      {status === 'paid' ? 'Pagado' : status === 'overdue' ? 'Vencido' : 'Pendiente'}
+                    </span>
+                  </div>
+                  {!readOnly && (
+                    <div className={styles.movActions}>
+                      <Link
+                        href={`/dashboard/movimientos/editar/${m.id}?period=${m.period}`}
+                        className={styles.actionBtn}
+                        title="Editar"
+                        aria-label="Editar movimiento"
+                      >
+                        ✏️
+                      </Link>
+                      <DeleteMovementButton id={m.id} period={m.period} description={m.description} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
     </div>
   );
 }

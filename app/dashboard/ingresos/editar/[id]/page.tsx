@@ -1,45 +1,38 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { fetchRecurringIncomeById } from '@/app/lib/data/recurring-incomes';
 import { fetchAccounts } from '@/app/lib/data/accounts';
 import { fetchCategories } from '@/app/lib/data/categories';
-import { fetchRecurringIncomeById } from '@/app/lib/data/recurring-incomes';
-import RecurringIncomeForm from '@/app/ui/recurring-incomes/RecurringIncomeForm';
-import FormValidationBanner from '@/app/ui/FormValidationBanner';
-import styles from '../../nuevo/page.module.css';
+import { createClient } from '@/app/lib/supabase/server';
+import EditRecurringIncomeForm from '@/app/ui/recurring-incomes/EditRecurringIncomeForm';
+import styles from './page.module.css';
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ return?: string; error?: string }>;
 };
 
-export default async function EditarIngresoPage({ params, searchParams }: Props) {
+export default async function EditarIngresoPage({ params }: Props) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
   const { id } = await params;
-  const { return: returnTo, error } = await searchParams;
   const [income, accounts, categories] = await Promise.all([
-    fetchRecurringIncomeById(id),
-    fetchAccounts(),
+    fetchRecurringIncomeById(id, user.id),
+    fetchAccounts(user.id),
     fetchCategories(),
   ]);
-
   if (!income) notFound();
 
-  const backHref = returnTo || '/dashboard/ingresos';
-
   return (
-    <div>
-      <Link href={backHref} className={styles.backLink}>
-        <ArrowLeftIcon className={styles.backIcon} aria-hidden />
-        Volver
-      </Link>
+    <div className={styles.page}>
       <h1 className={styles.title}>Editar ingreso recurrente</h1>
-      <FormValidationBanner error={error} />
-      <RecurringIncomeForm
-        accounts={accounts}
-        categories={categories}
-        income={income}
-        returnTo={returnTo}
-      />
+      <p className={styles.subtitle}>Actualiza el monto u otros datos del ingreso.</p>
+      <EditRecurringIncomeForm income={income} accounts={accounts} categories={categories} />
+      <Link href="/dashboard/ingresos" className={styles.backLink}>
+        <ArrowLeftIcon className={styles.backIcon} aria-hidden />
+        Volver a Ingresos
+      </Link>
     </div>
   );
 }

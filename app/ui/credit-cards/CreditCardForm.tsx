@@ -1,9 +1,11 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import {
   createCreditCardAction,
   updateCreditCardAction,
 } from '@/app/lib/actions/credit-cards';
 import { fetchPeople } from '@/app/lib/data/people';
+import { createClient } from '@/app/lib/supabase/server';
 import SubmitButton from '@/app/ui/SubmitButton';
 import type { CreditCard } from '@/app/lib/definitions';
 import styles from './CreditCardForm.module.css';
@@ -13,7 +15,10 @@ type Props = {
 };
 
 export default async function CreditCardForm({ card }: Props) {
-  const people = await fetchPeople();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  const people = await fetchPeople(user.id);
   const isEdit = !!card;
   const limit = card ? card.credit_limit : undefined;
 

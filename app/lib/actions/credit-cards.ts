@@ -7,14 +7,19 @@ import {
   createCreditCard,
   deleteCreditCard,
   payStatement,
-  setCardStatementTotal,
   updateCreditCard,
 } from '@/app/lib/data/credit-cards';
-import { fetchActiveInstallments } from '@/app/lib/data/installments';
-import { getCardMonthlyInstallmentFloor } from '@/app/lib/utils/card-totals';
-import { revalidateFinancialScreens } from '@/app/lib/revalidate-financial';
 import { redirectWithToast } from '@/app/lib/toast-redirect';
+import { createClient } from '@/app/lib/supabase/server';
+import { formAmount, formOptionalDay } from '@/app/lib/validation';
 import type { AccountCurrency, CardBrand } from '@/app/lib/definitions';
+
+async function requireUser() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  return user;
+}
 
 const currencySchema = z.enum(['peso', 'dollar', 'crypto']);
 const brandSchema = z
@@ -22,34 +27,24 @@ const brandSchema = z
   .optional()
   .transform((v) => (v ? (v as CardBrand) : null));
 
-// El select de dueño envía un UUID o '' (compartida / sin asignar) -> null.
 const ownerSchema = z
   .union([z.string().uuid(), z.literal('')])
   .optional()
   .transform((v) => (v ? v : null));
 
-// Día del mes 1–31 o '' -> null.
-const daySchema = z
-  .union([z.string(), z.literal('')])
-  .optional()
-  .transform((v) => {
-    if (!v) return null;
-    const n = parseInt(v, 10);
-    return Number.isFinite(n) && n >= 1 && n <= 31 ? n : null;
-  });
-
 const cardFormSchema = z.object({
-  name: z.string().min(1, 'Indica un nombre para la tarjeta'),
-  bank: z.string().optional().transform((v) => (v?.trim() ? v.trim() : null)),
+  name: z.string().trim().min(1, 'Indica un nombre para la tarjeta').max(255),
+  bank: z.string().max(255).optional().transform((v) => (v?.trim() ? v.trim() : null)),
   brand: brandSchema,
   currency: currencySchema,
-  credit_limit: z.string().optional().transform((s) => parseFloat(s ?? '') || 0),
-  closing_day: daySchema,
-  due_day: daySchema,
+  credit_limit: formAmount,
+  closing_day: formOptionalDay,
+  due_day: formOptionalDay,
   owner_id: ownerSchema,
 });
 
 export async function createCreditCardAction(formData: FormData) {
+  const user = await requireUser();
   const parsed = cardFormSchema.safeParse({
     name: formData.get('name'),
     bank: formData.get('bank'),
@@ -74,7 +69,7 @@ export async function createCreditCardAction(formData: FormData) {
     closing_day: d.closing_day,
     due_day: d.due_day,
     owner_id: d.owner_id,
-  });
+  }, user.id);
 
   revalidatePath('/dashboard/tarjetas');
   revalidatePath('/dashboard');
@@ -90,6 +85,7 @@ const updateCardFormSchema = cardFormSchema.extend({
 });
 
 export async function updateCreditCardAction(formData: FormData) {
+  const user = await requireUser();
   const rawId = formData.get('id');
   const parsed = updateCardFormSchema.safeParse({
     id: rawId,
@@ -119,7 +115,7 @@ export async function updateCreditCardAction(formData: FormData) {
     due_day: d.due_day,
     owner_id: d.owner_id,
     active: d.active,
-  });
+  }, user.id);
   if (!updated) {
     redirect('/dashboard/tarjetas?error=notfound');
   }
@@ -132,6 +128,7 @@ export async function updateCreditCardAction(formData: FormData) {
 const deleteCardFormSchema = z.object({ id: z.string().uuid() });
 
 export async function deleteCreditCardAction(formData: FormData) {
+  const user = await requireUser();
   const parsed = deleteCardFormSchema.safeParse({ id: formData.get('id') });
   if (!parsed.success) {
     redirect('/dashboard/tarjetas?error=validation');
@@ -139,7 +136,7 @@ export async function deleteCreditCardAction(formData: FormData) {
 
   let result: Awaited<ReturnType<typeof deleteCreditCard>>;
   try {
-    result = await deleteCreditCard(parsed.data.id);
+    result = await deleteCreditCard(parsed.data.id, user.id);
   } catch {
     redirect('/dashboard/tarjetas?error=delete');
   }
@@ -161,6 +158,7 @@ const payStatementFormSchema = z.object({
 });
 
 export async function payStatementAction(formData: FormData) {
+  const user = await requireUser();
   const parsed = payStatementFormSchema.safeParse({
     statement_id: formData.get('statement_id'),
     account_id: formData.get('account_id'),
@@ -169,57 +167,12 @@ export async function payStatementAction(formData: FormData) {
     redirect('/dashboard/tarjetas?error=validation');
   }
 
-  const result = await payStatement(parsed.data.statement_id, parsed.data.account_id);
+  const result = await payStatement(parsed.data.statement_id, parsed.data.account_id, user.id);
   if (!result.ok) {
     redirect(`/dashboard/tarjetas?error=${result.reason}`);
   }
 
-  revalidateFinancialScreens();
+  revalidatePath('/dashboard/tarjetas');
+  revalidatePath('/dashboard');
   redirectWithToast('/dashboard/tarjetas', 'Resumen pagado');
-}
-
-const setCardTotalFormSchema = z.object({
-  card_id: z.string().uuid(),
-  period: z.string().regex(/^\d{4}-\d{2}$/),
-  total_pesos: z.string(),
-  total_dollars: z.string().optional().or(z.literal('')),
-});
-
-export async function setCardStatementTotalAction(formData: FormData) {
-  const parsed = setCardTotalFormSchema.safeParse({
-    card_id: formData.get('card_id'),
-    period: formData.get('period'),
-    total_pesos: formData.get('total_pesos') ?? '',
-    total_dollars: formData.get('total_dollars') ?? '',
-  });
-  if (!parsed.success) {
-    redirect('/dashboard/movimientos?error=validation');
-  }
-
-  const { card_id, period } = parsed.data;
-  const totalPesos = parseFloat(parsed.data.total_pesos);
-  const totalDollars = parseFloat(parsed.data.total_dollars || '0');
-  if (Number.isNaN(totalPesos) || Number.isNaN(totalDollars) || totalPesos < 0 || totalDollars < 0) {
-    redirect(`/dashboard/movimientos?period=${period}&error=validation`);
-  }
-
-  const installments = await fetchActiveInstallments();
-  const floor = getCardMonthlyInstallmentFloor(card_id, installments);
-
-  const result = await setCardStatementTotal(
-    card_id,
-    totalPesos,
-    totalDollars,
-    floor.pesos,
-    floor.dollars
-  );
-
-  if (!result.ok) {
-    const err =
-      result.reason === 'below_cuota_minimum' ? 'below_cuota_minimum' : result.reason;
-    redirect(`/dashboard/movimientos?period=${period}&error=${err}`);
-  }
-
-  revalidateFinancialScreens();
-  redirectWithToast(`/dashboard/movimientos?period=${period}`, 'Total de tarjeta actualizado');
 }

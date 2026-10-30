@@ -1,4 +1,6 @@
 import { sql } from '../db';
+import { fetchDolarApiQuote, settleQuotes, type RateFailure } from '../dolarapi';
+import { isStale, cooldownSecondsLeft, STALE_MS } from '../rates-refresh';
 import { getSettings } from './settings';
 import type { ExchangeRate, RateSource } from '../definitions';
 
@@ -41,8 +43,12 @@ export type ExchangeRateUpsert = {
   source_updated_at?: string | null;
 };
 
-/** Inserta o actualiza la cotización de una casa. */
+/** Inserta o actualiza la cotización de una casa. Rechaza valores no positivos. */
 export async function upsertExchangeRate(data: ExchangeRateUpsert): Promise<void> {
+  // Red de seguridad: una cotización en 0 dejaría de convertir los pesos a USD.
+  if (!(data.compra > 0) || !(data.venta > 0) || !Number.isFinite(data.compra + data.venta)) {
+    throw new Error(`cotización inválida para ${data.source}: compra y venta deben ser > 0`);
+  }
   await sql`
     INSERT INTO exchange_rates (source, compra, venta, source_updated_at, updated_at)
     VALUES (${data.source}, ${data.compra}, ${data.venta}, ${data.source_updated_at ?? null}, NOW())
@@ -56,92 +62,83 @@ export async function upsertExchangeRate(data: ExchangeRateUpsert): Promise<void
 
 // ---------------------------------------------------------------------------
 // Integración con dolarapi.com (https://dolarapi.com/docs/argentina/)
+// La validación y el timeout viven en ../dolarapi (módulo puro, con tests).
 // ---------------------------------------------------------------------------
 
-const DOLARAPI_BASE = 'https://dolarapi.com/v1/dolares';
-
-type DolarApiResponse = {
-  casa: string;
-  nombre: string;
-  compra: number;
-  venta: number;
-  fechaActualizacion: string;
-};
-
-async function fetchDolarApi(source: RateSource): Promise<ExchangeRateUpsert> {
-  const res = await fetch(`${DOLARAPI_BASE}/${source}`, {
-    cache: 'no-store',
-    headers: { accept: 'application/json' },
-  });
-  if (!res.ok) {
-    throw new Error(`dolarapi ${source} respondió ${res.status}`);
-  }
-  const data = (await res.json()) as DolarApiResponse;
-  const compra = Number(data.compra);
-  const venta = Number(data.venta);
-  if (!Number.isFinite(compra) || !Number.isFinite(venta)) {
-    throw new Error(`dolarapi ${source}: cotización inválida`);
-  }
-  return {
-    source,
-    compra,
-    venta,
-    source_updated_at: data.fechaActualizacion ?? null,
-  };
-}
+const RATE_SOURCES: RateSource[] = ['blue', 'oficial'];
 
 export type RefreshRatesResult =
-  | { ok: true; rates: ExchangeRate[] }
-  | { ok: false; error: string };
+  | { ok: true; rates: ExchangeRate[]; failed: RateFailure[] }
+  | { ok: false; error: string; failed: RateFailure[] };
 
-/** Trae blue y oficial de dolarapi y los persiste. */
+/**
+ * Trae blue y oficial de dolarapi y persiste las que lleguen válidas. Si una casa
+ * falla (HTTP, timeout o dato inválido) conserva su última cotización buena y se
+ * informa en `failed`; solo es `ok: false` si fallan las dos.
+ */
 export async function refreshExchangeRates(): Promise<RefreshRatesResult> {
+  const settled = await Promise.allSettled(RATE_SOURCES.map((s) => fetchDolarApiQuote(s)));
+  const { quotes, failed } = settleQuotes(RATE_SOURCES, settled);
+
+  const saved: typeof quotes = [];
+  for (const quote of quotes) {
+    try {
+      await upsertExchangeRate(quote);
+      saved.push(quote);
+    } catch (err) {
+      failed.push({ source: quote.source, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  for (const f of failed) {
+    console.error(`[rates] ${f.source} quedó con su última cotización: ${f.error}`);
+  }
+
+  if (saved.length === 0) {
+    return { ok: false, error: failed.map((f) => `${f.source}: ${f.error}`).join('; '), failed };
+  }
   try {
-    const [blue, oficial] = await Promise.all([
-      fetchDolarApi('blue'),
-      fetchDolarApi('oficial'),
-    ]);
-    await Promise.all([upsertExchangeRate(blue), upsertExchangeRate(oficial)]);
-    const rates = await fetchExchangeRates();
-    return { ok: true, rates };
+    return { ok: true, rates: await fetchExchangeRates(), failed };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'error desconocido' };
+    return { ok: false, error: err instanceof Error ? err.message : 'error desconocido', failed };
   }
 }
-
-const STALE_MS = 6 * 60 * 60 * 1000; // 6 horas
 
 /** Refresca solo si faltan cotizaciones o la última quedó vieja (red de seguridad sin cron). */
 export async function refreshExchangeRatesIfStale(maxAgeMs: number = STALE_MS): Promise<void> {
   const rates = await fetchExchangeRates();
-  const newest = rates.reduce(
-    (acc, r) => Math.max(acc, new Date(r.updated_at).getTime()),
-    0
-  );
-  if (rates.length < 2 || Date.now() - newest > maxAgeMs) {
+  if (isStale(rates.map((r) => r.updated_at), Date.now(), maxAgeMs)) {
     await refreshExchangeRates();
   }
+}
+
+/** Segundos que faltan para permitir otra actualización manual (0 = ya se puede). */
+export async function refreshCooldownSeconds(): Promise<number> {
+  const rates = await fetchExchangeRates();
+  return cooldownSecondsLeft(rates.map((r) => r.updated_at), Date.now());
 }
 
 export type EffectiveRate = {
   rate: number; // pesos por USD
   source: 'manual' | RateSource;
   updatedAt: string | null;
+  /** Cuándo la app guardó la cotización por última vez (null si es tasa manual). */
+  fetchedAt: string | null;
 };
 
 /**
  * Tasa efectiva para convertir pesos→USD: el override manual si está activo y es
  * válido; si no, la `venta` de la casa configurada. null si no hay cotización.
  */
-export async function getEffectiveRate(): Promise<EffectiveRate | null> {
-  const settings = await getSettings();
+export async function getEffectiveRate(userId: string): Promise<EffectiveRate | null> {
+  const settings = await getSettings(userId);
 
   if (
     settings.manual_rate_enabled &&
     settings.manual_rate_value != null &&
     settings.manual_rate_value > 0
   ) {
-    return { rate: settings.manual_rate_value, source: 'manual', updatedAt: null };
+    return { rate: settings.manual_rate_value, source: 'manual', updatedAt: null, fetchedAt: null };
   }
 
   const rate = await fetchExchangeRate(settings.rate_source);
@@ -150,5 +147,6 @@ export async function getEffectiveRate(): Promise<EffectiveRate | null> {
     rate: rate.venta,
     source: settings.rate_source,
     updatedAt: rate.source_updated_at ?? rate.updated_at,
+    fetchedAt: rate.updated_at,
   };
 }

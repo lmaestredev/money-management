@@ -22,10 +22,7 @@ type Props = {
 };
 
 function currencySuffix(currency: AccountCurrency): string {
-  if (currency === 'peso') return ' (pesos)';
-  if (currency === 'dollar') return ' (dólares)';
-  if (currency === 'dual') return ' (pesos y dólares)';
-  return '';
+  return currency === 'peso' ? ' (pesos)' : currency === 'dollar' ? ' (dólares)' : '';
 }
 
 export default function PaymentSourceSelect({

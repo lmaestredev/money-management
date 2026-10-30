@@ -1,9 +1,10 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { updateAccountAction } from '@/app/lib/actions/accounts';
 import { getAccountBalance } from '@/app/lib/data/accounts';
 import { fetchPeople } from '@/app/lib/data/people';
+import { createClient } from '@/app/lib/supabase/server';
 import SubmitButton from '@/app/ui/SubmitButton';
-import AccountCurrencyFields from './AccountCurrencyFields';
 import type { Account } from '@/app/lib/definitions';
 import styles from './AccountForm.module.css';
 
@@ -12,8 +13,11 @@ type Props = {
 };
 
 export default async function EditAccountForm({ account }: Props) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
   const balance = getAccountBalance(account);
-  const people = await fetchPeople();
+  const people = await fetchPeople(user.id);
 
   return (
     <form action={updateAccountAction} className={styles.form}>
@@ -49,12 +53,36 @@ export default async function EditAccountForm({ account }: Props) {
           ))}
         </select>
       </div>
-      <AccountCurrencyFields
-        initialCurrency={account.currency}
-        initialBalancePesos={account.balance_pesos}
-        initialBalanceDollars={account.balance_dollars}
-        initialSingleBalance={balance}
-      />
+      <div className={styles.field}>
+        <label htmlFor="currency" className={styles.label}>
+          Moneda
+        </label>
+        <select
+          id="currency"
+          name="currency"
+          className={styles.select}
+          defaultValue={account.currency}
+          required
+        >
+          <option value="peso">Peso (ARS)</option>
+          <option value="dollar">Dólar (USD)</option>
+          <option value="crypto">Cripto</option>
+        </select>
+      </div>
+      <div className={styles.field}>
+        <label htmlFor="balance" className={styles.label}>
+          Saldo actual
+        </label>
+        <input
+          id="balance"
+          name="balance"
+          type="number"
+          step="0.00000001"
+          className={styles.input}
+          defaultValue={balance}
+          required
+        />
+      </div>
       <div className={styles.actions}>
         <SubmitButton>Guardar cambios</SubmitButton>
         <Link href="/dashboard/cuentas" className={`${styles.button} ${styles.buttonSecondary}`}>

@@ -4,6 +4,7 @@ import { formatUsd, formatArs } from '@/app/lib/utils';
 import { useState } from 'react';
 import { payStatementAction } from '@/app/lib/actions/credit-cards';
 import type { Account, CardStatement } from '@/app/lib/definitions';
+import { formatDateAR } from '@/app/lib/dates';
 import styles from './CreditCardItem.module.css';
 
 type Props = {
@@ -30,9 +31,12 @@ function formatMoney(amount: number, currency: 'peso' | 'dollar'): string {
 
 function formatDate(iso: string | null): string | null {
   if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
+  // due_date es una columna DATE: se formatea en UTC para no mostrar el día anterior.
+  try {
+    return formatDateAR(iso, { day: '2-digit', month: 'short' });
+  } catch {
+    return null;
+  }
 }
 
 export default function PayStatementForm({ statement, accounts }: Props) {

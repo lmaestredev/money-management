@@ -95,3 +95,14 @@
   box-shadow: 0 6px 24px var(--glow-primary);
   transform: translateY(-1px);
 }
+
+.backLink {
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}

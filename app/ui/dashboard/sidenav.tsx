@@ -23,7 +23,7 @@ import { signOut } from '@/app/lib/actions/auth';
 import styles from './sidenav.module.css';
 
 const links = [
-  { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
+  { name: 'Inicio', href: '/dashboard', icon: HomeIcon },
   {
     name: 'Movimientos',
     href: '/dashboard/movimientos',

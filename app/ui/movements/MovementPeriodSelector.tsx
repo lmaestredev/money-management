@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
+import { currentPeriodAR } from '@/app/lib/dates';
 import styles from './MovementPeriodSelector.module.css';
 
 function getPrevPeriod(period: string): string {
@@ -28,11 +29,6 @@ function periodToLabel(period: string): string {
   });
 }
 
-function getTodayPeriod(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
-
 type Props = {
   currentPeriod: string;
   basePath?: string;
@@ -50,7 +46,7 @@ export default function MovementPeriodSelector({ currentPeriod, basePath = '/das
 
   const prev = getPrevPeriod(currentPeriod);
   const next = getNextPeriod(currentPeriod);
-  const todayPeriod = getTodayPeriod();
+  const todayPeriod = currentPeriodAR();
   const isNextFuture = next > todayPeriod;
 
   return (

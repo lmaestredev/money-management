@@ -1,48 +1,45 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { fetchInstallmentById } from '@/app/lib/data/installments';
 import { fetchAccounts } from '@/app/lib/data/accounts';
 import { fetchActiveCreditCards } from '@/app/lib/data/credit-cards';
 import { fetchCategories } from '@/app/lib/data/categories';
-import { fetchInstallmentById } from '@/app/lib/data/installments';
-import InstallmentForm from '@/app/ui/installments/InstallmentForm';
-import FormValidationBanner from '@/app/ui/FormValidationBanner';
-import styles from '../../nueva/page.module.css';
+import { createClient } from '@/app/lib/supabase/server';
+import EditInstallmentForm from '@/app/ui/installments/EditInstallmentForm';
+import styles from './page.module.css';
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ return?: string; error?: string }>;
 };
 
-export default async function EditarCuotaPage({ params, searchParams }: Props) {
+export default async function EditarCuotaPage({ params }: Props) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
   const { id } = await params;
-  const { return: returnTo, error } = await searchParams;
   const [installment, accounts, cards, categories] = await Promise.all([
-    fetchInstallmentById(id),
-    fetchAccounts(),
-    fetchActiveCreditCards(),
+    fetchInstallmentById(id, user.id),
+    fetchAccounts(user.id),
+    fetchActiveCreditCards(user.id),
     fetchCategories(),
   ]);
-
   if (!installment) notFound();
 
-  const backHref = returnTo || '/dashboard/cuotas';
-
   return (
-    <div>
-      <Link href={backHref} className={styles.backLink}>
-        <ArrowLeftIcon className={styles.backIcon} aria-hidden />
-        Volver
-      </Link>
+    <div className={styles.page}>
       <h1 className={styles.title}>Editar compra en cuotas</h1>
-      <FormValidationBanner error={error} />
-      <InstallmentForm
+      <p className={styles.subtitle}>Corrige el monto o las cuotas ya pagadas.</p>
+      <EditInstallmentForm
+        installment={installment}
         accounts={accounts}
         cards={cards}
         categories={categories}
-        installment={installment}
-        returnTo={returnTo}
       />
+      <Link href="/dashboard/cuotas" className={styles.backLink}>
+        <ArrowLeftIcon className={styles.backIcon} aria-hidden />
+        Volver a Cuotas
+      </Link>
     </div>
   );
 }

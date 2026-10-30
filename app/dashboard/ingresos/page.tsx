@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { redirect } from 'next/navigation';
+import { PencilIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { fetchRecurringIncomes } from '@/app/lib/data/recurring-incomes';
-import { getEffectiveRate, refreshExchangeRatesIfStale } from '@/app/lib/data/exchange-rates';
+import { createClient } from '@/app/lib/supabase/server';
 import { formatUsd } from '@/app/lib/utils';
-import { amountsToUsd } from '@/app/lib/utils/currency';
 import DeleteRecurringIncomeButton from '@/app/ui/recurring-incomes/DeleteRecurringIncomeButton';
 import styles from './page.module.css';
 
@@ -27,19 +27,14 @@ type Props = {
 };
 
 export default async function IngresosPage({ searchParams }: Props) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
   const { error } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] ?? null : null;
-  await refreshExchangeRatesIfStale();
-  const [incomes, effectiveRate] = await Promise.all([
-    fetchRecurringIncomes(),
-    getEffectiveRate(),
-  ]);
-  const rate = effectiveRate?.rate ?? null;
+  const incomes = await fetchRecurringIncomes(user.id);
   const active = incomes.filter((i) => i.active);
-  const monthlyTotal = active.reduce(
-    (sum, i) => sum + amountsToUsd(i.amount_pesos, i.amount_dollars, rate),
-    0
-  );
+  const monthlyTotal = active.reduce((sum, i) => sum + i.amount_dollars, 0);
 
   return (
     <div className={styles.page}>
@@ -106,14 +101,20 @@ export default async function IngresosPage({ searchParams }: Props) {
                 </div>
                 <div className={styles.itemFooter}>
                   <div className={styles.itemAmounts}>
-                    <span className={styles.itemAmount}>
-                      +{formatUsd(amountsToUsd(i.amount_pesos, i.amount_dollars, rate))}
-                    </span>
-                    {i.amount_pesos > 0 && (
-                      <span className={styles.itemAmountSecondary}>{formatPesos(i.amount_pesos)}</span>
-                    )}
+                    <span className={styles.itemAmount}>+{formatUsd(i.amount_dollars)}</span>
+                    <span className={styles.itemAmountSecondary}>{formatPesos(i.amount_pesos)}</span>
                   </div>
-                  <DeleteRecurringIncomeButton id={i.id} name={i.name} />
+                  <div className={styles.itemActions}>
+                    <Link
+                      href={`/dashboard/ingresos/editar/${i.id}`}
+                      className={styles.editBtn}
+                      title="Editar"
+                      aria-label={`Editar ingreso ${i.name}`}
+                    >
+                      <PencilIcon className={styles.editIcon} aria-hidden />
+                    </Link>
+                    <DeleteRecurringIncomeButton id={i.id} name={i.name} />
+                  </div>
                 </div>
               </li>
             ))}

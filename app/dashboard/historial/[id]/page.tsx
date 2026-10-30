@@ -1,15 +1,17 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 import { fetchPeriodById } from '@/app/lib/data/financial-periods';
 import { fetchMovementsByFinancialPeriod } from '@/app/lib/data/movements';
 import { fetchAccounts } from '@/app/lib/data/accounts';
-import { fetchCreditCards, fetchStatementPaymentIds } from '@/app/lib/data/credit-cards';
-import { computeMovementSummary } from '@/app/lib/data/movement-summary';
 import { getEffectiveRate } from '@/app/lib/data/exchange-rates';
+import { createClient } from '@/app/lib/supabase/server';
+import { formatUsd, formatArs } from '@/app/lib/utils';
 import { formatShortDate } from '@/app/ui/financial-periods/PeriodBadge';
 import SummaryCards from '@/app/ui/movements/SummaryCards';
 import MovementsPageClient from '@/app/ui/movements/MovementsPageClient';
+import { periodRate } from '@/app/lib/period-rate';
+import { computeSummary } from '@/app/lib/summary';
 import styles from './page.module.css';
 
 type Props = {
@@ -17,23 +19,25 @@ type Props = {
 };
 
 export default async function HistorialDetailPage({ params }: Props) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  const userId = user.id;
   const { id } = await params;
-  const [period, accounts, cards, statementPaymentIds, effectiveRate] = await Promise.all([
-    fetchPeriodById(id),
-    fetchAccounts(),
-    fetchCreditCards(),
-    fetchStatementPaymentIds(),
-    getEffectiveRate(),
+  const [period, accounts, effectiveRate] = await Promise.all([
+    fetchPeriodById(id, userId),
+    fetchAccounts(userId),
+    getEffectiveRate(userId),
   ]);
 
   if (!period) notFound();
   if (period.status !== 'closed') notFound();
 
-  const movements = await fetchMovementsByFinancialPeriod(id);
-  const accountNames = Object.fromEntries(accounts.map((a) => [a.id, a.name]));
-  const cardNames = Object.fromEntries(cards.map((c) => [c.id, c.name]));
-  const rate = effectiveRate?.rate ?? null;
-  const summary = computeMovementSummary(movements, rate, { statementPaymentIds });
+  const movements = await fetchMovementsByFinancialPeriod(id, userId);
+  const accountNames = new Map(accounts.map((a) => [a.id, a.name]));
+  // Un período cerrado se convierte con la tasa congelada al cerrarlo (no la de hoy).
+  const { rate, frozen } = periodRate(period.closing_rate, effectiveRate?.rate ?? null);
+  const summary = computeSummary(movements, rate);
 
   const dateRange = `${formatShortDate(period.start_date)} → ${
     period.end_date ? formatShortDate(period.end_date) : '—'
@@ -58,6 +62,12 @@ export default async function HistorialDetailPage({ params }: Props) {
 
       <p className={styles.readonlyNote}>
         Este período está cerrado. Los movimientos son de solo lectura.
+        {' '}
+        {frozen && rate != null
+          ? `Los importes en dólares se calcularon con la cotización de cierre: ${formatArs(rate)} por dólar.`
+          : rate != null
+            ? `Este período no tiene cotización de cierre guardada: se usa la cotización actual (${formatArs(rate)} por dólar), así que sus totales pueden variar.`
+            : 'Este período no tiene cotización de cierre y hoy tampoco hay una cotización disponible.'}
       </p>
 
       <SummaryCards
@@ -70,13 +80,20 @@ export default async function HistorialDetailPage({ params }: Props) {
         incomeCount={summary.incomeCount}
         expenseCount={summary.expenseCount}
         balanceLabel="Balance del período"
+        incomplete={summary.incomplete}
+        incompleteArs={summary.incompleteArs}
       />
 
       <MovementsPageClient
         movements={movements}
         accountNames={accountNames}
-        cardNames={cardNames}
-        rate={rate}
+        summary={{
+          balance: summary.balance,
+          totalIncome: summary.totalIncome,
+          totalExpense: summary.totalExpense,
+          incomeCount: summary.incomeCount,
+          expenseCount: summary.expenseCount,
+        }}
         readOnly
       />
     </div>

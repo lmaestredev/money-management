@@ -42,14 +42,28 @@ async function appliedVersions(): Promise<string[]> {
   return rows.map((r) => r.version);
 }
 
+/**
+ * La migración y su registro en _migrations van en UNA transacción: si algo falla
+ * no queda nada a medias (antes una migración podía aplicarse sin registrarse).
+ */
 async function runMigration(version: string, content: string) {
-  await sql.unsafe(content);
-  await sql`INSERT INTO _migrations (version) VALUES (${version})`;
+  await sql.begin(async (tx) => {
+    await tx.unsafe(content);
+    await tx`INSERT INTO _migrations (version) VALUES (${version})`;
+  });
 }
 
+// Lock de sesión: evita que dos procesos (p. ej. `pnpm dev` y un deploy) migren a la vez.
+// Con max: 1 hay una sola conexión, así que el lock vive en la misma que migra.
+const MIGRATION_LOCK_KEY = 727_001;
+
 async function main() {
+  let locked = false;
   try {
+    await sql`SELECT pg_advisory_lock(${MIGRATION_LOCK_KEY})`;
+    locked = true;
     await ensureMigrationsTable();
+    // Se lee DESPUÉS de tomar el lock: otro proceso pudo haber aplicado migraciones mientras esperábamos.
     const applied = await appliedVersions();
 
     const files = await readdir(MIGRATIONS_DIR);
@@ -69,11 +83,12 @@ async function main() {
     }
 
     console.log('[db:migrate] Migraciones al día.');
-    process.exit(0);
   } catch (err) {
     console.error('[db:migrate] Error:', err instanceof Error ? err.message : err);
-    process.exit(1);
+    // Sin process.exit: dejar que corra el finally (liberar el lock y cerrar la conexión).
+    process.exitCode = 1;
   } finally {
+    if (locked) await sql`SELECT pg_advisory_unlock(${MIGRATION_LOCK_KEY})`.catch(() => undefined);
     await sql.end();
   }
 }

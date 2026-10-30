@@ -1,38 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import {
-  createRecurringIncomeAction,
-  updateRecurringIncomeAction,
-} from '@/app/lib/actions/recurring-incomes';
+import { createRecurringIncomeAction } from '@/app/lib/actions/recurring-incomes';
 import SubmitButton from '@/app/ui/SubmitButton';
-import type { Account, Category, RecurringIncome } from '@/app/lib/definitions';
+import type { Account, Category } from '@/app/lib/definitions';
 import styles from './RecurringIncomeForm.module.css';
 
 type Props = {
   accounts: Account[];
   categories: Category[];
-  income?: RecurringIncome;
-  returnTo?: string;
 };
 
-export default function RecurringIncomeForm({
-  accounts,
-  categories,
-  income,
-  returnTo,
-}: Props) {
-  const isEdit = !!income;
-  const cancelHref = returnTo || '/dashboard/ingresos';
-
+export default function RecurringIncomeForm({ accounts, categories }: Props) {
   return (
-    <form
-      action={isEdit ? updateRecurringIncomeAction : createRecurringIncomeAction}
-      className={styles.form}
-    >
-      {isEdit && <input type="hidden" name="id" value={income.id} />}
-      {returnTo && <input type="hidden" name="return_to" value={returnTo} />}
-
+    <form action={createRecurringIncomeAction} className={styles.form}>
       <div className={styles.field}>
         <label htmlFor="name" className={styles.label}>
           Nombre
@@ -43,7 +24,6 @@ export default function RecurringIncomeForm({
           type="text"
           className={styles.input}
           required
-          defaultValue={income?.name ?? ''}
           placeholder="Ej. Sueldo Luis, Sueldo Valen, Honorarios..."
         />
       </div>
@@ -52,12 +32,7 @@ export default function RecurringIncomeForm({
         <label htmlFor="category_id" className={styles.label}>
           Categoría
         </label>
-        <select
-          id="category_id"
-          name="category_id"
-          className={styles.select}
-          defaultValue={income?.category_id ?? ''}
-        >
+        <select id="category_id" name="category_id" className={styles.select}>
           <option value="">Sin categoría</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
@@ -71,12 +46,7 @@ export default function RecurringIncomeForm({
         <label htmlFor="account_id" className={styles.label}>
           Cuenta donde se acredita
         </label>
-        <select
-          id="account_id"
-          name="account_id"
-          className={styles.select}
-          defaultValue={income?.account_id ?? ''}
-        >
+        <select id="account_id" name="account_id" className={styles.select}>
           <option value="">Se elige al cobrar</option>
           {accounts.map((a) => (
             <option key={a.id} value={a.id}>
@@ -102,7 +72,6 @@ export default function RecurringIncomeForm({
             min="0"
             step="0.01"
             className={styles.input}
-            defaultValue={income?.amount_pesos ?? ''}
             placeholder="0"
           />
         </div>
@@ -117,7 +86,6 @@ export default function RecurringIncomeForm({
             min="0"
             step="0.01"
             className={styles.input}
-            defaultValue={income?.amount_dollars ?? ''}
             placeholder="0"
           />
         </div>
@@ -135,14 +103,13 @@ export default function RecurringIncomeForm({
           max="31"
           step="1"
           className={styles.input}
-          defaultValue={income?.receive_day ?? ''}
           placeholder="1"
         />
       </div>
 
       <div className={styles.actions}>
-        <SubmitButton>{isEdit ? 'Guardar cambios' : 'Guardar'}</SubmitButton>
-        <Link href={cancelHref} className={`${styles.button} ${styles.buttonSecondary}`}>
+        <SubmitButton>Guardar</SubmitButton>
+        <Link href="/dashboard/ingresos" className={`${styles.button} ${styles.buttonSecondary}`}>
           Cancelar
         </Link>
       </div>

@@ -2,22 +2,21 @@
 
 import { TrashIcon } from '@heroicons/react/24/outline';
 import { deleteInstallmentAction } from '@/app/lib/actions/installments';
-import styles from '@/app/ui/recurring/DeleteRecurringButton.module.css';
+import styles from './DeleteInstallmentButton.module.css';
 
 type Props = {
   id: string;
   name: string;
-  redirectTo?: string;
 };
 
-export default function DeleteInstallmentButton({ id, name, redirectTo }: Props) {
+export default function DeleteInstallmentButton({ id, name }: Props) {
   return (
     <form
       action={deleteInstallmentAction}
       onSubmit={(e) => {
         if (
           !window.confirm(
-            `¿Eliminar la compra en cuotas "${name}"? Los pagos ya registrados se conservan en el historial.`
+            `¿Eliminar la compra en cuotas "${name}"? Los pagos ya registrados se conservan en el historial de movimientos.`
           )
         ) {
           e.preventDefault();
@@ -25,7 +24,6 @@ export default function DeleteInstallmentButton({ id, name, redirectTo }: Props)
       }}
     >
       <input type="hidden" name="id" value={id} />
-      {redirectTo && <input type="hidden" name="redirect_to" value={redirectTo} />}
       <button
         type="submit"
         className={styles.deleteBtn}

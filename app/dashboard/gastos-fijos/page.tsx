@@ -1,27 +1,20 @@
 import Link from 'next/link';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { redirect } from 'next/navigation';
+import { PencilIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { fetchRecurringExpenses } from '@/app/lib/data/recurring';
-import { getEffectiveRate, refreshExchangeRatesIfStale } from '@/app/lib/data/exchange-rates';
+import { createClient } from '@/app/lib/supabase/server';
 import { formatArs, formatUsd } from '@/app/lib/utils';
-import { amountsToUsd } from '@/app/lib/utils/currency';
-import { recurringExpensePaymentLabel } from '@/app/lib/utils/installment-display';
 import DeleteRecurringButton from '@/app/ui/recurring/DeleteRecurringButton';
-import ItemActions from '@/app/ui/movements/ItemActions';
 import styles from './page.module.css';
 
 export default async function GastosFijosPage() {
-  await refreshExchangeRatesIfStale();
-  const [expenses, effectiveRate] = await Promise.all([
-    fetchRecurringExpenses(),
-    getEffectiveRate(),
-  ]);
-  const rate = effectiveRate?.rate ?? null;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  const expenses = await fetchRecurringExpenses(user.id);
   const active = expenses.filter((e) => e.active);
   const monthlyTotalPesos = active.reduce((sum, e) => sum + e.amount_pesos, 0);
-  const monthlyTotalUsd = active.reduce(
-    (sum, e) => sum + amountsToUsd(e.amount_pesos, e.amount_dollars, rate),
-    0
-  );
+  const monthlyTotalDollars = active.reduce((sum, e) => sum + e.amount_dollars, 0);
 
   return (
     <div className={styles.page}>
@@ -44,11 +37,10 @@ export default async function GastosFijosPage() {
           </div>
           <div className={styles.summaryCard}>
             <span className={styles.summaryLabel}>Total fijo mensual</span>
-            <span className={styles.summaryValueExpense}>{formatUsd(monthlyTotalUsd)}</span>
-            <div className={styles.summaryPesosRow}>
-              <span className={styles.summaryValueSecondary}>{formatArs(monthlyTotalPesos)}</span>
-              <span className={styles.summaryPesosLabel}>Gastos en pesos</span>
-            </div>
+            <span className={styles.summaryValueExpense}>{formatArs(monthlyTotalPesos)}</span>
+            {monthlyTotalDollars > 0 && (
+              <span className={styles.summaryValueSecondary}>{formatUsd(monthlyTotalDollars)}</span>
+            )}
           </div>
         </div>
       )}
@@ -77,35 +69,33 @@ export default async function GastosFijosPage() {
                     {e.name}
                     {e.is_cash && <span className={styles.cashBadge}>💵 Efectivo</span>}
                   </span>
-                  <span className={e.active ? styles.badgeActive : styles.badgeInactive}>
-                    {e.active ? 'Activo' : 'Inactivo'}
-                  </span>
+                  <div className={styles.itemTopActions}>
+                    <span className={e.active ? styles.badgeActive : styles.badgeInactive}>
+                      {e.active ? 'Activo' : 'Inactivo'}
+                    </span>
+                    <Link
+                      href={`/dashboard/gastos-fijos/editar/${e.id}`}
+                      className={styles.editBtn}
+                      title="Editar"
+                      aria-label={`Editar gasto fijo ${e.name}`}
+                    >
+                      <PencilIcon className={styles.editIcon} aria-hidden />
+                    </Link>
+                  </div>
                 </div>
                 <div className={styles.itemMeta}>
                   {e.category_name ?? 'Sin categoría'} · 🏦{' '}
-                  {recurringExpensePaymentLabel(e)}
+                  {e.account_name ?? (e.is_cash ? 'Se elige al pagar' : 'Sin cuenta')}
                   {e.pay_before_day ? ` · vence día ${e.pay_before_day}` : ''}
                 </div>
                 <div className={styles.itemFooter}>
                   <div className={styles.itemAmounts}>
-                    <span className={styles.itemAmount}>
-                      {formatUsd(amountsToUsd(e.amount_pesos, e.amount_dollars, rate))}
-                    </span>
-                    {e.amount_pesos > 0 && (
-                      <span className={styles.itemAmountSecondary}>{formatArs(e.amount_pesos)}</span>
+                    <span className={styles.itemAmount}>{formatArs(e.amount_pesos)}</span>
+                    {e.amount_dollars > 0 && (
+                      <span className={styles.itemAmountSecondary}>{formatUsd(e.amount_dollars)}</span>
                     )}
                   </div>
-                  <ItemActions
-                    editHref={`/dashboard/gastos-fijos/editar/${e.id}?return=/dashboard/gastos-fijos`}
-                    editLabel={`Editar ${e.name}`}
-                    deleteSlot={
-                      <DeleteRecurringButton
-                        id={e.id}
-                        name={e.name}
-                        redirectTo="/dashboard/gastos-fijos"
-                      />
-                    }
-                  />
+                  <DeleteRecurringButton id={e.id} name={e.name} />
                 </div>
               </li>
             ))}

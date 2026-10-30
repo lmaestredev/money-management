@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/app/lib/supabase/client';
 import styles from './page.module.css';
 
@@ -24,7 +25,7 @@ export default function LoginForm() {
     });
 
     if (signInError) {
-      setError('Email o contraseña incorrectos (o el usuario no está confirmado en Supabase).');
+      setError(signInError.message || 'Email o contraseña incorrectos.');
       setLoading(false);
       return;
     }
@@ -72,6 +73,9 @@ export default function LoginForm() {
       <button type="submit" className={styles.button} disabled={loading}>
         {loading ? 'Ingresando…' : 'Iniciar sesión'}
       </button>
+      <Link href="/forgot-password" className={styles.backLink}>
+        ¿Olvidaste tu contraseña?
+      </Link>
     </form>
   );
 }

@@ -1,27 +1,15 @@
 // Tipos para la app de finanzas personales.
 
-export type User = {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-};
-
-// Temporal para utils (generateYAxis).
-export type Revenue = {
-  month: string;
-  revenue: number;
-};
-
 // Personas del hogar (dueños de cuentas; base del reporte mensual por persona)
 export type Person = {
   id: string;
   name: string;
   sort_order: number;
+  user_id: string;
 };
 
 // Cuentas bancarias
-export type AccountCurrency = 'peso' | 'dollar' | 'crypto' | 'dual';
+export type AccountCurrency = 'peso' | 'dollar' | 'crypto';
 
 export type Account = {
   id: string;
@@ -30,7 +18,7 @@ export type Account = {
   currency: AccountCurrency;
   balance_pesos: number;
   balance_dollars: number;
-  user_id: string | null;
+  user_id: string;
   owner_id: string | null;
   owner_name?: string | null;
   created_at: string;
@@ -64,7 +52,7 @@ export type CreditCard = {
   owner_id: string | null;
   owner_name?: string | null;
   active: boolean;
-  user_id: string | null;
+  user_id: string;
   created_at: string;
   updated_at: string;
 };
@@ -110,7 +98,10 @@ export type FinancialPeriod = {
   end_date: string | null;
   status: FinancialPeriodStatus;
   closed_at: string | null;
+  /** Cotización (pesos por USD) congelada al cerrar el período; null si no tiene. */
+  closing_rate: number | null;
   created_at: string;
+  user_id: string;
 };
 
 // Configuración (presupuestos + preferencias de tasa de cambio)
@@ -148,10 +139,11 @@ export type CategoryInsert = {
 };
 
 // Movimientos
-export type RecordType = 'income' | 'variable_payment' | 'fixed_payment';
-
-/** Valor legado en BD; ya no se puede crear desde la app. */
-export type LegacyRecordType = RecordType | 'conversion';
+export type RecordType =
+  | 'income'
+  | 'conversion'
+  | 'variable_payment'
+  | 'fixed_payment';
 
 export type MovementSource = 'app' | 'telegram' | 'import';
 
@@ -159,7 +151,7 @@ export type Movement = {
   id: string;
   period: string;
   financial_period_id: string;
-  record_type: LegacyRecordType;
+  record_type: RecordType;
   account_id: string | null;
   credit_card_id?: string | null;
   statement_id?: string | null;
@@ -174,11 +166,13 @@ export type Movement = {
   exchange_rate: number | null;
   comment: string | null;
   created_at: string;
-  user_id: string | null;
+  user_id: string;
   source: MovementSource | null;
   installment_id?: string | null;
   recurring_expense_id?: string | null;
   recurring_income_id?: string | null;
+  /** true si es el pago de un resumen de tarjeta: NO cuenta como gasto. */
+  is_statement_payment: boolean;
 };
 
 export type MovementInsert = {
@@ -226,7 +220,7 @@ export type InstallmentPurchase = {
   pay_before_day: number | null;
   start_period: string | null;
   status: InstallmentStatus;
-  user_id: string | null;
+  user_id: string;
   created_at: string;
   updated_at: string;
   // Derivados (calculados en el mapper)
@@ -251,6 +245,21 @@ export type InstallmentInsert = {
   user_id?: string | null;
 };
 
+export type InstallmentUpdate = {
+  name: string;
+  account_id?: string | null;
+  credit_card_id?: string | null;
+  category_id?: string | null;
+  total_installments: number;
+  paid_installments: number;
+  monthly_amount_pesos?: number;
+  monthly_amount_dollars?: number;
+  total_amount_pesos?: number;
+  total_amount_dollars?: number;
+  pay_before_day?: number | null;
+  start_period?: string | null;
+};
+
 // Gastos fijos recurrentes (plantillas mensuales)
 export type RecurringExpense = {
   id: string;
@@ -266,7 +275,7 @@ export type RecurringExpense = {
   pay_before_day: number | null;
   is_cash: boolean;
   active: boolean;
-  user_id: string | null;
+  user_id: string;
   created_at: string;
   updated_at: string;
 };
@@ -284,6 +293,17 @@ export type RecurringExpenseInsert = {
   user_id?: string | null;
 };
 
+export type RecurringExpenseUpdate = {
+  name: string;
+  category_id?: string | null;
+  account_id?: string | null;
+  credit_card_id?: string | null;
+  amount_pesos?: number;
+  amount_dollars?: number;
+  pay_before_day?: number | null;
+  is_cash?: boolean;
+};
+
 // Ingresos recurrentes (sueldos / honorarios)
 export type RecurringIncome = {
   id: string;
@@ -296,7 +316,7 @@ export type RecurringIncome = {
   amount_dollars: number;
   receive_day: number | null;
   active: boolean;
-  user_id: string | null;
+  user_id: string;
   created_at: string;
   updated_at: string;
 };
@@ -310,4 +330,13 @@ export type RecurringIncomeInsert = {
   receive_day?: number | null;
   active?: boolean;
   user_id?: string | null;
+};
+
+export type RecurringIncomeUpdate = {
+  name: string;
+  category_id?: string | null;
+  account_id?: string | null;
+  amount_pesos?: number;
+  amount_dollars?: number;
+  receive_day?: number | null;
 };
