@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/node_modules.nosync
 /.pnp
 .pnp.js
 
@@ -9,7 +10,9 @@
 /coverage
 
 # next.js
+/.next
 /.next/
+/.next.nosync
 /out/
 
 # production
